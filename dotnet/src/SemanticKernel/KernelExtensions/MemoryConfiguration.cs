@@ -31,6 +31,7 @@ public static class MemoryConfiguration
     /// <param name="kernel">Kernel instance</param>
     /// <param name="embeddingsBackendLabel">Kernel backend label for embedding generation</param>
     /// <param name="storage">Memory storage</param>
+    /// <exception cref="AIException">Thrown when the embeddings backend is not configured</exception>
     [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope",
         Justification = "The embeddingGenerator object is disposed by the kernel")]
     public static void UseMemory(this IKernel kernel, string? embeddingsBackendLabel, IMemoryStore<float> storage)
@@ -51,7 +52,8 @@ public static class MemoryConfiguration
                     azureAIConfig.Endpoint,
                     azureAIConfig.APIKey,
                     azureAIConfig.APIVersion,
-                    kernel.Log);
+                    kernel.Log,
+                    kernel.Config.HttpRetryPolicy);
                 break;
 
             case OpenAIConfig openAIConfig:
@@ -59,7 +61,8 @@ public static class MemoryConfiguration
                     openAIConfig.ModelId,
                     openAIConfig.APIKey,
                     openAIConfig.OrgId,
-                    kernel.Log);
+                    kernel.Log,
+                    kernel.Config.HttpRetryPolicy);
                 break;
 
             default:

@@ -12,9 +12,9 @@ using Polly.Retry;
 namespace Reliability;
 
 /// <summary>
-/// An example of a retry mechanism that retries three times with backoff.
+/// An example of a retry mechanism that retries three times with backoff using the RetryAfter value.
 /// </summary>
-public class RetryThreeTimesWithBackoff : IHttpRetryPolicy
+public class RetryThreeTimesWithRetryAfterBackoff : IHttpRetryPolicy
 {
     public Task<HttpResponseMessage> ExecuteWithRetryAsync(Func<Task<HttpResponseMessage>> request, ILogger log, CancellationToken cancellationToken = default)
     {
@@ -30,16 +30,22 @@ public class RetryThreeTimesWithBackoff : IHttpRetryPolicy
         return Policy
             .HandleResult<HttpResponseMessage>(response =>
                 response.StatusCode is System.Net.HttpStatusCode.TooManyRequests or System.Net.HttpStatusCode.Unauthorized)
-            .WaitAndRetryAsync(new[]
+            .WaitAndRetryAsync(
+                retryCount: 3,
+                sleepDurationProvider: (_, r, _) =>
                 {
-                    TimeSpan.FromSeconds(2),
-                    TimeSpan.FromSeconds(4),
-                    TimeSpan.FromSeconds(8)
+                    var response = r.Result;
+                    var retryAfter = response.Headers.RetryAfter?.Delta ?? response.Headers.RetryAfter?.Date - DateTimeOffset.Now;
+                    return retryAfter ?? TimeSpan.FromSeconds(2);
                 },
-                (outcome, timespan, retryCount, _) => log.LogWarning(
-                    "Error executing action [attempt {0} of 3], pausing {1} msecs. Outcome: {2}",
-                    retryCount,
-                    timespan.TotalMilliseconds,
-                    outcome.Result.StatusCode));
+                (outcome, timespan, retryCount, _) =>
+                {
+                    log.LogWarning(
+                        "Error executing action [attempt {0} of 3], pausing {1} msecs. Outcome: {2}",
+                        retryCount,
+                        timespan.TotalMilliseconds,
+                        outcome.Result.StatusCode);
+                    return Task.CompletedTask;
+                });
     }
 }

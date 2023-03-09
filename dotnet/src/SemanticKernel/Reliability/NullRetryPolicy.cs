@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -8,16 +9,20 @@ using Microsoft.Extensions.Logging;
 namespace Microsoft.SemanticKernel.Reliability;
 
 /// <summary>
-/// Interface for retry mechanisms on AI calls.
+/// A retry mechanism that does not retry.
 /// </summary>
-public interface IRetryMechanism
+public class NullRetryPolicy : IHttpRetryPolicy
 {
     /// <summary>
     /// Executes the given action with retry logic.
     /// </summary>
-    /// <param name="action">The action to retry on exception.</param>
+    /// <param name="request">The request to retry on error response.</param>
     /// <param name="log">The logger to use.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>An awaitable task.</returns>
-    Task ExecuteWithRetryAsync(Func<Task> action, ILogger log, CancellationToken cancellationToken = default);
+    public Task<HttpResponseMessage> ExecuteWithRetryAsync(Func<Task<HttpResponseMessage>> request, ILogger log, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return request();
+    }
 }

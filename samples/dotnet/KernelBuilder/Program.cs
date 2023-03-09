@@ -104,15 +104,15 @@ kernel7.Config
 // AI requests (when using the kernel).
 
 var kernel8 = Kernel.Builder
-    .Configure(c => c.SetRetryMechanism(new RetryThreeTimes()))
+    .Configure(c => c.SetHttpRetryPolicy(new RetryThreeTimes()))
     .Build();
 
-public class RetryThreeTimes : IRetryMechanism
+public class RetryThreeTimes : IHttpRetryPolicy
 {
-    public Task ExecuteWithRetryAsync(Func<Task> action, ILogger log, CancellationToken cancellationToken = default)
+    public Task<HttpResponseMessage> ExecuteWithRetryAsync(Func<Task<HttpResponseMessage>> request, ILogger log, CancellationToken cancellationToken = default)
     {
         var policy = GetPolicy(log);
-        return policy.ExecuteAsync((_) => action(), cancellationToken);
+        return policy.ExecuteAsync((_) => request(), cancellationToken);
     }
 
     private static AsyncRetryPolicy GetPolicy(ILogger log)
@@ -126,7 +126,7 @@ public class RetryThreeTimes : IRetryMechanism
                     TimeSpan.FromSeconds(8)
                 },
                 (ex, timespan, retryCount, _) => log.LogWarning(ex,
-                    "Error executing action [attempt {0} of ], pausing {1} msecs",
+                    "Error executing action [attempt {0} of 3], pausing {1} msecs",
                     retryCount, timespan.TotalMilliseconds));
     }
 }

@@ -7,11 +7,13 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Mime;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.SemanticKernel.AI.Embeddings;
 using Microsoft.SemanticKernel.AI.OpenAI.HttpSchema;
+using Microsoft.SemanticKernel.Reliability;
 using Microsoft.SemanticKernel.Text;
 
 namespace Microsoft.SemanticKernel.AI.OpenAI.Clients;
@@ -33,12 +35,13 @@ public abstract class OpenAIClientAbstract : IDisposable
     protected HttpClient HTTPClient { get; }
 
     private readonly HttpClientHandler _httpClientHandler;
+    private readonly IHttpRetryPolicy _retryPolicy = new NullRetryPolicy();
 
-    internal OpenAIClientAbstract(ILogger? log = null)
+    internal OpenAIClientAbstract(ILogger? log = null, IHttpRetryPolicy? retryPolicy = null)
     {
-        if (log != null) { this.Log = log; }
+        this.Log = log ?? this.Log;
+        this._retryPolicy = retryPolicy ?? this._retryPolicy;
 
-        // TODO: allow injection of retry logic, e.g. Polly
         this._httpClientHandler = new() { CheckCertificateRevocationList = true };
         this.HTTPClient = new HttpClient(this._httpClientHandler);
         this.HTTPClient.DefaultRequestHeaders.Add("User-Agent", HTTPUseragent);
@@ -49,15 +52,16 @@ public abstract class OpenAIClientAbstract : IDisposable
     /// </summary>
     /// <param name="url">URL for the completion request API</param>
     /// <param name="requestBody">Prompt to complete</param>
+    /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The completed text</returns>
     /// <exception cref="AIException">AIException thrown during the request.</exception>
-    protected async Task<string> ExecuteCompleteRequestAsync(string url, string requestBody)
+    protected async Task<string> ExecuteCompleteRequestAsync(string url, string requestBody, CancellationToken cancellationToken = default)
     {
         try
         {
             this.Log.LogDebug("Sending completion request to {0}: {1}", url, requestBody);
 
-            var result = await this.ExecutePostRequestAsync<CompletionResponse>(url, requestBody);
+            var result = await this.ExecutePostRequestAsync<CompletionResponse>(url, requestBody, cancellationToken);
             if (result.Completions.Count < 1)
             {
                 throw new AIException(
@@ -132,14 +136,17 @@ public abstract class OpenAIClientAbstract : IDisposable
     // HTTP user agent sent to remote endpoints
     private const string HTTPUseragent = "Microsoft Semantic Kernel";
 
-    private async Task<T> ExecutePostRequestAsync<T>(string url, string requestBody)
+    private async Task<T> ExecutePostRequestAsync<T>(string url, string requestBody, CancellationToken cancellationToken = default)
     {
         string responseJson;
 
         try
         {
             using HttpContent content = new StringContent(requestBody, Encoding.UTF8, MediaTypeNames.Application.Json);
-            HttpResponseMessage response = await this.HTTPClient.PostAsync(url, content);
+
+            HttpResponseMessage response =
+                await this._retryPolicy.ExecuteWithRetryAsync(async () => await this.HTTPClient.PostAsync(url, content, cancellationToken), this.Log,
+                    cancellationToken);
 
             if (response == null)
             {

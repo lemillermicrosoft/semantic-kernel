@@ -16,55 +16,55 @@ namespace SemanticKernelTests.Configuration;
 public class KernelConfigTests
 {
     [Fact]
-    public void RetryMechanismIsSet()
+    public void HttpRetryPolicyIsSet()
     {
         // Arrange
-        var retry = new PassThroughWithoutRetry();
+        var retry = new NullRetryPolicy();
         var config = new KernelConfig();
 
         // Act
-        config.SetRetryMechanism(retry);
+        config.SetHttpRetryPolicy(retry);
 
         // Assert
-        Assert.Equal(retry, config.RetryMechanism);
+        Assert.Equal(retry, config.HttpRetryPolicy);
     }
 
     [Fact]
-    public void RetryMechanismIsSetWithCustomImplementation()
+    public void HttpRetryPolicyIsSetWithCustomImplementation()
     {
         // Arrange
-        var retry = new Mock<IRetryMechanism>();
+        var retry = new Mock<IHttpRetryPolicy>();
         var config = new KernelConfig();
 
         // Act
-        config.SetRetryMechanism(retry.Object);
+        config.SetHttpRetryPolicy(retry.Object);
 
         // Assert
-        Assert.Equal(retry.Object, config.RetryMechanism);
+        Assert.Equal(retry.Object, config.HttpRetryPolicy);
     }
 
     [Fact]
-    public void RetryMechanismIsSetToPassThroughWithoutRetryIfNull()
+    public void HttpRetryPolicyIsSetToDefaultHttpRetryPolicyIfNull()
     {
         // Arrange
         var config = new KernelConfig();
 
         // Act
-        config.SetRetryMechanism(null);
+        config.SetHttpRetryPolicy(null);
 
         // Assert
-        Assert.IsType<PassThroughWithoutRetry>(config.RetryMechanism);
+        Assert.IsType<DefaultHttpRetryPolicy>(config.HttpRetryPolicy);
     }
 
     [Fact]
-    public void RetryMechanismIsSetToPassThroughWithoutRetryIfNotSet()
+    public void HttpRetryPolicyIsSetToDefaultHttpRetryPolicyIfNotSet()
     {
         // Arrange
         var config = new KernelConfig();
 
         // Act
         // Assert
-        Assert.IsType<PassThroughWithoutRetry>(config.RetryMechanism);
+        Assert.IsType<DefaultHttpRetryPolicy>(config.HttpRetryPolicy);
     }
 
     [Fact]
