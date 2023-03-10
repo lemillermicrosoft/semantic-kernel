@@ -72,7 +72,8 @@ public static class Example08_RetryHandler
 
     private static async Task RunRetryPolicyBuilderAsync(Type retryHandlerFactoryType)
     {
-        var kernelBuilder = Kernel.Builder.WithLogger(ConsoleLogger.Log).WithRetryHandlerFactory((Activator.CreateInstance(retryHandlerFactoryType) as IDelegatingHandlerFactory)!);
+        var kernelBuilder = Kernel.Builder.WithLogger(ConsoleLogger.Log)
+            .WithRetryHandlerFactory((Activator.CreateInstance(retryHandlerFactoryType) as IDelegatingHandlerFactory)!);
 
         // OpenAI settings - you can set the OPENAI_API_KEY to an invalid value to see the retry policy in play
         kernelBuilder = kernelBuilder.Configure(c => c.AddOpenAICompletionBackend("text-davinci-003", "text-davinci-003", "BAD_KEY"));
