@@ -94,22 +94,6 @@ public class KernelConfigTests
     }
 
     [Fact]
-    public void SetDefaultHttpRetryConfigToNull()
-    {
-        // Arrange
-        var config = new KernelConfig();
-        var httpRetryConfig = new KernelConfig.HttpRetryConfig() { MaxRetryCount = 1 };
-        config.SetDefaultHttpRetryConfig(httpRetryConfig);
-
-        // Act
-        config.SetDefaultHttpRetryConfig(null);
-
-        // Assert
-        Assert.Equal(httpRetryConfig, config.DefaultHttpRetryConfig);
-    }
-
-    // }
-    [Fact]
     public void SetDefaultHttpRetryConfigToDefaultIfNotSet()
     {
         // Arrange

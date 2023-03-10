@@ -24,10 +24,9 @@ public abstract class AzureOpenAIClientAbstract : OpenAIClientAbstract
     /// <summary>
     /// Azure OpenAI API version
     /// </summary>
-    /// <exception cref="AIException"></exception>
     protected string AzureOpenAIApiVersion
     {
-        get { return this._azureOpenAIApiVersion; }
+        get => this._azureOpenAIApiVersion;
         set
         {
             if (string.IsNullOrWhiteSpace(value))
@@ -164,5 +163,5 @@ public abstract class AzureOpenAIClientAbstract : OpenAIClientAbstract
 
     private string _azureOpenAIApiVersion = DefaultAzureAPIVersion;
 
-    #endregion
+    #endregion private ================================================================================
 }
