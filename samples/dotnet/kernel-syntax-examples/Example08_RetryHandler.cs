@@ -2,6 +2,7 @@
 
 using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Configuration;
 using Microsoft.SemanticKernel.CoreSkills;
@@ -16,21 +17,20 @@ public static class Example08_RetryHandler
     public static async Task RunAsync()
     {
         var kernel = InitializeKernel();
-        var retryHandlerFactory = new RetryThreeTimesWithBackoffFactory(kernel.Log);
-        Console.WriteLine("============================== RetryThreeTimesWithBackoff ==============================");
+        var retryHandlerFactory = new RetryThreeTimesWithBackoffFactory();
+        ConsoleLogger.Log.LogInformation("============================== RetryThreeTimesWithBackoff ==============================");
         await RunRetryPolicyAsync(kernel, retryHandlerFactory);
 
-        var retryHandlerFactory2 = new RetryThreeTimesWithRetryAfterBackoffFactory(kernel.Log);
-        Console.WriteLine("========================= RetryThreeTimesWithRetryAfterBackoff =========================");
-        await RunRetryPolicyAsync(kernel, retryHandlerFactory2);
+        ConsoleLogger.Log.LogInformation("========================= RetryThreeTimesWithRetryAfterBackoff =========================");
+        await RunRetryPolicyBuilderAsync(typeof(RetryThreeTimesWithRetryAfterBackoffFactory));
 
-        Console.WriteLine("==================================== NoRetryPolicy =====================================");
-        await RunRetryPolicyAsync(kernel, new NullHttpRetryHandlerFactory());
+        ConsoleLogger.Log.LogInformation("==================================== NoRetryPolicy =====================================");
+        await RunRetryPolicyBuilderAsync(typeof(NullHttpRetryHandlerFactory));
 
-        Console.WriteLine("=============================== DefaultHttpRetryHandler ================================");
+        ConsoleLogger.Log.LogInformation("=============================== DefaultHttpRetryHandler ================================");
         await RunRetryHandlerConfigAsync(new KernelConfig.HttpRetryConfig() { MaxRetryCount = 3, UseExponentialBackoff = true });
 
-        Console.WriteLine("======= DefaultHttpRetryConfig [MaxRetryCount = 3, UseExponentialBackoff = true] ====== ");
+        ConsoleLogger.Log.LogInformation("======= DefaultHttpRetryConfig [MaxRetryCount = 3, UseExponentialBackoff = true] =======");
         await RunRetryHandlerConfigAsync(new KernelConfig.HttpRetryConfig() { MaxRetryCount = 3, UseExponentialBackoff = true });
     }
 
@@ -70,6 +70,18 @@ public static class Example08_RetryHandler
         await ImportAndExecuteSkillAsync(kernel);
     }
 
+    private static async Task RunRetryPolicyBuilderAsync(Type retryHandlerFactoryType)
+    {
+        var kernelBuilder = Kernel.Builder.WithLogger(ConsoleLogger.Log).WithRetryHandlerFactory((Activator.CreateInstance(retryHandlerFactoryType) as IDelegatingHandlerFactory)!);
+
+        // OpenAI settings - you can set the OPENAI_API_KEY to an invalid value to see the retry policy in play
+        kernelBuilder = kernelBuilder.Configure(c => c.AddOpenAICompletionBackend("text-davinci-003", "text-davinci-003", "BAD_KEY"));
+
+        var kernel = kernelBuilder.Build();
+
+        await ImportAndExecuteSkillAsync(kernel);
+    }
+
     private static async Task ImportAndExecuteSkillAsync(IKernel kernel)
     {
         // Load semantic skill defined with prompt templates
@@ -83,67 +95,80 @@ public static class Example08_RetryHandler
 
         var question = "How popular is Polly library?";
 
+        ConsoleLogger.Log.LogInformation("Question: {0}", question);
         // To see the retry policy in play, you can set the OPENAI_API_KEY to an invalid value
         var answer = await kernel.RunAsync(question, qaSkill["Question"]);
-
-        Console.WriteLine($"Question: {question}\n\n" + answer);
+        ConsoleLogger.Log.LogInformation("Answer: {0}", answer);
     }
 }
 
 /* Output:
-============================== RetryThreeTimesWithBackoff ==============================
+info: object[0]
+      ============================== RetryThreeTimesWithBackoff ==============================
+info: object[0]
+      Question: How popular is Polly library?
 warn: object[0]
-      Error executing action [attempt 1 of 3], pausing 2000 msecs. Outcome: Unauthorized
+      Error executing action [attempt 1 of 3], pausing 2000ms. Outcome: Unauthorized
 warn: object[0]
-      Error executing action [attempt 2 of 3], pausing 4000 msecs. Outcome: Unauthorized
+      Error executing action [attempt 2 of 3], pausing 4000ms. Outcome: Unauthorized
 warn: object[0]
-      Error executing action [attempt 3 of 3], pausing 8000 msecs. Outcome: Unauthorized
+      Error executing action [attempt 3 of 3], pausing 8000ms. Outcome: Unauthorized
 fail: object[0]
       Function call fail during pipeline step 0: QASkill.Question
-Question: How popular is Polly library?
-
-Error: AccessDenied: The request is not authorized, HTTP status: Unauthorized
-========================= RetryThreeTimesWithRetryAfterBackoff =========================
+info: object[0]
+      Answer: Error: AccessDenied: The request is not authorized, HTTP status: Unauthorized
+info: object[0]
+      ========================= RetryThreeTimesWithRetryAfterBackoff =========================
+info: object[0]
+      Question: How popular is Polly library?
 warn: object[0]
-      Error executing action [attempt 1 of 3], pausing 2000 msecs. Outcome: Unauthorized
+      Error executing action [attempt 1 of 3], pausing 2000ms. Outcome: Unauthorized
 warn: object[0]
-      Error executing action [attempt 2 of 3], pausing 2000 msecs. Outcome: Unauthorized
+      Error executing action [attempt 2 of 3], pausing 2000ms. Outcome: Unauthorized
 warn: object[0]
-      Error executing action [attempt 3 of 3], pausing 2000 msecs. Outcome: Unauthorized
-Question: How popular is Polly library?
-
-Error: AccessDenied: The request is not authorized, HTTP status: Unauthorized
+      Error executing action [attempt 3 of 3], pausing 2000ms. Outcome: Unauthorized
 fail: object[0]
       Function call fail during pipeline step 0: QASkill.Question
-=============================== DefaultHttpRetryHandler ================================
-warn: object[0]
-      Error executing action [attempt 1 of 1]. Reason: Unauthorized. Will retry after 2000ms
-warn: object[0]
-      Error executing request, max retry count reached. Reason: Unauthorized
+info: object[0]
+      Answer: Error: AccessDenied: The request is not authorized, HTTP status: Unauthorized
+info: object[0]
+      ==================================== NoRetryPolicy =====================================
+info: object[0]
+      Question: How popular is Polly library?
 fail: object[0]
       Function call fail during pipeline step 0: QASkill.Question
-Question: How popular is Polly library?
-
-Error: AccessDenied: The request is not authorized, HTTP status: Unauthorized
-==================================== NoRetryPolicy =====================================
-Question: How popular is Polly library?
-
-Error: AccessDenied: The request is not authorized, HTTP status: Unauthorized
-fail: object[0]
-      Function call fail during pipeline step 0: QASkill.Question
-======= DefaultHttpRetryConfig [MaxRetryCount = 3, UseExponentialBackoff = true] ======
+info: object[0]
+      Answer: Error: AccessDenied: The request is not authorized, HTTP status: Unauthorized
+info: object[0]
+      =============================== DefaultHttpRetryHandler ================================
+info: object[0]
+      Question: How popular is Polly library?
 warn: object[0]
       Error executing action [attempt 1 of 3]. Reason: Unauthorized. Will retry after 2000ms
 warn: object[0]
       Error executing action [attempt 2 of 3]. Reason: Unauthorized. Will retry after 4000ms
 warn: object[0]
       Error executing action [attempt 3 of 3]. Reason: Unauthorized. Will retry after 8000ms
-warn: object[0]
+fail: object[0]
       Error executing request, max retry count reached. Reason: Unauthorized
 fail: object[0]
       Function call fail during pipeline step 0: QASkill.Question
-Question: How popular is Polly library?
-
-Error: AccessDenied: The request is not authorized, HTTP status: Unauthorized
-== DONE ==
+info: object[0]
+      Answer: Error: AccessDenied: The request is not authorized, HTTP status: Unauthorized
+info: object[0]
+      ======= DefaultHttpRetryConfig [MaxRetryCount = 3, UseExponentialBackoff = true] =======
+info: object[0]
+      Question: How popular is Polly library?
+warn: object[0]
+      Error executing action [attempt 1 of 3]. Reason: Unauthorized. Will retry after 2000ms
+warn: object[0]
+      Error executing action [attempt 2 of 3]. Reason: Unauthorized. Will retry after 4000ms
+warn: object[0]
+      Error executing action [attempt 3 of 3]. Reason: Unauthorized. Will retry after 8000ms
+fail: object[0]
+      Error executing request, max retry count reached. Reason: Unauthorized
+fail: object[0]
+      Function call fail during pipeline step 0: QASkill.Question
+info: object[0]
+      Answer: Error: AccessDenied: The request is not authorized, HTTP status: Unauthorized
 */

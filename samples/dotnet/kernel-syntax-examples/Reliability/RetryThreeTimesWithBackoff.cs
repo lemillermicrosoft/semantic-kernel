@@ -13,16 +13,9 @@ namespace Reliability;
 
 public class RetryThreeTimesWithBackoffFactory : IDelegatingHandlerFactory
 {
-    private readonly ILogger _log;
-
-    public RetryThreeTimesWithBackoffFactory(ILogger log)
+    public DelegatingHandler Create(ILogger log)
     {
-        this._log = log;
-    }
-
-    public DelegatingHandler Create()
-    {
-        return new RetryThreeTimesWithBackoff(this._log);
+        return new RetryThreeTimesWithBackoff(log);
     }
 }
 
@@ -62,7 +55,7 @@ public class RetryThreeTimesWithBackoff : DelegatingHandler
                     TimeSpan.FromSeconds(8)
                 },
                 (outcome, timespan, retryCount, _) => log.LogWarning(
-                    "Error executing action [attempt {0} of 3], pausing {1} msecs. Outcome: {2}",
+                    "Error executing action [attempt {0} of 3], pausing {1}ms. Outcome: {2}",
                     retryCount,
                     timespan.TotalMilliseconds,
                     outcome.Result.StatusCode));

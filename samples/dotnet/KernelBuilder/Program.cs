@@ -109,9 +109,9 @@ var kernel8 = Kernel.Builder
 
 public class RetryThreeTimesFactory : IDelegatingHandlerFactory
 {
-    public DelegatingHandler Create()
+    public DelegatingHandler Create(ILogger log)
     {
-        return new RetryThreeTimes();
+        return new RetryThreeTimes(log);
     }
 }
 
@@ -144,7 +144,7 @@ public class RetryThreeTimes : DelegatingHandler
                     TimeSpan.FromSeconds(8)
                 },
                 (ex, timespan, retryCount, _) => log.LogWarning(ex,
-                    "Error executing action [attempt {0} of 3], pausing {1} msecs",
+                    "Error executing action [attempt {0} of 3], pausing {1}ms",
                     retryCount, timespan.TotalMilliseconds));
     }
 }

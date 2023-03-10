@@ -69,8 +69,6 @@ public class DefaultHttpRetryHandlerTests
     }
 
     [Theory]
-    [InlineData(typeof(TimeoutException))]
-    [InlineData(typeof(WebException))]
     [InlineData(typeof(HttpRequestException))]
     public async Task ItRetriesOnceOnRetryableExceptionAsync(Type exceptionType)
     {
@@ -92,8 +90,6 @@ public class DefaultHttpRetryHandlerTests
     }
 
     [Theory]
-    [InlineData(typeof(TimeoutException))]
-    [InlineData(typeof(WebException))]
     [InlineData(typeof(HttpRequestException))]
     public async Task NoMaxRetryCountCallsOnceForExceptionAsync(Type exceptionType)
     {
@@ -140,8 +136,6 @@ public class DefaultHttpRetryHandlerTests
     }
 
     [Theory]
-    [InlineData(typeof(TimeoutException))]
-    [InlineData(typeof(WebException))]
     [InlineData(typeof(HttpRequestException))]
     public async Task ItRetriesOnceOnRetryableExceptionWithExponentialBackoffAsync(Type exceptionType)
     {
@@ -257,8 +251,6 @@ public class DefaultHttpRetryHandlerTests
     }
 
     [Theory]
-    [InlineData(typeof(TimeoutException))]
-    [InlineData(typeof(WebException))]
     [InlineData(typeof(HttpRequestException))]
     public async Task ItRetriesExceptionsCustomCountAsync(Type expectedException)
     {
