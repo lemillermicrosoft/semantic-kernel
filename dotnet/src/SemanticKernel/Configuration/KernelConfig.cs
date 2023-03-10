@@ -252,9 +252,9 @@ public sealed class KernelConfig
     /// <summary>
     /// Set the http retry handler factory to use for the kernel.
     /// </summary>
-    /// <param name="httpHandlerFactory">Retry handler factory to use.</param>
+    /// <param name="httpHandlerFactory">Http retry handler factory to use.</param>
     /// <returns>The updated kernel configuration.</returns>
-    public KernelConfig SetHttpHandlerFactory(IDelegatingHandlerFactory? httpHandlerFactory = null)
+    public KernelConfig SetHttpRetryHandlerFactory(IDelegatingHandlerFactory? httpHandlerFactory = null)
     {
         if (httpHandlerFactory != null)
         {

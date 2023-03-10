@@ -43,7 +43,7 @@ public sealed class KernelBuilder
     /// <returns>Kernel instance</returns>
     public IKernel Build()
     {
-        this._config.SetHttpHandlerFactory(this._httpHandlerFactory ?? new DefaultHttpRetryHandlerFactory(this._config.DefaultHttpRetryConfig));
+        this._config.SetHttpRetryHandlerFactory(this._httpHandlerFactory ?? new DefaultHttpRetryHandlerFactory(this._config.DefaultHttpRetryConfig));
 
         var instance = new Kernel(
             new SkillCollection(this._log),

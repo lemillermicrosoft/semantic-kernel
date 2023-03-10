@@ -17,48 +17,48 @@ namespace SemanticKernelTests.Configuration;
 public class KernelConfigTests
 {
     [Fact]
-    public void HttpRetryPolicyIsSet()
+    public void HttpRetryHandlerFactoryIsSet()
     {
         // Arrange
         var retry = new NullHttpRetryHandlerFactory();
         var config = new KernelConfig();
 
         // Act
-        config.SetHttpHandlerFactory(retry);
+        config.SetHttpRetryHandlerFactory(retry);
 
         // Assert
         Assert.Equal(retry, config.HttpHandlerFactory);
     }
 
     [Fact]
-    public void HttpRetryPolicyIsSetWithCustomImplementation()
+    public void HttpRetryHandlerFactoryIsSetWithCustomImplementation()
     {
         // Arrange
         var retry = new Mock<IDelegatingHandlerFactory>();
         var config = new KernelConfig();
 
         // Act
-        config.SetHttpHandlerFactory(retry.Object);
+        config.SetHttpRetryHandlerFactory(retry.Object);
 
         // Assert
         Assert.Equal(retry.Object, config.HttpHandlerFactory);
     }
 
     [Fact]
-    public void HttpRetryPolicyIsSetToDefaultHttpHandlerFactoryIfNull()
+    public void HttpRetryHandlerFactoryIsSetToDefaultHttpRetryHandlerFactoryIfNull()
     {
         // Arrange
         var config = new KernelConfig();
 
         // Act
-        config.SetHttpHandlerFactory(null);
+        config.SetHttpRetryHandlerFactory(null);
 
         // Assert
         Assert.IsType<DefaultHttpRetryHandlerFactory>(config.HttpHandlerFactory);
     }
 
     [Fact]
-    public void HttpRetryPolicyIsSetToDefaultHttpHandlerFactoryIfNotSet()
+    public void HttpRetryHandlerFactoryIsSetToDefaultHttpRetryHandlerFactoryIfNotSet()
     {
         // Arrange
         var config = new KernelConfig();
