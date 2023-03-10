@@ -76,8 +76,6 @@ public sealed class KernelConfig
         /// </summary>
         public List<Type> RetryableExceptionTypes { get; set; } = new()
         {
-            typeof(TimeoutException),
-            typeof(WebException),
             typeof(HttpRequestException)
         };
 
@@ -87,7 +85,7 @@ public sealed class KernelConfig
     /// <summary>
     /// Global retry logic used for all the backends http calls
     /// </summary>
-    public IDelegatingHandlerFactory HttpHandlerFactory { get; private set; } = new DefaultHttpRetryHandlerFactory(new HttpRetryConfig(), NullLogger.Instance);
+    public IDelegatingHandlerFactory HttpHandlerFactory { get; private set; } = new DefaultHttpRetryHandlerFactory(new HttpRetryConfig());
 
     public HttpRetryConfig DefaultHttpRetryConfig { get; private set; } = new();
 

@@ -8,17 +8,15 @@ namespace Microsoft.SemanticKernel.Reliability;
 
 internal class DefaultHttpRetryHandlerFactory : IDelegatingHandlerFactory
 {
-    internal DefaultHttpRetryHandlerFactory(KernelConfig.HttpRetryConfig? config = null, ILogger? log = null)
+    internal DefaultHttpRetryHandlerFactory(KernelConfig.HttpRetryConfig? config = null)
     {
         this._config = config;
-        this._log = log;
     }
 
-    public DelegatingHandler Create()
+    public DelegatingHandler Create(ILogger log)
     {
-        return new DefaultHttpRetryHandler(this._config, this._log);
+        return new DefaultHttpRetryHandler(this._config, log);
     }
 
     private readonly KernelConfig.HttpRetryConfig? _config;
-    private readonly ILogger? _log;
 }

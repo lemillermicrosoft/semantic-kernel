@@ -44,7 +44,7 @@ public abstract class OpenAIClientAbstract : IDisposable
         this._handlerFactory = handlerFactory ?? this._handlerFactory;
 
         this._httpClientHandler = new() { CheckCertificateRevocationList = true };
-        this._retryHandler = this._handlerFactory.Create();
+        this._retryHandler = this._handlerFactory.Create(this.Log);
         this._retryHandler.InnerHandler = this._httpClientHandler;
 
         this.HTTPClient = new HttpClient(this._retryHandler);
@@ -148,7 +148,6 @@ public abstract class OpenAIClientAbstract : IDisposable
         try
         {
             using HttpContent content = new StringContent(requestBody, Encoding.UTF8, MediaTypeNames.Application.Json);
-
             HttpResponseMessage response = await this.HTTPClient.PostAsync(url, content, cancellationToken);
 
             if (response == null)

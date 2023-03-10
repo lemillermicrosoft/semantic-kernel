@@ -43,7 +43,7 @@ public sealed class KernelBuilder
     /// <returns>Kernel instance</returns>
     public IKernel Build()
     {
-        this._config.SetHttpHandlerFactory(this._httpHandlerFactory ?? new DefaultHttpRetryHandlerFactory(this._config.DefaultHttpRetryConfig, this._log));
+        this._config.SetHttpHandlerFactory(this._httpHandlerFactory ?? new DefaultHttpRetryHandlerFactory(this._config.DefaultHttpRetryConfig));
 
         var instance = new Kernel(
             new SkillCollection(this._log),
@@ -113,7 +113,7 @@ public sealed class KernelBuilder
         return this;
     }
 
-    public KernelBuilder WithRetryHandler(IDelegatingHandlerFactory httpHandlerFactory)
+    public KernelBuilder WithRetryHandlerFactory(IDelegatingHandlerFactory httpHandlerFactory)
     {
         Verify.NotNull(httpHandlerFactory, "The retry handler factory instance provided is NULL");
         this._httpHandlerFactory = httpHandlerFactory;

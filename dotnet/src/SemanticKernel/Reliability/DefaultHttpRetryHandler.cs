@@ -85,7 +85,7 @@ internal sealed class DefaultHttpRetryHandler : DelegatingHandler
 
                 if (retryCount >= this._config.MaxRetryCount)
                 {
-                    this._log.LogWarning(
+                    this._log.LogError(
                         "Error executing request, max retry count reached. Reason: {0}", reason);
                     return response;
                 }
@@ -94,7 +94,7 @@ internal sealed class DefaultHttpRetryHandler : DelegatingHandler
                 // just return
                 if (!this.HasTimeForRetry(start, retryCount, response, out waitFor))
                 {
-                    this._log.LogWarning(
+                    this._log.LogError(
                         "Error executing request, max total retry time reached. Reason: {0}", reason);
                     return response;
                 }
@@ -178,7 +178,7 @@ internal sealed class DefaultHttpRetryHandler : DelegatingHandler
     /// <param name="originalRequest">The previous <see cref="HttpRequestMessage"/> needs to be copy.</param>
     /// <returns>The <see cref="HttpRequestMessage"/>.</returns>
     /// <remarks>
-    /// Re-issue a new HTTP request with the previous request's headers and properities
+    /// Re-issue a new HTTP request with the previous request's headers and properties
     /// </remarks>
     internal static async Task<HttpRequestMessage> CloneAsync(HttpRequestMessage originalRequest)
     {
