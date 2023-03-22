@@ -119,7 +119,10 @@ internal class FunctionFlowRunner
 
                             // planStep.Description How different than manifest?
                             // planStep.Manifests What else is needed here?
+
                             // planStep.NameParameters TODO
+                            // Today, this would be a string key (attr.ToString()) and a string value (attr.InnerText)
+                            // where the value is either the value itstelf or a reference (to the ContextVariables).
 
                             var functionVariables = new ContextVariables(/*functionInput*/); // todo when does this get set? on first execute?
                             var variableTargetName = string.Empty;
