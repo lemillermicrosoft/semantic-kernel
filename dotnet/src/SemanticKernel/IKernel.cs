@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel.Configuration;
 using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.Orchestration;
+using Microsoft.SemanticKernel.Planning;
 using Microsoft.SemanticKernel.SemanticFunctions;
 using Microsoft.SemanticKernel.SkillDefinition;
 using Microsoft.SemanticKernel.TemplateEngine;
@@ -97,6 +98,10 @@ public interface IKernel
     Task<SKContext> RunAsync(
         string input,
         params ISKFunction[] pipeline);
+
+    Task<SKContext> RunAsync(
+        string input,
+        IPlan plan);
 
     /// <summary>
     /// Run a pipeline composed of synchronous and asynchronous functions.

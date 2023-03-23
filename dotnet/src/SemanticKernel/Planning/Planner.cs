@@ -18,12 +18,15 @@ public class Planner
         Complex
     }
 
-    public Planner(IKernel kernel, Mode mode, int maxTokens = 1024)
+    public Planner(IKernel kernel, Mode mode = Mode.Simple, int maxTokens = 1024)
     {
         this._kernel = kernel;
         this._mode = mode; // needed?
         this._maxTokens = maxTokens;
         this._planner = this.GetPlannerForMode(this._mode);
+
+        // TODO do I need a handle to this? Does the planner itself?
+        _ = kernel.ImportSkill(this._planner, "PlannerObjectSkill");
     }
 
 
@@ -31,6 +34,11 @@ public class Planner
     public Task<IPlan> CreatePlan(string goal)
     {
         return this._planner.CreatePlanAsync(goal);
+    }
+
+    public Task<IPlan> ExecutePlan(IPlan plan)
+    {
+
     }
 
     private IPlanner GetPlannerForMode(Mode mode)
