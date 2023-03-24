@@ -139,18 +139,18 @@ public sealed class Kernel : IKernel, IDisposable
          string input,
          IPlan plan)
     {
-        =>
-        {
-            // get the next step in the plan
+        // =>
+        // {
+        // get the next step in the plan
 
-            // Who is responsible for creating the ISKFunction from the plan, specifically the next step
-            // Is this tied to the Planner object instance that created the plan?
-            // Does it populate the IPlan with the ISKFunction? How does that serialize if at all?
-            // The logic involved for executing a step is resolving the named parameters from the context variables
-            // Maybe it's just a generic function delegate that takes a context and returns a context?
+        // Who is responsible for creating the ISKFunction from the plan, specifically the next step
+        // Is this tied to the Planner object instance that created the plan?
+        // Does it populate the IPlan with the ISKFunction? How does that serialize if at all?
+        // The logic involved for executing a step is resolving the named parameters from the context variables
+        // Maybe it's just a generic function delegate that takes a context and returns a context?
 
-            this.RunAsync(new ContextVariables(input), plan.PopNextStep);
-        }
+        this.RunAsync(new ContextVariables(input), plan.PopNextStep);
+        // }
     }
 
     /// <inheritdoc/>

@@ -13,7 +13,6 @@ using Microsoft.SemanticKernel.Orchestration.Extensions;
 using Microsoft.SemanticKernel.Planning;
 using RepoUtils;
 using Skills;
-using static Microsoft.SemanticKernel.Planning.KernelExtensions;
 
 // ReSharper disable once InconsistentNaming
 
@@ -63,9 +62,9 @@ internal static class Example12_Planning
 
         var plannerSkill = kernel.ImportSkill(new PlannerSkill(kernel), "planning");
 
-        var planContext = await kernel.RunAsync(goal, plannerSkill["CreatePlan"]);
+        SKContext planContext = await kernel.RunAsync(goal, plannerSkill["CreatePlan"]);
 
-        var planResults = await kernel.RunAsync(planContext.Variables, plannerSkill["ExecutePlan"]);
+        SKContext planResults = await kernel.RunAsync(planContext.Variables, plannerSkill["ExecutePlan"]);
 
 
         // ********************
@@ -75,9 +74,9 @@ internal static class Example12_Planning
 
         var plannerObject = new Planner(kernel); // Mode = Simple by default
 
-        var planObject = await plannerObject.CreatePlan(goal);
+        IPlan planObject = await plannerObject.CreatePlan(goal);
 
-        var planResult = await kernel.RunAsync(goal, planObject);
+        SKContext planResult = await kernel.RunAsync(goal, planObject);
     }
 
     private static IKernel InitializeKernel()

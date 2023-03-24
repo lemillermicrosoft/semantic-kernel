@@ -12,8 +12,16 @@ namespace Microsoft.SemanticKernel.Planning;
 
 public interface IPlan
 {
-    // id
+    // Current properties on a Plan
+    // string
 
+    // bool IsComplete
+
+    // bool IsSuccessful
+
+    // string Result
+
+    // Also exists today on Plan
     string Goal { get; }
 
     // Today, the result of calling Create|Execute plan is SKContext with ContextVariables that contain both the state and the plan itself.
@@ -66,7 +74,7 @@ public class SimplePlan : BasePlan, IPlanWithSteps
 
     public override ISKFunction NextStep(SKContext context)
     {
-        return ExecutePlanAsync(context)
+        return ExecutePlanAsync(context);
     }
 
     [SKFunction("Execute a plan that uses registered functions to accomplish a goal.")]
