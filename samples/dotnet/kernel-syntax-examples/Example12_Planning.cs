@@ -10,6 +10,7 @@ using Microsoft.SemanticKernel.KernelExtensions;
 using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.Orchestration.Extensions;
+using Microsoft.SemanticKernel.Planning;
 using RepoUtils;
 using Skills;
 
@@ -48,6 +49,50 @@ internal static class Example12_Planning
         Console.WriteLine(originalPlan.Variables.ToPlan().PlanString);
 
         await ExecutePlanAsync(kernel, planner, originalPlan, 5);
+    }
+
+    private static async Task CompareContrastPlanning()
+    {
+        const string goal = "Write a poem about John Doe, then translate it into Italian.";
+        IKernel kernel;
+        // ********************
+        // Option 1: Using the planner skill directly
+        // ********************
+        kernel = InitializeKernel();
+
+        var plannerSkill = kernel.ImportSkill(new PlannerSkill(kernel), "planning");
+
+        SKContext planContext = await kernel.RunAsync(goal, plannerSkill["CreatePlan"]);
+
+        SKContext planResults = await kernel.RunAsync(planContext.Variables, plannerSkill["ExecutePlan"]);
+
+
+        // ********************
+        // Option 2: Using the planner class directly
+        // ********************
+        kernel = InitializeKernel();
+
+        var plannerObject = new Planner(kernel); // Mode = Simple by default
+
+        IPlan planObject = await plannerObject.CreatePlan(goal);
+
+        SKContext planResult = await kernel.RunAsync(goal, planObject);
+    }
+
+    private static IKernel InitializeKernel()
+    {
+        var kernel = new KernelBuilder().WithLogger(ConsoleLogger.Log).Build();
+        kernel.Config.AddAzureOpenAICompletionBackend(
+            Env.Var("AZURE_OPENAI_DEPLOYMENT_LABEL"),
+            Env.Var("AZURE_OPENAI_DEPLOYMENT_NAME"),
+            Env.Var("AZURE_OPENAI_ENDPOINT"),
+            Env.Var("AZURE_OPENAI_KEY"));
+
+        string folder = RepoFiles.SampleSkillsPath();
+        kernel.ImportSemanticSkillFromDirectory(folder, "SummarizeSkill");
+        kernel.ImportSemanticSkillFromDirectory(folder, "WriterSkill");
+
+        return kernel;
     }
 
     private static async Task EmailSamplesAsync()

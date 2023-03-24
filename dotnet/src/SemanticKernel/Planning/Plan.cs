@@ -23,7 +23,9 @@ public class Plan
     /// <summary>
     /// Internal constant string representing the plan key.
     /// </summary>
-    internal const string PlanKey = "PLAN__PLAN";
+    internal const string PlanKey = "PLAN__PLAN"; // TODO Will probably remove eventually
+
+    internal const string PlanObjectKey = "PLAN__PLANOBJECT";
 
     /// <summary>
     /// Internal constant string representing the is complete key.

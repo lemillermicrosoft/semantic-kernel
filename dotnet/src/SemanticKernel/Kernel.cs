@@ -13,6 +13,7 @@ using Microsoft.SemanticKernel.Configuration;
 using Microsoft.SemanticKernel.Diagnostics;
 using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.Orchestration;
+using Microsoft.SemanticKernel.Planning;
 using Microsoft.SemanticKernel.SemanticFunctions;
 using Microsoft.SemanticKernel.SkillDefinition;
 using Microsoft.SemanticKernel.TemplateEngine;
@@ -133,6 +134,24 @@ public sealed class Kernel : IKernel, IDisposable
     /// <inheritdoc/>
     public Task<SKContext> RunAsync(string input, params ISKFunction[] pipeline)
         => this.RunAsync(new ContextVariables(input), pipeline);
+
+    public Task<SKContext> RunAsync(
+         string input,
+         IPlan plan)
+    {
+        // =>
+        // {
+        // get the next step in the plan
+
+        // Who is responsible for creating the ISKFunction from the plan, specifically the next step
+        // Is this tied to the Planner object instance that created the plan?
+        // Does it populate the IPlan with the ISKFunction? How does that serialize if at all?
+        // The logic involved for executing a step is resolving the named parameters from the context variables
+        // Maybe it's just a generic function delegate that takes a context and returns a context?
+
+        this.RunAsync(new ContextVariables(input), plan.PopNextStep);
+        // }
+    }
 
     /// <inheritdoc/>
     public Task<SKContext> RunAsync(ContextVariables variables, params ISKFunction[] pipeline)
