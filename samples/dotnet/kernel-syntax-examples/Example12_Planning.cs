@@ -20,10 +20,13 @@ internal static class Example12_Planning
 {
     public static async Task RunAsync()
     {
-        await PoetrySamplesAsync();
-        await EmailSamplesAsync();
-        await BookSamplesAsync();
-        await MemorySampleAsync();
+        // await PoetrySamplesAsync();
+        // await EmailSamplesAsync();
+        // await BookSamplesAsync();
+        // await MemorySampleAsync();
+        // await MemorySampleCompareContrastAsync();
+
+        await CompareContrastPlanning();
     }
 
     private static async Task PoetrySamplesAsync()
@@ -60,11 +63,12 @@ internal static class Example12_Planning
         // ********************
         kernel = InitializeKernel();
 
-        var plannerSkill = kernel.ImportSkill(new PlannerSkill(kernel), "planning");
+        IDictionary<string, ISKFunction> plannerSkill = kernel.ImportSkill(new PlannerSkill(kernel), "planning");
 
         SKContext planContext = await kernel.RunAsync(goal, plannerSkill["CreatePlan"]);
 
         SKContext planResults = await kernel.RunAsync(planContext.Variables, plannerSkill["ExecutePlan"]);
+        Plan plan = planResults.Variables.ToPlan();
 
 
         // ********************
@@ -74,9 +78,9 @@ internal static class Example12_Planning
 
         var plannerObject = new Planner(kernel); // Mode = Simple by default
 
-        IPlan planObject = await plannerObject.CreatePlan(goal);
+        IPlan planObject = await plannerObject.CreatePlanAsync(goal);
 
-        SKContext planResult = await kernel.RunAsync(goal, planObject);
+        IPlan updatedPlan = await kernel.RunAsync(goal, planObject);
     }
 
     private static IKernel InitializeKernel()
@@ -220,6 +224,181 @@ internal static class Example12_Planning
         Console.WriteLine("Original plan:");
         Console.WriteLine(executionResults.Variables.ToPlan().PlanString);
     }
+
+    private static async Task MemorySampleCompareContrastAsync()
+    {
+        Console.WriteLine("======== Planning - Create and Execute Plan - Compare Contrast ========");
+
+        var kernel = new KernelBuilder()
+            .WithLogger(ConsoleLogger.Log)
+            .Configure(
+                config =>
+                {
+                    config.AddAzureOpenAICompletionBackend(
+                        Env.Var("AZURE_OPENAI_DEPLOYMENT_LABEL"),
+                        Env.Var("AZURE_OPENAI_DEPLOYMENT_NAME"),
+                        Env.Var("AZURE_OPENAI_API_ENDPOINT"),
+                        Env.Var("AZURE_OPENAI_API_KEY"));
+
+                    config.AddAzureOpenAIEmbeddingsBackend(
+                        Env.Var("AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT_LABEL"),
+                        Env.Var("AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT_NAME"),
+                        Env.Var("AZURE_OPENAI_EMBEDDINGS_ENDPOINT"),
+                        Env.Var("AZURE_OPENAI_EMBEDDINGS_KEY"));
+                })
+            .WithMemoryStorage(new VolatileMemoryStore())
+            .Build();
+
+        string folder = RepoFiles.SampleSkillsPath();
+        kernel.ImportSemanticSkillFromDirectory(folder, "SummarizeSkill");
+        kernel.ImportSemanticSkillFromDirectory(folder, "WriterSkill");
+        kernel.ImportSemanticSkillFromDirectory(folder, "CalendarSkill");
+        kernel.ImportSemanticSkillFromDirectory(folder, "ChatSkill");
+        kernel.ImportSemanticSkillFromDirectory(folder, "ChildrensBookSkill");
+        kernel.ImportSemanticSkillFromDirectory(folder, "ClassificationSkill");
+        kernel.ImportSemanticSkillFromDirectory(folder, "CodingSkill");
+        kernel.ImportSemanticSkillFromDirectory(folder, "FunSkill");
+        kernel.ImportSemanticSkillFromDirectory(folder, "IntentDetectionSkill");
+        kernel.ImportSemanticSkillFromDirectory(folder, "MiscSkill");
+        kernel.ImportSemanticSkillFromDirectory(folder, "QASkill");
+
+        kernel.ImportSkill(new EmailSkill(), "email");
+        kernel.ImportSkill(new StaticTextSkill(), "statictext");
+        kernel.ImportSkill(new Skills.TextSkill(), "text");
+        kernel.ImportSkill(new Microsoft.SemanticKernel.CoreSkills.TextSkill(), "coretext");
+
+        // Load native skill into the kernel skill collection, sharing its functions with prompt templates
+        var planner = kernel.ImportSkill(new PlannerSkill(kernel), "planning");
+
+        string goal = "Write a joke about how programming is hard and then write a dos script to output the joke to the screen. My name is Bart.";
+
+        var context = new ContextVariables(goal);
+        // context.Set(PlannerSkill.Parameters.RelevancyThreshold, "0.78");
+
+        var executionResults = await kernel.RunAsync(context, planner["CreatePlan"]);
+
+        Console.WriteLine("Original plan without relevance:");
+        Console.WriteLine(executionResults.Variables.ToPlan().PlanString);
+
+        context = new ContextVariables(goal);
+        context.Set(PlannerSkill.Parameters.RelevancyThreshold, "0.75");
+
+        executionResults = await kernel.RunAsync(context, planner["CreatePlan"]);
+
+        Console.WriteLine("Updated plan with relevance:");
+        Console.WriteLine(executionResults.Variables.ToPlan().PlanString);
+    }
+
+
+
+    // private static async Task MemorySampleCompareContrastAsync()
+    // {
+    //     Console.WriteLine("======== Planning - Create and Execute Plan - Compare Contrast ========");
+
+    //     var kernel = new KernelBuilder()
+    //         .WithLogger(ConsoleLogger.Log)
+    //         .Configure(
+    //             config =>
+    //             {
+    //                 config.AddAzureOpenAICompletionBackend(
+    //                     Env.Var("AZURE_OPENAI_DEPLOYMENT_LABEL_2"),
+    //                     Env.Var("AZURE_OPENAI_DEPLOYMENT_NAME_2"),
+    //                     Env.Var("AZURE_OPENAI_API_ENDPOINT_2"),
+    //                     Env.Var("AZURE_OPENAI_API_KEY_2"));
+
+    //                 config.AddAzureOpenAIEmbeddingsBackend(
+    //                     Env.Var("AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT_LABEL"),
+    //                     Env.Var("AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT_NAME"),
+    //                     Env.Var("AZURE_OPENAI_EMBEDDINGS_ENDPOINT"),
+    //                     Env.Var("AZURE_OPENAI_EMBEDDINGS_KEY"));
+    //             })
+    //         .WithMemoryStorage(new VolatileMemoryStore())
+    //         .Build();
+
+    //     // Load native skill into the kernel skill collection, sharing its functions with prompt templates
+    //     var planner = kernel.ImportSkill(new PlannerSkill(kernel), "planning");
+
+    //     // DadJoke: description: write a dad joke inputs: - $input: the topic to write a dad joke about Search: description: Perform a Bing Search for the specified query inputs: - $input: The search query YouTubeSearch: description: Searches for YouTube videos on specified topic.inputs: - $input: The search query
+    //     // Load prompt configuration, you could download this too from the cloud
+    //     var config = new PromptTemplateConfig
+    //     {
+    //         Input = new PromptTemplateConfig.InputConfig
+    //         {
+    //             Parameters = new List<PromptTemplateConfig.InputParameter>()
+    //             {
+    //                 new PromptTemplateConfig.InputParameter
+    //                 {
+    //                     Name = "input",
+    //                     Description = "the topic to write a dad joke about",
+    //                 },
+    //             },
+    //         },
+    //     };
+
+    //     // Create template
+    //     var template = new PromptTemplate("write a dad joke about {{$input}}", config, kernel.PromptTemplateEngine);
+
+    //     // Wrap AI logic into a function and store it
+    //     var functionConfig = new SemanticFunctionConfig(config, template);
+    //     kernel.RegisterSemanticFunction("DadJoke", functionConfig);
+
+    //     config = new PromptTemplateConfig
+    //     {
+    //         Input = new PromptTemplateConfig.InputConfig
+    //         {
+    //             Parameters = new List<PromptTemplateConfig.InputParameter>()
+    //             {
+    //                 new PromptTemplateConfig.InputParameter
+    //                 {
+    //                     Name = "input",
+    //                     Description = "The search query",
+    //                 },
+    //             },
+    //         },
+    //     };
+
+    //     template = new PromptTemplate("search for {{$input}}", config, kernel.PromptTemplateEngine);
+
+    //     functionConfig = new SemanticFunctionConfig(config, template);
+    //     kernel.RegisterSemanticFunction("Search", functionConfig);
+
+    //     config = new PromptTemplateConfig
+    //     {
+    //         Input = new PromptTemplateConfig.InputConfig
+    //         {
+    //             Parameters = new List<PromptTemplateConfig.InputParameter>()
+    //             {
+    //                 new PromptTemplateConfig.InputParameter
+    //                 {
+    //                     Name = "input",
+    //                     Description = "The search query",
+    //                 },
+    //             },
+    //         },
+    //     };
+
+    //     template = new PromptTemplate("search for youtube videos on {{$input}}", config, kernel.PromptTemplateEngine);
+
+    //     functionConfig = new SemanticFunctionConfig(config, template);
+    //     kernel.RegisterSemanticFunction("YouTubeSearch", functionConfig);
+
+    //     var context = new ContextVariables("Largest island in Hawaii");
+    //     // context.Set(PlannerSkill.Parameters.RelevancyThreshold, "0.78");
+
+    //     var executionResults = await kernel.RunAsync(context, planner["CreatePlan"]);
+
+    //     Console.WriteLine("Original plan without relevance:");
+    //     Console.WriteLine(executionResults.Variables.ToPlan().PlanString);
+
+    //     context = new ContextVariables("Largest island in Hawaii");
+    //     context.Set(PlannerSkill.Parameters.RelevancyThreshold, "0.78");
+
+    //     executionResults = await kernel.RunAsync(context, planner["CreatePlan"]);
+
+    //     Console.WriteLine("Updated plan with relevance:");
+    //     Console.WriteLine(executionResults.Variables.ToPlan().PlanString);
+    // }
+
 
     private static IKernel InitializeKernelAndPlanner(out IDictionary<string, ISKFunction> planner)
     {
