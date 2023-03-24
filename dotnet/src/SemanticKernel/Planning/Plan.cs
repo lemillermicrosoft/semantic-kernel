@@ -61,6 +61,8 @@ public class Plan
     [JsonPropertyName("plan")]
     public string PlanString { get; set; } = string.Empty;
 
+    public IPlan PlanObject { get; set; } = new SimplePlan();
+
     /// <summary>
     /// The arguments for the plan.
     /// </summary>

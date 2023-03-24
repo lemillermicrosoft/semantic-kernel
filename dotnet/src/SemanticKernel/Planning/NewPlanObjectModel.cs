@@ -31,7 +31,7 @@ public interface IPlan
     string ToPlanString();
 
     // this will be a function that calls the next step, and updates context with the result and new plan
-    ISKFunction NextStep();
+    ISKFunction? ExecuteNextStep { get; }
 }
 
 public interface IPlanWithSteps : IPlan
@@ -47,6 +47,19 @@ public class BasePlan : IPlan
 
     [JsonPropertyName("context_variables")]
     public ContextVariables State { get; set; } = new(); // TODO Serializing this doesn't work most likely
+
+    public virtual ISKFunction? ExecuteNextStep => SKFunction.FromNativeMethod(this.GetType().GetMethod("NullMethod"), this, "NullMethod");
+
+    // public ISKFunction? NullFunction()
+    // {
+    //     return SKFunction.FromNativeMethod(this.GetType().GetMethod("NullMethod"), this, "NullMethod");
+    // }
+
+    [SKFunction("This is a null function that does nothing.")]
+    private string NullMethod(string input)
+    {
+        return input;
+    }
 
     public static IPlan FromString(string planString)
     {
@@ -67,93 +80,98 @@ public class BasePlan : IPlan
 public class SimplePlan : BasePlan, IPlanWithSteps
 {
     [JsonPropertyName("steps")]
-    List<PlanStep> steps { get; set; } = new();
+    private List<PlanStep> _steps { get; set; } = new();
 
     // Today in the Plan, this is the XML String
-    public IList<PlanStep> Steps => steps;
+    public IList<PlanStep> Steps => this._steps;
 
-    public override ISKFunction NextStep(SKContext context)
-    {
-        return ExecutePlanAsync(context);
-    }
+    // public override ISKFunction NextStep(SKContext context)
+    // {
+    //     return ExecutePlanAsync(context);
+    // }
+
+
+    public override ISKFunction? ExecuteNextStep => SKFunction.FromNativeMethod(this.GetType().GetMethod("ExecutePlanAsync"), this, "NullMethod");
+
 
     [SKFunction("Execute a plan that uses registered functions to accomplish a goal.")]
     [SKFunctionName("ExecutePlan")]
     public async Task<SKContext> ExecutePlanAsync(SKContext context)
     {
         var planToExecute = context.Variables.ToPlan();
-        try
-        {
-            var executeResultContext = await this._functionFlowRunner.ExecuteXmlPlanAsync(context, planToExecute.PlanString);
-            _ = executeResultContext.Variables.Get(Plan.PlanKey, out var planProgress);
-            _ = executeResultContext.Variables.Get(Plan.ResultKey, out var results);
+        await Task.CompletedTask;
+        // try
+        // {
+        //     var executeResultContext = await this._functionFlowRunner.ExecuteXmlPlanAsync(context, planToExecute.PlanString);
+        //     _ = executeResultContext.Variables.Get(Plan.PlanKey, out var planProgress);
+        //     _ = executeResultContext.Variables.Get(Plan.ResultKey, out var results);
 
-            var isComplete = planProgress.Contains($"<{FunctionFlowRunner.SolutionTag}>", StringComparison.InvariantCultureIgnoreCase) &&
-                             !planProgress.Contains($"<{FunctionFlowRunner.FunctionTag}", StringComparison.InvariantCultureIgnoreCase);
-            var isSuccessful = !executeResultContext.ErrorOccurred &&
-                               planProgress.Contains($"<{FunctionFlowRunner.SolutionTag}>", StringComparison.InvariantCultureIgnoreCase);
+        //     var isComplete = planProgress.Contains($"<{FunctionFlowRunner.SolutionTag}>", StringComparison.InvariantCultureIgnoreCase) &&
+        //                      !planProgress.Contains($"<{FunctionFlowRunner.FunctionTag}", StringComparison.InvariantCultureIgnoreCase);
+        //     var isSuccessful = !executeResultContext.ErrorOccurred &&
+        //                        planProgress.Contains($"<{FunctionFlowRunner.SolutionTag}>", StringComparison.InvariantCultureIgnoreCase);
 
-            if (string.IsNullOrEmpty(results) && isComplete && isSuccessful)
-            {
-                results = executeResultContext.Variables.ToString();
-            }
-            else if (executeResultContext.ErrorOccurred)
-            {
-                results = executeResultContext.LastErrorDescription;
-            }
+        //     if (string.IsNullOrEmpty(results) && isComplete && isSuccessful)
+        //     {
+        //         results = executeResultContext.Variables.ToString();
+        //     }
+        //     else if (executeResultContext.ErrorOccurred)
+        //     {
+        //         results = executeResultContext.LastErrorDescription;
+        //     }
 
-            _ = context.Variables.UpdateWithPlanEntry(new Plan
-            {
-                Id = planToExecute.Id,
-                Goal = planToExecute.Goal,
-                PlanString = planProgress,
-                IsComplete = isComplete,
-                IsSuccessful = isSuccessful,
-                Result = results,
-            });
+        //     _ = context.Variables.UpdateWithPlanEntry(new Plan
+        //     {
+        //         Id = planToExecute.Id,
+        //         Goal = planToExecute.Goal,
+        //         PlanString = planProgress,
+        //         IsComplete = isComplete,
+        //         IsSuccessful = isSuccessful,
+        //         Result = results,
+        //     });
 
-            return context;
-        }
-        catch (PlanningException e)
-        {
-            switch (e.ErrorCode)
-            {
-                case PlanningException.ErrorCodes.InvalidPlan:
-                    context.Log.LogWarning("[InvalidPlan] Error executing plan: {0} ({1})", e.Message, e.GetType().Name);
-                    _ = context.Variables.UpdateWithPlanEntry(new Plan
-                    {
-                        Id = Guid.NewGuid().ToString("N"),
-                        Goal = planToExecute.Goal,
-                        PlanString = planToExecute.PlanString,
-                        IsComplete = true, // Plan was invalid, mark complete so it's not attempted further.
-                        IsSuccessful = false,
-                        Result = e.Message,
-                    });
+        //     return context;
+        // }
+        // catch (PlanningException e)
+        // {
+        //     switch (e.ErrorCode)
+        //     {
+        //         case PlanningException.ErrorCodes.InvalidPlan:
+        //             context.Log.LogWarning("[InvalidPlan] Error executing plan: {0} ({1})", e.Message, e.GetType().Name);
+        //             _ = context.Variables.UpdateWithPlanEntry(new Plan
+        //             {
+        //                 Id = Guid.NewGuid().ToString("N"),
+        //                 Goal = planToExecute.Goal,
+        //                 PlanString = planToExecute.PlanString,
+        //                 IsComplete = true, // Plan was invalid, mark complete so it's not attempted further.
+        //                 IsSuccessful = false,
+        //                 Result = e.Message,
+        //             });
 
-                    return context;
-                case PlanningException.ErrorCodes.UnknownError:
-                case PlanningException.ErrorCodes.InvalidConfiguration:
-                    context.Log.LogWarning("[UnknownError] Error executing plan: {0} ({1})", e.Message, e.GetType().Name);
-                    break;
-                default:
-                    throw;
-            }
-        }
-        catch (Exception e) when (!e.IsCriticalException())
-        {
-            context.Log.LogWarning("Error executing plan: {0} ({1})", e.Message, e.GetType().Name);
-            _ = context.Variables.UpdateWithPlanEntry(new Plan
-            {
-                Id = Guid.NewGuid().ToString("N"),
-                Goal = planToExecute.Goal,
-                PlanString = planToExecute.PlanString,
-                IsComplete = false,
-                IsSuccessful = false,
-                Result = e.Message,
-            });
+        //             return context;
+        //         case PlanningException.ErrorCodes.UnknownError:
+        //         case PlanningException.ErrorCodes.InvalidConfiguration:
+        //             context.Log.LogWarning("[UnknownError] Error executing plan: {0} ({1})", e.Message, e.GetType().Name);
+        //             break;
+        //         default:
+        //             throw;
+        //     }
+        // }
+        // catch (Exception e) when (!e.IsCriticalException())
+        // {
+        //     context.Log.LogWarning("Error executing plan: {0} ({1})", e.Message, e.GetType().Name);
+        //     _ = context.Variables.UpdateWithPlanEntry(new Plan
+        //     {
+        //         Id = Guid.NewGuid().ToString("N"),
+        //         Goal = planToExecute.Goal,
+        //         PlanString = planToExecute.PlanString,
+        //         IsComplete = false,
+        //         IsSuccessful = false,
+        //         Result = e.Message,
+        //     });
 
-            return context;
-        }
+        //     return context;
+        // }
 
         return context;
     }
@@ -163,7 +181,7 @@ public class SimplePlan : BasePlan, IPlanWithSteps
         return Json.Serialize(this);
     }
 
-    new public static IPlan FromString(string planString)
+    public static new IPlan FromString(string planString)
     {
         return Json.Deserialize<SimplePlan>(planString) ?? new SimplePlan(); // TODO
     }

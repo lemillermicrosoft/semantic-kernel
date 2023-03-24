@@ -1,4 +1,4 @@
-
+// Copyright (c) Microsoft. All rights reserved.
 
 using System;
 using System.Threading;
@@ -55,16 +55,16 @@ namespace Microsoft.SemanticKernel.Planning;
 // }
 
 
-public static class KernelExtensions
+public static class KernelPlanningExtensions
 {
     // TODO - is the plan the actual Object or is this of type ISKFunction[]?
     // TODO - Experiment with the plan having a cast to ISKFunction[] and see if it works
-    static Task<SKContext> RunAsync(this IKernel kernel, IPlan plan)
+    private static Task<SKContext> RunAsync(this IKernel kernel, IPlan plan)
     {
         throw new NotImplementedException();
     }
 
-    static Task<SKContext> RunAsync(
+    private static Task<SKContext> RunAsync(
         this IKernel kernel,
         IPlan plan,
         CancellationToken cancellationToken)
@@ -72,7 +72,7 @@ public static class KernelExtensions
         throw new NotImplementedException();
     }
 
-    static Task<SKContext> RunAsync(
+    private static Task<SKContext> RunAsync(
         this IKernel kernel,
         string input,
         IPlan plan)
@@ -80,7 +80,7 @@ public static class KernelExtensions
         throw new NotImplementedException();
     }
 
-    static Task<SKContext> RunAsync(
+    private static Task<SKContext> RunAsync(
         this IKernel kernel,
         string input,
         IPlan plan,
@@ -89,7 +89,7 @@ public static class KernelExtensions
         throw new NotImplementedException();
     }
 
-    static Task<SKContext> RunAsync(
+    private static Task<SKContext> RunAsync(
         this IKernel kernel,
         ContextVariables variables,
         IPlan plan)
@@ -97,7 +97,7 @@ public static class KernelExtensions
         throw new NotImplementedException();
     }
 
-    static Task<SKContext> RunAsync(
+    private static Task<SKContext> RunAsync(
         this IKernel kernel,
         ContextVariables variables,
         IPlan plan,

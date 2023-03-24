@@ -99,7 +99,7 @@ public interface IKernel
         string input,
         params ISKFunction[] pipeline);
 
-    Task<SKContext> RunAsync(
+    Task<IPlan> RunAsync(
         string input,
         IPlan plan);
 

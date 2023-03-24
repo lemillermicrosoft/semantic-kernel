@@ -13,6 +13,7 @@ using Microsoft.SemanticKernel.Configuration;
 using Microsoft.SemanticKernel.Diagnostics;
 using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.Orchestration;
+using Microsoft.SemanticKernel.Orchestration.Extensions;
 using Microsoft.SemanticKernel.Planning;
 using Microsoft.SemanticKernel.SemanticFunctions;
 using Microsoft.SemanticKernel.SkillDefinition;
@@ -135,7 +136,7 @@ public sealed class Kernel : IKernel, IDisposable
     public Task<SKContext> RunAsync(string input, params ISKFunction[] pipeline)
         => this.RunAsync(new ContextVariables(input), pipeline);
 
-    public Task<SKContext> RunAsync(
+    public async Task<IPlan> RunAsync(
          string input,
          IPlan plan)
     {
@@ -149,7 +150,12 @@ public sealed class Kernel : IKernel, IDisposable
         // The logic involved for executing a step is resolving the named parameters from the context variables
         // Maybe it's just a generic function delegate that takes a context and returns a context?
 
-        this.RunAsync(new ContextVariables(input), plan.PopNextStep);
+        if (plan.ExecuteNextStep is not null)
+        {
+            var planResult = await this.RunAsync(new ContextVariables(input), plan.ExecuteNextStep);
+            return planResult.Variables.ToPlan().PlanObject;
+        }
+        return plan;
         // }
     }
 

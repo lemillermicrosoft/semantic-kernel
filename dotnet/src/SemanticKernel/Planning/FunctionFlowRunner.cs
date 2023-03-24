@@ -52,7 +52,7 @@ internal class FunctionFlowRunner
         this._context = kernel.CreateNewContext();
     }
 
-    public async Task<IPlan> ToPlanFromXml(string xmlString)
+    public async Task<IPlan> ToPlanFromXmlAsync(string xmlString)
     {
         try
         {
@@ -73,9 +73,11 @@ internal class FunctionFlowRunner
             // Get the Solution
             XmlNodeList solution = xmlDoc.GetElementsByTagName(SolutionTag);
 
-            var plan = new SimplePlan();
-            plan.Goal = goalTxt;
-            plan.State = new(); // todo eventually this will need to parse the String
+            var plan = new SimplePlan
+            {
+                Goal = goalTxt,
+                State = new() // todo eventually this will need to parse the String
+            };
 
             // loop through solution node and add to Steps
             foreach (XmlNode o in solution)
@@ -227,10 +229,10 @@ internal class FunctionFlowRunner
         }
     }
 
-    public Task<string> ToXmlFromPlan(IPlan plan)
-    {
-        return Task.FromResult(string.Empty);
-    }
+    // public Task<string> ToXmlFromPlan(IPlan plan)
+    // {
+    //     return Task.FromResult(string.Empty);
+    // }
 
     /// <summary>
     /// Executes the next step of a plan xml.

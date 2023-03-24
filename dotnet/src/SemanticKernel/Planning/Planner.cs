@@ -31,27 +31,24 @@ public class Planner
 
 
     // CreatePlan(string goal)
-    public Task<IPlan> CreatePlan(string goal)
+    public Task<IPlan> CreatePlanAsync(string goal)
     {
         return this._planner.CreatePlanAsync(goal);
     }
 
-    public Task<IPlan> ExecutePlan(IPlan plan)
-    {
+    // public Task<IPlan> ExecutePlan(IPlan plan)
+    // {
 
-    }
+    // }
 
     private IPlanner GetPlannerForMode(Mode mode)
     {
-        switch (mode)
+        return mode switch
         {
-            case Mode.Simple:
-                return new SimplePlanner(this._kernel, this._maxTokens);
-            case Mode.Complex:
-                return new ComplexPlanner(this._kernel, this._maxTokens);
-            default:
-                throw new NotImplementedException();
-        }
+            Mode.Simple => new SimplePlanner(this._kernel, this._maxTokens),
+            Mode.Complex => new ComplexPlanner(this._kernel, this._maxTokens),
+            _ => throw new NotImplementedException(),
+        };
     }
 
     private readonly IPlanner _planner;
@@ -87,10 +84,10 @@ public class SimplePlanner : IPlanner
             temperature: 0.0,
             stopSequences: new[] { "<!--" });
 
-        this._config = config ?? new()
+        this.Config = config ?? new()
         {
             RelevancyThreshold = 0,
-            MaxFunctions = int.MaxValue
+            MaxRelevantFunctions = int.MaxValue
         };
 
         this._kernel = kernel;
@@ -99,7 +96,7 @@ public class SimplePlanner : IPlanner
 
     public async Task<IPlan> CreatePlanAsync(string goal)
     {
-        string relevantFunctionsManual = await this._context.GetFunctionsManualAsync(goal, this._config);
+        string relevantFunctionsManual = await this._context.GetFunctionsManualAsync(goal, this.Config);
         this._context.Variables.Set("available_functions", relevantFunctionsManual);
         // TODO - consider adding the relevancy score for functions added to manual
 
@@ -121,11 +118,10 @@ public class SimplePlanner : IPlanner
         // return this._context;
     }
 
-    protected PlannerSkillConfig Config => this._config;
+    protected PlannerSkillConfig Config { get; }
 
     private readonly SKContext _context;
     private readonly IKernel _kernel;
-    private readonly PlannerSkillConfig _config;
 
     /// <summary>
     /// the function flow runner, which executes plans that leverage functions
