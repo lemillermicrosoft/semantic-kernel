@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft. All rights reserved.
+﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel.Orchestration;
@@ -6,7 +6,6 @@ using Microsoft.SemanticKernel.Planning.Models;
 using static Microsoft.SemanticKernel.CoreSkills.PlannerSkill;
 
 namespace Microsoft.SemanticKernel.Planning.Planners;
-
 
 public class SimplePlanner : IPlanner
 {
@@ -35,11 +34,6 @@ public class SimplePlanner : IPlanner
         };
 
         return plan;
-    }
-
-    Task<IPlan> IPlanner.CreatePlanAsync(string goal)
-    {
-        throw new System.NotImplementedException();
     }
 
     protected PlannerSkillConfig Config { get; }

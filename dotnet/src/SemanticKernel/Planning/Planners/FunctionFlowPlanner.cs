@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft. All rights reserved.
+﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel.CoreSkills;
@@ -23,7 +23,7 @@ public class FunctionFlowPlanner : IPlanner
             promptTemplate: SemanticFunctionConstants.FunctionFlowFunctionDefinition,
             skillName: RestrictedSkillName,
             description: "Given a request or command or goal generate a step by step plan to " +
-                        "fulfill the request using functions. This ability is also known as decision making and function flow",
+                         "fulfill the request using functions. This ability is also known as decision making and function flow",
             maxTokens: maxTokens,
             temperature: 0.0,
             stopSequences: new[] { "<!--" });
@@ -51,7 +51,6 @@ public class FunctionFlowPlanner : IPlanner
         return plan;
     }
 
-
     protected PlannerSkillConfig Config { get; }
 
     private readonly SKContext _context;
@@ -73,7 +72,7 @@ public class FunctionFlowPlanner : IPlanner
     private const string RestrictedSkillName = "PlannerSkill_Excluded";
 }
 
-public class GoalRelevantPlanner : SimplePlanner
+public class GoalRelevantPlanner : FunctionFlowPlanner
 {
     public GoalRelevantPlanner(IKernel kernel, int maxTokens) : base(kernel, maxTokens, new() { RelevancyThreshold = 0.78 })
     {

@@ -36,7 +36,6 @@ public partial class PlanStep
     // TODO probably not FunctionView -- what will this be used for, who needs to define it, will this include remote execution details?
 }
 
-
 public partial class Parameter
 {
     // String Description

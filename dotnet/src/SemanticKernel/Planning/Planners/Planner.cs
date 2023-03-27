@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft. All rights reserved.
+﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
 using System.Threading.Tasks;
@@ -13,10 +13,9 @@ public class Planner
         Simple,
         FunctionFlow,
         GoalRelevant,
-
     }
 
-    public Planner(IKernel kernel, Mode mode = Mode.Simple, int maxTokens = 1024)
+    public Planner(IKernel kernel, Mode mode = Mode.FunctionFlow, int maxTokens = 1024)
     {
         this._kernel = kernel;
         this._mode = mode; // needed?
@@ -33,9 +32,9 @@ public class Planner
     {
         return mode switch
         {
-            Mode.Simple => new FunctionFlowPlanner(this._kernel, this._maxTokens),
+            Mode.Simple => new SimplePlanner(this._kernel, this._maxTokens),
             Mode.GoalRelevant => new GoalRelevantPlanner(this._kernel, this._maxTokens),
-            Mode.FunctionFlow => throw new NotImplementedException(),
+            Mode.FunctionFlow => new FunctionFlowPlanner(this._kernel, this._maxTokens),
             _ => throw new NotImplementedException(),
         };
     }
@@ -46,7 +45,6 @@ public class Planner
     private readonly Mode _mode;
     private readonly int _maxTokens;
 }
-
 
 public interface IPlanner
 {

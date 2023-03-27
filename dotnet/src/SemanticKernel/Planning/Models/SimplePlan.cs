@@ -2,16 +2,17 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel.Diagnostics;
 using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.Orchestration.Extensions;
-using Microsoft.SemanticKernel.Text;
 
 namespace Microsoft.SemanticKernel.Planning.Models;
-
 
 public partial class SimplePlan : BasePlan, IPlanWithSteps
 {
@@ -21,7 +22,62 @@ public partial class SimplePlan : BasePlan, IPlanWithSteps
     // Today in the Plan, this is the XML String
     public IList<PlanStep> Steps => this._steps;
 
-    public (PlanStep step, ContextVariables context) PopNextStep(SKContext skContext)
+    public new async Task<IPlan> RunNextStepAsync(IKernel kernel, ContextVariables variables, CancellationToken cancellationToken = default)
+    {
+        SKContext defaultContext = kernel.CreateNewContext();
+        var context = new SKContext(
+            variables,
+            defaultContext.Memory,
+            defaultContext.Skills,
+            defaultContext.Log,
+            cancellationToken);
+
+        var (nextStep, functionVariables) = this.PopNextStep(context);
+        var variableTargetName = string.Empty; // todo
+
+        var skillName = nextStep.SelectedSkill;
+        var functionName = nextStep.SelectedFunction;
+
+        if (context.IsFunctionRegistered(skillName, functionName, out var skillFunction))
+        {
+            // capture current keys before running function
+            var keysToIgnore = functionVariables.Select(x => x.Key).ToList();
+            var result = await kernel.RunAsync(functionVariables, cancellationToken, skillFunction!);
+            // TODO respect ErrorOccurred
+
+            // copy all values for VariableNames in functionVariables not in keysToIgnore to context.Variables
+            foreach (var (key, _) in functionVariables)
+            {
+                if (!keysToIgnore.Contains(key, StringComparer.InvariantCultureIgnoreCase) && functionVariables.Get(key, out var value))
+                {
+                    this.State.Set(key, value);
+                }
+            }
+
+            // TODO -- Get from POp or something
+            _ = this.State.Update(result.Result.Trim());
+            if (!string.IsNullOrEmpty(variableTargetName))
+            {
+                this.State.Set(variableTargetName, result.ToString().Trim());
+            }
+
+            // if (!string.IsNullOrEmpty(appendToResultName))
+            // {
+            //     _ = context.Variables.Get(Plan.ResultKey, out var resultsSoFar);
+            //     context.Variables.Set(Plan.ResultKey,
+            //         string.Join(Environment.NewLine + Environment.NewLine, resultsSoFar, appendToResultName, result.ToString()).Trim());
+            // }
+
+            return this;
+        }
+        else
+        {
+            // TODO
+            throw new InvalidOperationException($"Function {skillName}.{functionName} is not registered");
+        }
+    }
+
+    private (PlanStep step, ContextVariables context) PopNextStep(SKContext skContext)
     {
         var step = this._steps[0];
 
@@ -86,7 +142,6 @@ public partial class SimplePlan : BasePlan, IPlanWithSteps
                     {
                         functionVariables.Set(param.Key, param.Value);
                     }
-
                 }
             }
         }
@@ -104,14 +159,4 @@ public partial class SimplePlan : BasePlan, IPlanWithSteps
     /// The attribute tag used in the plan xml for appending the output of a function to the final result for a plan.
     /// </summary>
     internal const string AppendToResultTag = "appendToResult";
-
-    public string ToPlanString()
-    {
-        return Json.Serialize(this);
-    }
-
-    public static IPlan FromString(string planString)
-    {
-        return Json.Deserialize<SimplePlan>(planString) ?? new SimplePlan(); // TODO
-    }
 }

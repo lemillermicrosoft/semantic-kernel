@@ -352,7 +352,7 @@ internal class FunctionFlowRunner
                             // Today, this would be a string key (attr.ToString()) and a string value (attr.InnerText)
                             // where the value is either the value itstelf or a reference (to the ContextVariables).
 
-                            var functionVariables = new ContextVariables(/*functionInput*/); // todo when does this get set? on first execute?
+                            var functionVariables = new ContextVariables( /*functionInput*/); // todo when does this get set? on first execute?
                             var variableTargetName = string.Empty;
                             var appendToResultName = string.Empty;
                             if (o2.Attributes is not null)
@@ -408,7 +408,7 @@ internal class FunctionFlowRunner
                             context.Log.LogTrace("{0}: appending function node {1}", parentNodeName, skillFunctionName);
                             plan.Steps.Add(new PlanStep()
                             {
-                                Description = o2.InnerText// TODO DEBUG THIS
+                                Description = o2.InnerText // TODO DEBUG THIS
                             });
                         }
 
@@ -417,10 +417,11 @@ internal class FunctionFlowRunner
 
                     plan.Steps.Add(new PlanStep()
                     {
-                        Description = o2.InnerText// TODO DEBUG THIS
+                        Description = o2.InnerText // TODO DEBUG THIS
                     });
                 }
             }
+
             return plan;
         }
         catch (Exception e) when (!e.IsCriticalException())
