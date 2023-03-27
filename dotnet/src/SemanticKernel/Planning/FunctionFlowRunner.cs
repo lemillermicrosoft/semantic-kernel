@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel.Diagnostics;
 using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.Orchestration.Extensions;
+using Microsoft.SemanticKernel.Planning.Models;
 
 namespace Microsoft.SemanticKernel.Planning;
 
@@ -215,6 +216,7 @@ internal class FunctionFlowRunner
                         var keysToIgnore = functionVariables.Select(x => x.Key).ToList();
 
                         var result = await this._kernel.RunAsync(functionVariables, skillFunction);
+                        // TODO respect ErrorOccurred
 
                         // copy all values for VariableNames in functionVariables not in keysToIgnore to context.Variables
                         foreach (var (key, _) in functionVariables)
@@ -277,5 +279,154 @@ internal class FunctionFlowRunner
         var skillFunctionNameParts = skillFunctionName.Split(".");
         skillName = skillFunctionNameParts?.Length > 0 ? skillFunctionNameParts[0] : string.Empty;
         functionName = skillFunctionNameParts?.Length > 1 ? skillFunctionNameParts[1] : skillFunctionName;
+    }
+
+    internal SimplePlan ToPlanFromXml(SKContext context, string xmlString)
+    {
+        try
+        {
+            XmlDocument xmlDoc = new();
+            try
+            {
+                xmlDoc.LoadXml("<xml>" + xmlString + "</xml>");
+            }
+            catch (XmlException e)
+            {
+                throw new PlanningException(PlanningException.ErrorCodes.InvalidPlan, "Failed to parse plan xml.", e);
+            }
+
+            // Get the Goal
+            var (goalTxt, goalXmlString) = FunctionFlowRunner.GatherGoal(xmlDoc);
+
+            // Get the Solution
+            XmlNodeList solution = xmlDoc.GetElementsByTagName(SolutionTag);
+
+            var plan = new SimplePlan
+            {
+                Goal = goalTxt,
+                // State = new() // todo eventually this will need to parse the String
+            };
+
+            // loop through solution node and add to Steps
+            foreach (XmlNode o in solution)
+            {
+                var parentNodeName = o.Name;
+
+                this._kernel.Log.LogTrace("{0}: found node", parentNodeName);
+                foreach (XmlNode o2 in o.ChildNodes)
+                {
+                    if (o2.Name == "#text")
+                    {
+                        this._kernel.Log.LogTrace("{0}: appending text node", parentNodeName);
+                        if (o2.Value != null)
+                        {
+                            plan.Steps.Add(new PlanStep()
+                            {
+                                Description = o2.Value.Trim()
+                            });
+                        }
+
+                        continue;
+                    }
+
+                    if (o2.Name.StartsWith(FunctionTag, StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        var planStep = new PlanStep();
+
+                        var skillFunctionName = o2.Name.Split(FunctionTag)?[1] ?? string.Empty;
+                        this._kernel.Log.LogTrace("{0}: found skill node {1}", parentNodeName, skillFunctionName);
+                        GetSkillFunctionNames(skillFunctionName, out var skillName, out var functionName);
+                        if (!string.IsNullOrEmpty(functionName) && context.IsFunctionRegistered(skillName, functionName, out var skillFunction))
+                        {
+                            Verify.NotNull(functionName, nameof(functionName));
+                            Verify.NotNull(skillFunction, nameof(skillFunction));
+                            this._kernel.Log.LogTrace("{0}: processing function {1}.{2}", parentNodeName, skillName, functionName);
+
+                            planStep.SelectedFunction = functionName;
+                            planStep.SelectedSkill = skillName;
+
+                            // planStep.Description How different than manifest?
+                            // planStep.Manifests What else is needed here?
+
+                            // planStep.NameParameters TODO
+                            // Today, this would be a string key (attr.ToString()) and a string value (attr.InnerText)
+                            // where the value is either the value itstelf or a reference (to the ContextVariables).
+
+                            var functionVariables = new ContextVariables(/*functionInput*/); // todo when does this get set? on first execute?
+                            var variableTargetName = string.Empty;
+                            var appendToResultName = string.Empty;
+                            if (o2.Attributes is not null)
+                            {
+                                foreach (XmlAttribute attr in o2.Attributes)
+                                {
+                                    context.Log.LogTrace("{0}: processing attribute {1}", parentNodeName, attr.ToString());
+                                    if (attr.InnerText.StartsWith("$", StringComparison.InvariantCultureIgnoreCase))
+                                    {
+                                        // Split the attribute value on the comma or ; character
+                                        var attrValues = attr.InnerText.Split(new char[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+                                        if (attrValues.Length > 0)
+                                        {
+                                            // If there are multiple values, create a list of the values
+                                            var attrValueList = new List<string>();
+                                            foreach (var attrValue in attrValues)
+                                            {
+                                                if (context.Variables.Get(attrValue[1..], out var variableReplacement))
+                                                {
+                                                    attrValueList.Add(variableReplacement);
+                                                }
+                                            }
+
+                                            if (attrValueList.Count > 0)
+                                            {
+                                                functionVariables.Set(attr.Name, string.Concat(attrValueList));
+                                            }
+                                        }
+                                    }
+                                    else if (attr.Name.Equals(SetContextVariableTag, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        variableTargetName = attr.InnerText;
+                                    }
+                                    else if (attr.Name.Equals(AppendToResultTag, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        appendToResultName = attr.InnerText;
+                                    }
+                                    else
+                                    {
+                                        functionVariables.Set(attr.Name, attr.InnerText);
+                                    }
+                                }
+                            }
+
+                            // TODO
+                            // variableTargetName
+                            // appendToResultName
+                            planStep.NamedParameters = functionVariables;
+                            plan.Steps.Add(planStep);
+                        }
+                        else
+                        {
+                            context.Log.LogTrace("{0}: appending function node {1}", parentNodeName, skillFunctionName);
+                            plan.Steps.Add(new PlanStep()
+                            {
+                                Description = o2.InnerText// TODO DEBUG THIS
+                            });
+                        }
+
+                        continue;
+                    }
+
+                    plan.Steps.Add(new PlanStep()
+                    {
+                        Description = o2.InnerText// TODO DEBUG THIS
+                    });
+                }
+            }
+            return plan;
+        }
+        catch (Exception e) when (!e.IsCriticalException())
+        {
+            this._kernel.Log.LogError(e, "Plan parsing failed: {0}", e.Message);
+            throw;
+        }
     }
 }
