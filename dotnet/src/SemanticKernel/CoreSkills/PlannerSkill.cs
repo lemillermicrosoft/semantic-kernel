@@ -66,6 +66,7 @@ public class PlannerSkill
         public const string IncludedFunctions = "includedFunctions";
     }
 
+    // RENAME: Refactor out
     public sealed class PlannerSkillConfig
     {
         // 0.78 is a good value for our samples and demonstrations.

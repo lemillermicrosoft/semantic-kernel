@@ -81,9 +81,15 @@ public partial class SimplePlan : BasePlan, IPlanWithSteps
     {
         var step = this._steps[0];
 
-        var planInput = string.IsNullOrEmpty(this.State.Input) ? this.State.ToString() : this.State.Input;
-        string functionInput = string.IsNullOrEmpty(planInput) ? this.Goal : planInput;
+        // var planInput = string.IsNullOrEmpty(this.State.Input) ? this.State.ToString() : this.State.Input;
+        // string functionInput = string.IsNullOrEmpty(planInput) ? this.Goal : planInput;
+        // var functionVariables = new ContextVariables(functionInput);
+
+        // Actually, priority should be the skContext Input, then the Plan Input, then the Goal
+        var planInput = string.IsNullOrEmpty(skContext.Variables.Input) ? this.State.Input : skContext.Variables.Input;
+        var functionInput = string.IsNullOrEmpty(planInput) ? this.Goal : planInput;
         var functionVariables = new ContextVariables(functionInput);
+
 
         var stepAndTextResults = new StringBuilder();
 

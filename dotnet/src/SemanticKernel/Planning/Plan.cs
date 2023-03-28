@@ -2,7 +2,6 @@
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.SemanticKernel.Planning.Models;
 
 namespace Microsoft.SemanticKernel.Planning;
 
@@ -25,8 +24,6 @@ public class Plan
     /// Internal constant string representing the plan key.
     /// </summary>
     internal const string PlanKey = "PLAN__PLAN"; // TODO Will probably remove eventually
-
-    internal const string PlanObjectKey = "PLAN__PLANOBJECT";
 
     /// <summary>
     /// Internal constant string representing the is complete key.
@@ -61,8 +58,6 @@ public class Plan
     /// </summary>
     [JsonPropertyName("plan")]
     public string PlanString { get; set; } = string.Empty;
-
-    public IPlan PlanObject { get; set; } = new SimplePlan();
 
     /// <summary>
     /// The arguments for the plan.

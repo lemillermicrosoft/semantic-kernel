@@ -69,12 +69,16 @@ public class FunctionFlowPlanner : IPlanner
     /// <summary>
     /// The name to use when creating semantic functions that are restricted from the PlannerSkill plans
     /// </summary>
-    private const string RestrictedSkillName = "PlannerSkill_Excluded";
+    private const string RestrictedSkillName = "PlannerSkill_Excluded"; // todo we've got copies of this now
 }
 
 public class GoalRelevantPlanner : FunctionFlowPlanner
 {
     public GoalRelevantPlanner(IKernel kernel, int maxTokens) : base(kernel, maxTokens, new() { RelevancyThreshold = 0.78 })
+    {
+    }
+
+    public GoalRelevantPlanner(IKernel kernel, int maxTokens, PlannerSkillConfig config) : base(kernel, maxTokens, config)
     {
     }
 }

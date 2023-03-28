@@ -351,8 +351,20 @@ internal class FunctionFlowRunner
                             // planStep.NameParameters TODO
                             // Today, this would be a string key (attr.ToString()) and a string value (attr.InnerText)
                             // where the value is either the value itstelf or a reference (to the ContextVariables).
+                            // Most importantly though, we need to put here what is defined in the FunctionView
+
+
 
                             var functionVariables = new ContextVariables( /*functionInput*/); // todo when does this get set? on first execute?
+
+                            var view = skillFunction.Describe();
+                            foreach (var p in view.Parameters)
+                            {
+                                // Check state or use DefaultValue
+                                // TODO
+                                functionVariables.Set(p.Name, p.DefaultValue);
+                            }
+
                             var variableTargetName = string.Empty;
                             var appendToResultName = string.Empty;
                             if (o2.Attributes is not null)

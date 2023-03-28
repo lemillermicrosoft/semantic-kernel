@@ -12,7 +12,7 @@ public interface IPlanWithSteps : IPlan
     IList<PlanStep> Steps { get; }
 }
 
-public partial class PlanStep
+public class PlanStep
 {
     [JsonPropertyName("description")]
     public string Description { get; set; } = string.Empty;
@@ -23,17 +23,13 @@ public partial class PlanStep
     [JsonPropertyName("selected_function")]
     public string SelectedFunction { get; set; } = string.Empty;
 
-    // TODO - consider adding the relevancy score for functions added to manual based on relevancy
-
     [JsonPropertyName("named_parameters")]
     public ContextVariables NamedParameters { get; set; } = new();
-    // TODO Parameter? Key Value Pair of a Parameter type? Is this connected to FunctionView or a subset of it?
-    // Key is FunctionView Parameter and value is the value -- what about handling output from other functions early in the plan?
-    // Pointer reference is OKAY in that case and substitution is done later at execution?
 
     [JsonPropertyName("manifests")]
     public FunctionView Manifests { get; set; } = new();
-    // TODO probably not FunctionView -- what will this be used for, who needs to define it, will this include remote execution details?
+
+    // TODO - consider adding the relevancy score for functions added to manual based on relevancy
 }
 
 public partial class Parameter
