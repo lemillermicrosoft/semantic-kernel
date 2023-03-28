@@ -281,8 +281,9 @@ internal class FunctionFlowRunner
         functionName = skillFunctionNameParts?.Length > 1 ? skillFunctionNameParts[1] : skillFunctionName;
     }
 
-    internal SimplePlan ToPlanFromXml(SKContext context, string xmlString)
+    internal SimplePlan ToPlanFromXml(string xmlString, SKContext? context = null)
     {
+        context ??= this._kernel.CreateNewContext();
         try
         {
             XmlDocument xmlDoc = new();
@@ -350,7 +351,7 @@ internal class FunctionFlowRunner
 
                             // planStep.NameParameters TODO
                             // Today, this would be a string key (attr.ToString()) and a string value (attr.InnerText)
-                            // where the value is either the value itstelf or a reference (to the ContextVariables).
+                            // where the value is either the value itself or a reference (to the ContextVariables).
                             // Most importantly though, we need to put here what is defined in the FunctionView
 
 

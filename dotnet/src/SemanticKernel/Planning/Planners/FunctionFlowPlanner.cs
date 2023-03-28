@@ -46,7 +46,7 @@ public class FunctionFlowPlanner : IPlanner
         // TODO Do we need to do this actually?
         string fullPlan = $"<{FunctionFlowRunner.GoalTag}>\n{goal}\n</{FunctionFlowRunner.GoalTag}>\n{planResult.Result.Trim()}";
 
-        var plan = this._functionFlowRunner.ToPlanFromXml(this._context, fullPlan);
+        var plan = this._functionFlowRunner.ToPlanFromXml(fullPlan, this._context);
 
         return plan;
     }
