@@ -31,7 +31,7 @@ public static class KernelPlanningExtensions
 
     public static Task<IPlan> RunAsync(this IKernel kernel, ContextVariables variables, IPlan plan)
     {
-        return plan.RunNextStepAsync(kernel, variables, CancellationToken.None);
+        return kernel.RunAsync(variables, plan, CancellationToken.None);
     }
 
     public static Task<IPlan> RunAsync(this IKernel kernel, ContextVariables variables, IPlan plan, CancellationToken cancellationToken)

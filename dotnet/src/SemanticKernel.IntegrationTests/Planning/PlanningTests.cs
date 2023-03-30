@@ -3,14 +3,12 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.Planning;
 using Microsoft.SemanticKernel.Planning.Models;
 using Microsoft.SemanticKernel.Planning.Planners;
-using Microsoft.SemanticKernel.SkillDefinition;
 using SemanticKernel.IntegrationTests.TestSettings;
 using Xunit;
 using Xunit.Abstractions;
@@ -70,7 +68,7 @@ public sealed class PlanningTests : IDisposable
             // Assert.Empty(actual.LastErrorDescription);
             // Assert.False(actual.ErrorOccurred);
             Assert.Contains(
-                plan.Steps,
+                plan.Steps.Children,
                 step =>
                     step.SelectedFunction.Equals(expectedFunction, StringComparison.OrdinalIgnoreCase) &&
                     step.SelectedSkill.Equals(expectedSkill, StringComparison.OrdinalIgnoreCase));
@@ -136,7 +134,7 @@ public sealed class PlanningTests : IDisposable
             // Assert.Empty(actual.LastErrorDescription);
             // Assert.False(actual.ErrorOccurred);
             Assert.Contains(
-                plan.Steps,
+                plan.Steps.Children,
                 step =>
                     step.SelectedFunction.Equals(expectedFunction, StringComparison.OrdinalIgnoreCase) &&
                     step.SelectedSkill.Equals(expectedSkill, StringComparison.OrdinalIgnoreCase));
@@ -221,7 +219,7 @@ public sealed class PlanningTests : IDisposable
         var cv = new ContextVariables();
         cv.Set("email_address", "$TheEmailFromState");
         var plan = new SimplePlan() { Goal = goal };
-        plan.Steps.Add(new PlanStep()
+        plan.Steps.Children.Add(new PlanStep()
         {
             SelectedFunction = "SendEmailAsync",
             SelectedSkill = "_GLOBAL_FUNCTIONS_",
@@ -238,7 +236,7 @@ public sealed class PlanningTests : IDisposable
         // Assert.Empty(plan.LastErrorDescription);
         // Assert.False(plan.ErrorOccurred);
         var expectedBody = string.IsNullOrEmpty(input) ? goal : input;
-        Assert.Equal(0, plan.Steps.Count);
+        Assert.Equal(0, plan.Steps.Children.Count);
         Assert.Equal(goal, plan.Goal);
         Assert.Equal($"Sent email to: {email}. Body: {expectedBody}", plan.State.ToString()); // TODO Make a Result and other properties
     }

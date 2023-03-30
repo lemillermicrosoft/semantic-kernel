@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -14,14 +13,8 @@ using Microsoft.SemanticKernel.Orchestration.Extensions;
 
 namespace Microsoft.SemanticKernel.Planning.Models;
 
-public partial class SimplePlan : BasePlan, IPlanWithSteps
+public partial class SimplePlan : BasePlan
 {
-    [JsonPropertyName("steps")]
-    private List<PlanStep> _steps { get; set; } = new();
-
-    // Today in the Plan, this is the XML String
-    public IList<PlanStep> Steps => this._steps;
-
     public new async Task<IPlan> RunNextStepAsync(IKernel kernel, ContextVariables variables, CancellationToken cancellationToken = default)
     {
         SKContext defaultContext = kernel.CreateNewContext();
@@ -79,7 +72,23 @@ public partial class SimplePlan : BasePlan, IPlanWithSteps
 
     private (PlanStep step, ContextVariables context) PopNextStep(SKContext skContext)
     {
-        var step = this._steps[0];
+        // var step = this.stepList[0];
+        // the root step will contain a tree of steps
+        // Each step will either be a function or a branch
+        // If it is a function, we will execute it and remove it from the list
+        // If it is a branch, we will evaluate the condition and either remove the branch or continue to the next step
+        // If the branch is removed, we will continue to the next step
+        // If the branch is not removed, we will continue to the next step in the branch
+        // If the branch is not removed, and there are no more steps in the branch, we will continue to the next step in the parent branch
+        // If the branch is not removed, and there are no more steps in the branch, and there are no more steps in the parent branch, we will continue to the next step in the grandparent branch
+
+        // TODO -- this is a hack to get the first step
+        var step = this.Steps;
+        var parent = step;
+        while (step.Children.Count > 0)
+        {
+            step = step.Children[0];
+        }
 
         // var planInput = string.IsNullOrEmpty(this.State.Input) ? this.State.ToString() : this.State.Input;
         // string functionInput = string.IsNullOrEmpty(planInput) ? this.Goal : planInput;
@@ -152,7 +161,9 @@ public partial class SimplePlan : BasePlan, IPlanWithSteps
             }
         }
 
-        this._steps.RemoveAt(0);
+        // this.stepList.RemoveAt(0);
+        parent.Children.RemoveAt(0); // TODO Does this do what I want?
+
         return (step, functionVariables); // TODO Yeah, how does this.State get updated?
     }
 

@@ -15,6 +15,11 @@ public class BasePlan : IPlan
     [JsonPropertyName("context_variables")]
     public ContextVariables State { get; set; } = new();
 
+    [JsonPropertyName("steps")]
+    protected PlanStep rootStep { get; set; } = new();
+
+    public PlanStep Steps => this.rootStep;
+
     public Task<IPlan> RunNextStepAsync(IKernel kernel, ContextVariables variables, CancellationToken cancellationToken = default)
     {
         throw new System.NotImplementedException();

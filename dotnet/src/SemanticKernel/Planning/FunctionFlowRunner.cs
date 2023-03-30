@@ -321,7 +321,7 @@ internal class FunctionFlowRunner
                         this._kernel.Log.LogTrace("{0}: appending text node", parentNodeName);
                         if (o2.Value != null)
                         {
-                            plan.Steps.Add(new PlanStep()
+                            plan.Steps.Children.Add(new PlanStep()
                             {
                                 Description = o2.Value.Trim()
                             });
@@ -414,12 +414,12 @@ internal class FunctionFlowRunner
                             // variableTargetName
                             // appendToResultName
                             planStep.NamedParameters = functionVariables;
-                            plan.Steps.Add(planStep);
+                            plan.Steps.Children.Add(planStep);
                         }
                         else
                         {
                             context.Log.LogTrace("{0}: appending function node {1}", parentNodeName, skillFunctionName);
-                            plan.Steps.Add(new PlanStep()
+                            plan.Steps.Children.Add(new PlanStep()
                             {
                                 Description = o2.InnerText // TODO DEBUG THIS
                             });
@@ -428,7 +428,7 @@ internal class FunctionFlowRunner
                         continue;
                     }
 
-                    plan.Steps.Add(new PlanStep()
+                    plan.Steps.Children.Add(new PlanStep()
                     {
                         Description = o2.InnerText // TODO DEBUG THIS
                     });
