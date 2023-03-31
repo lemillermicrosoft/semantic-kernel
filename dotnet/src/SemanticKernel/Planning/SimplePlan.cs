@@ -6,7 +6,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel.Orchestration;
-using Microsoft.SemanticKernel.Orchestration.Extensions;
 
 namespace Microsoft.SemanticKernel.Planning;
 
