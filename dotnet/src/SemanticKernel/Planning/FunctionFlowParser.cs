@@ -77,7 +77,7 @@ internal static class FunctionFlowParser
                     {
                         if (o2.Value != null)
                         {
-                            plan.Steps.Children.Add(new PlanStep()
+                            plan.Root.Steps.Add(new PlanStep()
                             {
                                 Description = o2.Value.Trim()
                             });
@@ -171,12 +171,12 @@ internal static class FunctionFlowParser
                             planStep.OutputKey = variableTargetName;
                             planStep.ResultKey = appendToResultName;
                             planStep.NamedParameters = functionVariables;
-                            plan.Steps.Children.Add(planStep);
+                            plan.Root.Steps.Add(planStep);
                         }
                         else
                         {
                             context.Log.LogTrace("{0}: appending function node {1}", parentNodeName, skillFunctionName);
-                            plan.Steps.Children.Add(new PlanStep()
+                            plan.Root.Steps.Add(new PlanStep()
                             {
                                 Description = o2.InnerText // TODO DEBUG THIS
                             });
@@ -185,7 +185,7 @@ internal static class FunctionFlowParser
                         continue;
                     }
 
-                    plan.Steps.Children.Add(new PlanStep()
+                    plan.Root.Steps.Add(new PlanStep()
                     {
                         Description = o2.InnerText // TODO DEBUG THIS
                     });

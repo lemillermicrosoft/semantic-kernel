@@ -26,7 +26,10 @@ public class SimplePlanner : IPlanner
 
         var plan = new BasePlan()
         {
-            Goal = goal,
+            Root = new PlanStep()
+            {
+                Description = goal
+            },
         };
 
         return Task.FromResult<IPlan>(plan);

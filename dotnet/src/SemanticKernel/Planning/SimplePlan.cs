@@ -74,7 +74,7 @@ public class SimplePlan : BasePlan
         // Initialize function-scoped ContextVariables
         // Default input should be the Input from the SKContext, or the Input from the Plan.State, or the Plan.Goal
         var planInput = string.IsNullOrEmpty(variables.Input) ? this.State.Input : variables.Input;
-        var functionInput = string.IsNullOrEmpty(planInput) ? this.Goal : planInput;
+        var functionInput = string.IsNullOrEmpty(planInput) ? this.Root.Description : planInput;
         var functionVariables = new ContextVariables(functionInput);
 
         // NameParameters are the parameters that are passed to the function
@@ -133,14 +133,14 @@ public class SimplePlan : BasePlan
 
     private PlanStep PopNextStep()
     {
-        var step = this.Steps;
+        var step = this.Root;
         var parent = step;
-        while (step.Children.Count > 0)
+        while (step.Steps.Count > 0)
         {
-            step = step.Children[0];
+            step = step.Steps[0];
         }
 
-        parent.Children.RemoveAt(0); // TODO Does this do what I want? has this.Steps changed?
+        parent.Steps.RemoveAt(0); // TODO Does this do what I want? has this.Steps changed?
 
         return step;
     }
