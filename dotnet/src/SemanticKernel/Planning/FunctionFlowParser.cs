@@ -7,7 +7,6 @@ using System.Xml;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel.Diagnostics;
 using Microsoft.SemanticKernel.Orchestration;
-using Microsoft.SemanticKernel.Orchestration.Extensions;
 
 namespace Microsoft.SemanticKernel.Planning;
 
@@ -63,7 +62,7 @@ internal static class FunctionFlowParser
 
             var plan = new SimplePlan
             {
-                Goal = goalTxt,
+                Root = new() { Description = goalTxt },
                 // State = new() // todo eventually this will need to parse the String
             };
 
