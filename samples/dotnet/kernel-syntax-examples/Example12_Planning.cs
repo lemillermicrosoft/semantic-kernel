@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.CoreSkills;
@@ -11,6 +12,8 @@ using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.Planning;
 using Microsoft.SemanticKernel.Planning.Planners;
+using Microsoft.SemanticKernel.Skills.Web;
+using Microsoft.SemanticKernel.Skills.Web.Bing;
 using RepoUtils;
 using Skills;
 using TextSkill = Skills.TextSkill;
@@ -21,11 +24,48 @@ internal static class Example12_Planning
 {
     public static async Task RunAsync()
     {
-        // await PoetrySamplesAsync();
-        // await EmailSamplesAsync();
-        // await BookSamplesAsync();
-        // await MemorySampleAsync();
-        await CompareContrastPlanningAsync();
+        await GitHubIssueAsync();
+    }
+
+    private static async Task GitHubIssueAsync()
+    {
+        var kernel = InitializeKernel();
+
+        using BingConnector connector = new(Env.Var("BING_API_KEY"));
+        var webSearchSkill = new WebSearchEngineSkill(connector);
+
+        IDictionary<string, ISKFunction> plannerSkill = kernel.ImportSkill(new PlannerSkill(kernel), "planning");
+
+        kernel.ImportSkill(webSearchSkill, nameof(WebSearchEngineSkill));
+
+        string folder = RepoFiles.SampleSkillsPath();
+        kernel.ImportSemanticSkillFromDirectory(folder, "SummarizeSkill");
+        kernel.ImportSemanticSkillFromDirectory(folder, "FunSkill");
+
+        var planXml = @"
+<goal>
+What's the tallest building in Europe?
+</goal>
+<plan>
+  <function.WebSearchEngineSkill.SearchAsync/>
+</plan>";
+
+        var plan = new SkillPlan()
+        {
+            PlanString = planXml,
+            Goal = "What's the tallest building in Europe?",
+        };
+
+        var cv = new ContextVariables();
+        cv.UpdateWithPlanEntry(plan);
+        var planContext = new SKContext(
+            cv,
+            kernel.Memory,
+            kernel.Skills,
+            kernel.Log,
+            CancellationToken.None);
+
+        await ExecutePlanAsync(kernel, plannerSkill, planContext);
     }
 
     private static async Task CompareContrastPlanningAsync()
@@ -267,8 +307,8 @@ internal static class Example12_Planning
                     break;
                 }
 
-                // Console.WriteLine($"Step {step} - Results so far:");
-                // Console.WriteLine(results.ToPlan().Result);
+                Console.WriteLine($"Step {step} - Results so far:");
+                Console.WriteLine(results.Result);
             }
             else
             {

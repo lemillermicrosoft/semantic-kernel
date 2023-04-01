@@ -15,6 +15,10 @@ public class SimplePlan : BasePlan
     {
         var context = kernel.CreateNewContext();
         var nextStep = this.PopNextStep();
+
+        // todo -- if nextStep.Steps has children, execute them [first]
+        // Otherwise, execute the function
+
         var functionVariables = this.GetNextStepVariables(variables, nextStep);
 
         var skillName = nextStep.SelectedSkill;
