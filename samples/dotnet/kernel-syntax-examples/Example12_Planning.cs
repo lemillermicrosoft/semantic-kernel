@@ -9,7 +9,6 @@ using Microsoft.SemanticKernel.CoreSkills;
 using Microsoft.SemanticKernel.KernelExtensions;
 using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.Orchestration;
-using Microsoft.SemanticKernel.Orchestration.Extensions;
 using Microsoft.SemanticKernel.Planning;
 using Microsoft.SemanticKernel.Planning.Planners;
 using RepoUtils;
@@ -61,7 +60,7 @@ internal static class Example12_Planning
     private static IKernel InitializeKernel()
     {
         var kernel = new KernelBuilder().WithLogger(ConsoleLogger.Log).Build();
-        kernel.Config.AddAzureOpenAITextCompletion(
+        kernel.Config.AddAzureOpenAITextCompletionService(
             Env.Var("AZURE_OPENAI_DEPLOYMENT_LABEL"),
             Env.Var("AZURE_OPENAI_DEPLOYMENT_NAME"),
             Env.Var("AZURE_OPENAI_ENDPOINT"),

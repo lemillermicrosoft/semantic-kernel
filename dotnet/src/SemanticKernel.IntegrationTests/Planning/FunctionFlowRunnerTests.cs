@@ -2,7 +2,6 @@
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.Configuration;
 using Microsoft.SemanticKernel.Planning;
 using SemanticKernel.IntegrationTests.TestSettings;
 using Xunit;
@@ -33,19 +32,19 @@ public class FunctionFlowRunnerTests
         IKernel kernel = Kernel.Builder
             .Configure(config =>
             {
-                config.AddAzureOpenAITextCompletion(
-                    serviceId: azureOpenAIConfiguration.Label,
+                config.AddAzureOpenAITextCompletionService(
+                    serviceId: azureOpenAIConfiguration.ServiceId,
                     deploymentName: azureOpenAIConfiguration.DeploymentName,
                     endpoint: azureOpenAIConfiguration.Endpoint,
                     apiKey: azureOpenAIConfiguration.ApiKey);
-                config.SetDefaultTextCompletionService(azureOpenAIConfiguration.Label);
+                config.SetDefaultTextCompletionService(azureOpenAIConfiguration.ServiceId);
             })
             .Build();
         kernel.ImportSkill(new EmailSkill(), "email");
         var summarizeSkill = TestHelpers.GetSkill("SummarizeSkill", kernel);
         var writerSkill = TestHelpers.GetSkill("WriterSkill", kernel);
 
-        _ = kernel.Config.AddAzureOpenAITextCompletion("test", "test", "test", "test");
+        _ = kernel.Config.AddAzureOpenAITextCompletionService("test", "test", "test", "test");
         var functionFlowRunner = new FunctionFlowRunner(kernel);
         var planString =
 @"<goal>
@@ -63,9 +62,9 @@ Summarize an input, translate to french, and e-mail to John Doe
 
         // Assert
         Assert.NotNull(plan);
-        Assert.Equal("Summarize an input, translate to french, and e-mail to John Doe", plan.Goal);
-        Assert.Equal(4, plan.Steps.Children.Count);
-        Assert.Collection(plan.Steps.Children,
+        Assert.Equal("Summarize an input, translate to french, and e-mail to John Doe", plan.Root.Description);
+        Assert.Equal(4, plan.Root.Steps.Count);
+        Assert.Collection(plan.Root.Steps,
             step =>
             {
                 Assert.Equal("SummarizeSkill", step.SelectedSkill);

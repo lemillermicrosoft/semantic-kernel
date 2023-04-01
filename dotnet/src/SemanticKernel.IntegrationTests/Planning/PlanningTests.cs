@@ -4,7 +4,6 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.Configuration;
 using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.Planning;
@@ -43,12 +42,12 @@ public sealed class PlanningTests : IDisposable
             .WithLogger(this._logger)
             .Configure(config =>
             {
-                config.AddAzureOpenAITextCompletion(
-                    serviceId: azureOpenAIConfiguration.Label,
+                config.AddAzureOpenAITextCompletionService(
+                    serviceId: azureOpenAIConfiguration.ServiceId,
                     deploymentName: azureOpenAIConfiguration.DeploymentName,
                     endpoint: azureOpenAIConfiguration.Endpoint,
                     apiKey: azureOpenAIConfiguration.ApiKey);
-                config.SetDefaultTextCompletionService(azureOpenAIConfiguration.Label);
+                config.SetDefaultTextCompletionService(azureOpenAIConfiguration.ServiceId);
             })
             .Build();
 
@@ -68,7 +67,7 @@ public sealed class PlanningTests : IDisposable
             // Assert.Empty(actual.LastErrorDescription);
             // Assert.False(actual.ErrorOccurred);
             Assert.Contains(
-                plan.Steps.Children,
+                plan.Root.Steps,
                 step =>
                     step.SelectedFunction.Equals(expectedFunction, StringComparison.OrdinalIgnoreCase) &&
                     step.SelectedSkill.Equals(expectedSkill, StringComparison.OrdinalIgnoreCase));
@@ -94,19 +93,19 @@ public sealed class PlanningTests : IDisposable
             .WithLogger(this._logger)
             .Configure(config =>
             {
-                config.AddAzureOpenAITextCompletion(
-                    serviceId: azureOpenAIConfiguration.Label,
+                config.AddAzureOpenAITextCompletionService(
+                    serviceId: azureOpenAIConfiguration.ServiceId,
                     deploymentName: azureOpenAIConfiguration.DeploymentName,
                     endpoint: azureOpenAIConfiguration.Endpoint,
                     apiKey: azureOpenAIConfiguration.ApiKey);
 
-                config.AddAzureOpenAIEmbeddingGeneration(
-                    serviceId: azureOpenAIEmbeddingsConfiguration.Label,
+                config.AddAzureOpenAITextCompletionService(
+                    serviceId: azureOpenAIEmbeddingsConfiguration.ServiceId,
                     deploymentName: azureOpenAIEmbeddingsConfiguration.DeploymentName,
                     endpoint: azureOpenAIEmbeddingsConfiguration.Endpoint,
                     apiKey: azureOpenAIEmbeddingsConfiguration.ApiKey);
 
-                config.SetDefaultTextCompletionService(azureOpenAIConfiguration.Label);
+                config.SetDefaultTextCompletionService(azureOpenAIConfiguration.ServiceId);
             })
             .WithMemoryStorage(new VolatileMemoryStore())
             .Build();
@@ -134,7 +133,7 @@ public sealed class PlanningTests : IDisposable
             // Assert.Empty(actual.LastErrorDescription);
             // Assert.False(actual.ErrorOccurred);
             Assert.Contains(
-                plan.Steps.Children,
+                plan.Root.Steps,
                 step =>
                     step.SelectedFunction.Equals(expectedFunction, StringComparison.OrdinalIgnoreCase) &&
                     step.SelectedSkill.Equals(expectedSkill, StringComparison.OrdinalIgnoreCase));
@@ -157,12 +156,12 @@ public sealed class PlanningTests : IDisposable
             .WithLogger(this._logger)
             .Configure(config =>
             {
-                config.AddAzureOpenAITextCompletion(
-                    serviceId: azureOpenAIConfiguration.Label,
+                config.AddAzureOpenAITextCompletionService(
+                    serviceId: azureOpenAIConfiguration.ServiceId,
                     deploymentName: azureOpenAIConfiguration.DeploymentName,
                     endpoint: azureOpenAIConfiguration.Endpoint,
                     apiKey: azureOpenAIConfiguration.ApiKey);
-                config.SetDefaultTextCompletionService(azureOpenAIConfiguration.Label);
+                config.SetDefaultTextCompletionService(azureOpenAIConfiguration.ServiceId);
             })
             .Build();
 
@@ -181,7 +180,7 @@ public sealed class PlanningTests : IDisposable
             // Assert
             // Assert.Empty(actual.LastErrorDescription);
             // Assert.False(actual.ErrorOccurred);
-            Assert.Equal(prompt, plan.Goal);
+            Assert.Equal(prompt, plan.Root.Description);
         }
         else
         {
@@ -203,12 +202,12 @@ public sealed class PlanningTests : IDisposable
             .WithLogger(this._logger)
             .Configure(config =>
             {
-                config.AddAzureOpenAITextCompletion(
-                    serviceId: azureOpenAIConfiguration.Label,
+                config.AddAzureOpenAITextCompletionService(
+                    serviceId: azureOpenAIConfiguration.ServiceId,
                     deploymentName: azureOpenAIConfiguration.DeploymentName,
                     endpoint: azureOpenAIConfiguration.Endpoint,
                     apiKey: azureOpenAIConfiguration.ApiKey);
-                config.SetDefaultTextCompletionService(azureOpenAIConfiguration.Label);
+                config.SetDefaultTextCompletionService(azureOpenAIConfiguration.ServiceId);
             })
             .Build();
 
@@ -218,8 +217,8 @@ public sealed class PlanningTests : IDisposable
 
         var cv = new ContextVariables();
         cv.Set("email_address", "$TheEmailFromState");
-        var plan = new SimplePlan() { Goal = goal };
-        plan.Steps.Children.Add(new PlanStep()
+        var plan = new SimplePlan() { Root = new() { Description = goal } };
+        plan.Root.Steps.Add(new PlanStep()
         {
             SelectedFunction = "SendEmailAsync",
             SelectedSkill = "_GLOBAL_FUNCTIONS_",
@@ -236,8 +235,8 @@ public sealed class PlanningTests : IDisposable
         // Assert.Empty(plan.LastErrorDescription);
         // Assert.False(plan.ErrorOccurred);
         var expectedBody = string.IsNullOrEmpty(input) ? goal : input;
-        Assert.Equal(0, plan.Steps.Children.Count);
-        Assert.Equal(goal, plan.Goal);
+        Assert.Equal(0, plan.Root.Steps.Count);
+        Assert.Equal(goal, plan.Root.Description);
         Assert.Equal($"Sent email to: {email}. Body: {expectedBody}", plan.State.ToString()); // TODO Make a Result and other properties
     }
 

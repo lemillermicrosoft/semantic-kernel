@@ -4,12 +4,23 @@ using System;
 using System.Threading.Tasks;
 using KernelSyntaxExamples;
 
+using Microsoft.SemanticKernel;
 #pragma warning disable CS1591
 public static class Program
 {
     // ReSharper disable once InconsistentNaming
     public static async Task Main()
     {
+        var kernel = Kernel.Builder.Build();
+        // For Azure Open AI details please see
+        // https://learn.microsoft.com/azure/cognitive-services/openai/quickstart?pivots=rest-api
+        kernel.Config.AddAzureOpenAITextCompletionService(
+            "davinci-azure",                     // Alias used by the kernel
+            "text-davinci-003",                  // Azure OpenAI *Deployment ID*
+            "https://contoso.openai.azure.com/", // Azure OpenAI *Endpoint*
+            "...your Azure OpenAI Key..."        // Azure OpenAI *Key*
+        );
+
         Example01_NativeFunctions.Run();
         Console.WriteLine("== DONE ==");
 

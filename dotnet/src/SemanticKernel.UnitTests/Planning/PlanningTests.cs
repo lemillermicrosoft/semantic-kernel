@@ -131,25 +131,25 @@ public sealed class PlanningTests
             // Assert.Empty(actual.LastErrorDescription);
             // Assert.False(actual.ErrorOccurred);
             Assert.Contains(
-                plan.Steps.Children,
+                plan.Root.Steps,
                 step =>
                     expectedFunctions.Contains(step.SelectedFunction) &&
                     expectedSkills.Contains(step.SelectedSkill));
             foreach (var expectedFunction in expectedFunctions)
             {
                 Assert.Contains(
-                    plan.Steps.Children,
+                    plan.Root.Steps,
                     step => step.SelectedFunction == expectedFunction);
             }
 
             foreach (var expectedSkill in expectedSkills)
             {
                 Assert.Contains(
-                    plan.Steps.Children,
+                    plan.Root.Steps,
                     step => step.SelectedSkill == expectedSkill);
             }
 
-            Assert.Equal(goal, plan.Goal);
+            Assert.Equal(goal, plan.Root.Description);
         }
         else
         {
@@ -160,7 +160,7 @@ public sealed class PlanningTests
         //     var plan = context.Variables.ToPlan();
         // Assert.NotNull(plan);
         // Assert.NotNull(plan.Id);
-        // Assert.Equal(GoalText, plan.Goal);
+        // Assert.Equal(GoalText, plan.Root.Description);
         // Assert.StartsWith("<goal>\nSolve the equation x^2 = 2.\n</goal>", plan.PlanString, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -201,7 +201,7 @@ public sealed class PlanningTests
     //         // Assert.Empty(actual.LastErrorDescription);
     //         // Assert.False(actual.ErrorOccurred);
     //         Assert.Contains(
-    //             plan.Steps.Children,
+    //             plan.Root.Steps,
     //             step =>
     //                 step.SelectedFunction.Equals(expectedFunction, StringComparison.OrdinalIgnoreCase) &&
     //                 step.SelectedSkill.Equals(expectedSkill, StringComparison.OrdinalIgnoreCase));
@@ -258,7 +258,7 @@ public sealed class PlanningTests
 
     //     var emailSkill = target.ImportSkill(new EmailSkill());
 
-    //     var planner = new Planner(target, Planner.Mode.GoalRelevant);
+    //     var planner = new Planner(target, Planner.Mode.Root.DescriptionRelevant);
 
     //     // Act
     //     if (await planner.CreatePlanAsync(prompt) is SimplePlan plan)
@@ -267,7 +267,7 @@ public sealed class PlanningTests
     //         // Assert.Empty(actual.LastErrorDescription);
     //         // Assert.False(actual.ErrorOccurred);
     //         Assert.Contains(
-    //             plan.Steps.Children,
+    //             plan.Root.Steps,
     //             step =>
     //                 step.SelectedFunction.Equals(expectedFunction, StringComparison.OrdinalIgnoreCase) &&
     //                 step.SelectedSkill.Equals(expectedSkill, StringComparison.OrdinalIgnoreCase));
@@ -314,7 +314,7 @@ public sealed class PlanningTests
     //         // Assert
     //         // Assert.Empty(actual.LastErrorDescription);
     //         // Assert.False(actual.ErrorOccurred);
-    //         Assert.Equal(prompt, plan.Goal);
+    //         Assert.Equal(prompt, plan.Root.Description);
     //     }
     //     else
     //     {
@@ -352,7 +352,7 @@ public sealed class PlanningTests
     //     var cv = new ContextVariables();
     //     cv.Set("email_address", "$TheEmailFromState");
     //     var plan = new SimplePlan() { Goal = goal };
-    //     plan.Steps.Children.Add(new PlanStep()
+    //     plan.Root.Steps.Add(new PlanStep()
     //     {
     //         SelectedFunction = "SendEmailAsync",
     //         SelectedSkill = "_GLOBAL_FUNCTIONS_",
@@ -369,8 +369,8 @@ public sealed class PlanningTests
     //     // Assert.Empty(plan.LastErrorDescription);
     //     // Assert.False(plan.ErrorOccurred);
     //     var expectedBody = string.IsNullOrEmpty(input) ? goal : input;
-    //     Assert.Equal(0, plan.Steps.Children.Count);
-    //     Assert.Equal(goal, plan.Goal);
+    //     Assert.Equal(0, plan.Root.Steps.Count);
+    //     Assert.Equal(goal, plan.Root.Description);
     //     Assert.Equal($"Sent email to: {email}. Body: {expectedBody}", plan.State.ToString()); // TODO Make a Result and other properties
     // }
 
