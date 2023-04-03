@@ -20,20 +20,25 @@ public class SimplePlanner : IPlanner
         this._context = kernel.CreateNewContext();
     }
 
-    public Task<IPlan> CreatePlanAsync(string goal)
+    public Task<Plan> CreatePlanAsync(string goal)
     {
         this._context.Variables.Update(goal);
 
         var plan = new BasePlan()
         {
-            Root = new PlanStep()
-            {
-                Description = goal
-            },
+            // Root = new PlanStep()
+            // {
+            //     Description = goal
+            // },
         };
 
-        return Task.FromResult<IPlan>(plan);
+        return Task.FromResult<Plan>(plan);
     }
+
+    // Task<Plan> IPlanner.CreatePlanAsync(string goal)
+    // {
+    //     throw new System.NotImplementedException();
+    // }
 
     protected PlannerSkillConfig Config { get; }
 

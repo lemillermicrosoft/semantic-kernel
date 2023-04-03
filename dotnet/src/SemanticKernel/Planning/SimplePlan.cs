@@ -11,7 +11,7 @@ namespace Microsoft.SemanticKernel.Planning;
 
 public class SimplePlan : BasePlan
 {
-    public new async Task<IPlan> RunNextStepAsync(IKernel kernel, ContextVariables variables, CancellationToken cancellationToken = default)
+    public new async Task<Plan> RunNextStepAsync(IKernel kernel, ContextVariables variables, CancellationToken cancellationToken = default)
     {
         var context = kernel.CreateNewContext();
         var nextStep = this.PopNextStep();
@@ -21,8 +21,8 @@ public class SimplePlan : BasePlan
 
         var functionVariables = this.GetNextStepVariables(variables, nextStep);
 
-        var skillName = nextStep.SelectedSkill;
-        var functionName = nextStep.SelectedFunction;
+        var skillName = nextStep.SkillName;
+        var functionName = nextStep.Name;
 
         if (context.IsFunctionRegistered(skillName, functionName, out var skillFunction))
         {
@@ -73,12 +73,12 @@ public class SimplePlan : BasePlan
         }
     }
 
-    private ContextVariables GetNextStepVariables(ContextVariables variables, PlanStep step)
+    private ContextVariables GetNextStepVariables(ContextVariables variables, Plan step)
     {
         // Initialize function-scoped ContextVariables
         // Default input should be the Input from the SKContext, or the Input from the Plan.State, or the Plan.Goal
         var planInput = string.IsNullOrEmpty(variables.Input) ? this.State.Input : variables.Input;
-        var functionInput = string.IsNullOrEmpty(planInput) ? this.Root.Description : planInput;
+        var functionInput = string.IsNullOrEmpty(planInput) ? this.Steps.First().Description : planInput;
         var functionVariables = new ContextVariables(functionInput);
 
         // NameParameters are the parameters that are passed to the function
@@ -135,9 +135,9 @@ public class SimplePlan : BasePlan
         return functionVariables;
     }
 
-    private PlanStep PopNextStep()
+    private Plan PopNextStep()
     {
-        var step = this.Root;
+        var step = this.Steps.First();
         var parent = step;
         while (step.Steps.Count > 0)
         {

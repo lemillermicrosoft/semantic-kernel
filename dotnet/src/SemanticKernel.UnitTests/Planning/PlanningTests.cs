@@ -130,26 +130,40 @@ public sealed class PlanningTests
             // Assert
             // Assert.Empty(actual.LastErrorDescription);
             // Assert.False(actual.ErrorOccurred);
+            // Assert.Contains(
+            //     plan.Root.Steps,
+            //     step =>
+            //         expectedFunctions.Contains(step.SelectedFunction) &&
+            //         expectedSkills.Contains(step.SelectedSkill));
+
             Assert.Contains(
-                plan.Root.Steps,
+                plan.Steps,
                 step =>
-                    expectedFunctions.Contains(step.SelectedFunction) &&
-                    expectedSkills.Contains(step.SelectedSkill));
+                    expectedFunctions.Contains(step.Name) &&
+                    expectedSkills.Contains(step.SkillName));
+
             foreach (var expectedFunction in expectedFunctions)
             {
+                // Assert.Contains(
+                //     plan.Root.Steps,
+                //     step => step.SelectedFunction == expectedFunction);
                 Assert.Contains(
-                    plan.Root.Steps,
-                    step => step.SelectedFunction == expectedFunction);
+                    plan.Steps,
+                    step => step.Name == expectedFunction);
             }
 
             foreach (var expectedSkill in expectedSkills)
             {
+                // Assert.Contains(
+                //     plan.Root.Steps,
+                //     step => step.SelectedSkill == expectedSkill);
                 Assert.Contains(
-                    plan.Root.Steps,
-                    step => step.SelectedSkill == expectedSkill);
+                    plan.Steps,
+                    step => step.SkillName == expectedSkill);
             }
 
-            Assert.Equal(goal, plan.Root.Description);
+            // Assert.Equal(goal, plan.Root.Description);
+            Assert.Equal(goal, plan.Description);
         }
         else
         {

@@ -24,7 +24,7 @@ public class Planner
         this._planner = this.GetPlannerForMode(this._mode);
     }
 
-    public Task<IPlan> CreatePlanAsync(string goal)
+    public Task<Plan> CreatePlanAsync(string goal)
     {
         return this._planner.CreatePlanAsync(goal);
     }
@@ -49,5 +49,5 @@ public class Planner
 
 public interface IPlanner
 {
-    Task<IPlan> CreatePlanAsync(string goal);
+    Task<Plan> CreatePlanAsync(string goal);
 }

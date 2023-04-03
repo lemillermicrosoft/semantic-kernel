@@ -62,7 +62,8 @@ internal static class FunctionFlowParser
 
             var plan = new SimplePlan
             {
-                Root = new() { Description = goalTxt },
+                // Root = new() { Description = goalTxt },
+                Description = goalTxt,
                 // State = new() // todo eventually this will need to parse the String
             };
 
@@ -77,10 +78,15 @@ internal static class FunctionFlowParser
                     {
                         if (o2.Value != null)
                         {
-                            plan.Root.Steps.Add(new PlanStep()
-                            {
-                                Description = o2.Value.Trim()
-                            });
+                            // plan.Root.Steps.Add(new PlanStep()
+                            // {
+                            //     Description = o2.Value.Trim()
+                            // });
+                            plan.Steps.Add(
+                                new SimplePlan()
+                                {
+                                    Description = o2.Value.Trim()
+                                });
                         }
 
                         continue;
@@ -88,7 +94,8 @@ internal static class FunctionFlowParser
 
                     if (o2.Name.StartsWith(FunctionTag, StringComparison.InvariantCultureIgnoreCase))
                     {
-                        var planStep = new PlanStep();
+                        // var planStep = new PlanStep();
+                        var planStep = new SimplePlan();
 
                         var skillFunctionName = o2.Name.Split(FunctionTag)?[1] ?? string.Empty;
                         GetSkillFunctionNames(skillFunctionName, out var skillName, out var functionName);
@@ -99,8 +106,8 @@ internal static class FunctionFlowParser
                             Verify.NotNull(functionName, nameof(functionName));
                             Verify.NotNull(skillFunction, nameof(skillFunction));
 
-                            planStep.SelectedFunction = functionName;
-                            planStep.SelectedSkill = skillName;
+                            planStep.Name = functionName;
+                            planStep.SkillName = skillName;
 
                             // planStep.Description How different than manifest?
                             // planStep.Manifests What else is needed here?
@@ -171,12 +178,17 @@ internal static class FunctionFlowParser
                             planStep.OutputKey = variableTargetName;
                             planStep.ResultKey = appendToResultName;
                             planStep.NamedParameters = functionVariables;
-                            plan.Root.Steps.Add(planStep);
+                            // plan.Root.Steps.Add(planStep);
+                            plan.Steps.Add(planStep);
                         }
                         else
                         {
                             context.Log.LogTrace("{0}: appending function node {1}", parentNodeName, skillFunctionName);
-                            plan.Root.Steps.Add(new PlanStep()
+                            // plan.Root.Steps.Add(new PlanStep()
+                            // {
+                            //     Description = o2.InnerText // TODO DEBUG THIS
+                            // });
+                            plan.Steps.Add(new SimplePlan()
                             {
                                 Description = o2.InnerText // TODO DEBUG THIS
                             });
@@ -185,7 +197,11 @@ internal static class FunctionFlowParser
                         continue;
                     }
 
-                    plan.Root.Steps.Add(new PlanStep()
+                    // plan.Root.Steps.Add(new PlanStep()
+                    // {
+                    //     Description = o2.InnerText // TODO DEBUG THIS
+                    // });
+                    plan.Steps.Add(new SimplePlan()
                     {
                         Description = o2.InnerText // TODO DEBUG THIS
                     });

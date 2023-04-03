@@ -2,7 +2,6 @@
 
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel.CoreSkills;
-using Microsoft.SemanticKernel.KernelExtensions;
 using Microsoft.SemanticKernel.Orchestration;
 using static Microsoft.SemanticKernel.CoreSkills.PlannerSkill;
 
@@ -30,7 +29,7 @@ public class FunctionFlowPlanner : IPlanner
         this._context = kernel.CreateNewContext();
     }
 
-    public async Task<IPlan> CreatePlanAsync(string goal)
+    public async Task<Plan> CreatePlanAsync(string goal)
     {
         string relevantFunctionsManual = await this._context.GetFunctionsManualAsync(goal, this.Config);
         this._context.Variables.Set("available_functions", relevantFunctionsManual);
