@@ -30,6 +30,7 @@ public class SimplePlanner : IPlanner
             // {
             //     Description = goal
             // },
+            Description = goal,
         };
 
         return Task.FromResult<Plan>(plan);

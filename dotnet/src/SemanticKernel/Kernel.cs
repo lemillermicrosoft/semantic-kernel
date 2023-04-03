@@ -15,6 +15,7 @@ using Microsoft.SemanticKernel.AI.TextCompletion;
 using Microsoft.SemanticKernel.Diagnostics;
 using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.Orchestration;
+using Microsoft.SemanticKernel.Planning;
 using Microsoft.SemanticKernel.SemanticFunctions;
 using Microsoft.SemanticKernel.SkillDefinition;
 using Microsoft.SemanticKernel.TemplateEngine;
@@ -143,23 +144,33 @@ public sealed class Kernel : IKernel, IDisposable
 
     /// <inheritdoc/>
     public Task<SKContext> RunAsync(params ISKFunction[] pipeline)
-        => this.RunAsync(new ContextVariables(), pipeline);
+    {
+        return this.RunAsync(new ContextVariables(), pipeline);
+    }
 
     /// <inheritdoc/>
     public Task<SKContext> RunAsync(string input, params ISKFunction[] pipeline)
-        => this.RunAsync(new ContextVariables(input), pipeline);
+    {
+        return this.RunAsync(new ContextVariables(input), pipeline);
+    }
 
     /// <inheritdoc/>
     public Task<SKContext> RunAsync(ContextVariables variables, params ISKFunction[] pipeline)
-        => this.RunAsync(variables, CancellationToken.None, pipeline);
+    {
+        return this.RunAsync(variables, CancellationToken.None, pipeline);
+    }
 
     /// <inheritdoc/>
     public Task<SKContext> RunAsync(CancellationToken cancellationToken, params ISKFunction[] pipeline)
-        => this.RunAsync(new ContextVariables(), cancellationToken, pipeline);
+    {
+        return this.RunAsync(new ContextVariables(), cancellationToken, pipeline);
+    }
 
     /// <inheritdoc/>
     public Task<SKContext> RunAsync(string input, CancellationToken cancellationToken, params ISKFunction[] pipeline)
-        => this.RunAsync(new ContextVariables(input), cancellationToken, pipeline);
+    {
+        return this.RunAsync(new ContextVariables(input), cancellationToken, pipeline);
+    }
 
     /// <inheritdoc/>
     public async Task<SKContext> RunAsync(ContextVariables variables, CancellationToken cancellationToken, params ISKFunction[] pipeline)
@@ -186,6 +197,16 @@ public sealed class Kernel : IKernel, IDisposable
 
             try
             {
+                if (f is Plan p)
+                {
+                    this._log.LogTrace("Executing plan {0}", p.Name);
+
+                    // TODO What does this mean/do?
+                    var updatedPlan = await p.RunNextStepAsync(this, context.Variables, cancellationToken);
+
+                    continue;
+                }
+
                 cancellationToken.ThrowIfCancellationRequested();
                 context = await f.InvokeAsync(context);
 
@@ -211,12 +232,9 @@ public sealed class Kernel : IKernel, IDisposable
     /// <inheritdoc/>
     public ISKFunction Func(string skillName, string functionName)
     {
-        if (this.Skills.HasNativeFunction(skillName, functionName))
-        {
-            return this.Skills.GetNativeFunction(skillName, functionName);
-        }
-
-        return this.Skills.GetSemanticFunction(skillName, functionName);
+        return this.Skills.HasNativeFunction(skillName, functionName)
+            ? this.Skills.GetNativeFunction(skillName, functionName)
+            : this.Skills.GetSemanticFunction(skillName, functionName);
     }
 
     /// <inheritdoc/>
@@ -353,14 +371,11 @@ public sealed class Kernel : IKernel, IDisposable
 
         // Fail if two functions have the same name
         var uniquenessCheck = new HashSet<string>(from x in result select x.Name, StringComparer.OrdinalIgnoreCase);
-        if (result.Count > uniquenessCheck.Count)
-        {
-            throw new KernelException(
+        return result.Count > uniquenessCheck.Count
+            ? throw new KernelException(
                 KernelException.ErrorCodes.FunctionOverloadNotSupported,
-                "Function overloads are not supported, please differentiate function names");
-        }
-
-        return result;
+                "Function overloads are not supported, please differentiate function names")
+            : (IList<ISKFunction>)result;
     }
 
     #endregion

@@ -5,13 +5,87 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.SemanticKernel.AI.TextCompletion;
+using Microsoft.SemanticKernel.Diagnostics;
 using Microsoft.SemanticKernel.Orchestration;
 
 namespace Microsoft.SemanticKernel.Planning;
 
 public class SimplePlan : BasePlan
 {
-    public new async Task<Plan> RunNextStepAsync(IKernel kernel, ContextVariables variables, CancellationToken cancellationToken = default)
+
+    /// <inheritdoc/>
+    public override async Task<SKContext> InvokeAsync(SKContext? context = null, CompleteRequestSettings? settings = null, ILogger? log = null, CancellationToken? cancel = null)
+    {
+        context ??= new SKContext(new ContextVariables(), null!, null, log ?? NullLogger.Instance, cancel ?? CancellationToken.None);
+
+        var nextStep = this.PopNextStep();
+
+
+        // todo -- if nextStep.Steps has children, execute them [first]
+        // Otherwise, execute the function
+
+        var functionVariables = this.GetNextStepVariables(context.Variables, nextStep);
+
+        var skillName = nextStep.SkillName;
+        var functionName = nextStep.Name;
+
+        if (context.IsFunctionRegistered(skillName, functionName, out var skillFunction))
+        {
+            Verify.NotNull(skillFunction, nameof(skillFunction));
+            // If a function is registered, we will execute it and remove it from the list
+            // The functionVariables will be passed to the functions.
+            var keysToIgnore = functionVariables.Select(x => x.Key).ToList();
+            // var result = await kernel.RunAsync(functionVariables, cancellationToken, skillFunction!);
+            var functionContext = new SKContext(functionVariables, context.Memory, context.Skills, context.Log, context.CancellationToken);
+            var result = await skillFunction.InvokeAsync(functionContext, settings, log, cancel);
+
+            if (result.ErrorOccurred)
+            {
+                throw new InvalidOperationException($"Function {skillName}.{functionName} failed: {result.LastErrorDescription}", result.LastException);
+            }
+
+            foreach (var (key, _) in functionVariables)
+            {
+                if (!keysToIgnore.Contains(key, StringComparer.InvariantCultureIgnoreCase) && functionVariables.Get(key, out var value))
+                {
+                    this.State.Set(key, value);
+                }
+            }
+
+            if (!string.IsNullOrEmpty(nextStep.OutputKey))
+            {
+                _ = this.State.Update(result.Result.Trim());
+            }
+            else
+            {
+                this.State.Set(nextStep.OutputKey, result.Result.Trim());
+            }
+
+            _ = this.State.Update(result.Result.Trim());
+            if (!string.IsNullOrEmpty(nextStep.OutputKey))
+            {
+                this.State.Set(nextStep.OutputKey, result.Result.Trim());
+            }
+
+            if (!string.IsNullOrEmpty(nextStep.ResultKey))
+            {
+                _ = this.State.Get(SkillPlan.ResultKey, out var resultsSoFar);
+                this.State.Set(SkillPlan.ResultKey,
+                    string.Join(Environment.NewLine + Environment.NewLine, resultsSoFar, result.Result.Trim()));
+            }
+
+            return result;
+        }
+        else
+        {
+            throw new InvalidOperationException($"Function {skillName}.{functionName} is not registered");
+        }
+    }
+
+    public override async Task<Plan> RunNextStepAsync(IKernel kernel, ContextVariables variables, CancellationToken cancellationToken = default)
     {
         var context = kernel.CreateNewContext();
         var nextStep = this.PopNextStep();
@@ -44,7 +118,7 @@ public class SimplePlan : BasePlan
                 }
             }
 
-            if (!string.IsNullOrEmpty(nextStep.OutputKey))
+            if (string.IsNullOrEmpty(nextStep.OutputKey))
             {
                 _ = this.State.Update(result.Result.Trim());
             }
@@ -137,15 +211,22 @@ public class SimplePlan : BasePlan
 
     private Plan PopNextStep()
     {
-        var step = this.Steps.First();
-        var parent = step;
-        while (step.Steps.Count > 0)
+        // var step = this.Steps.First();
+        // var parent = step;
+        // while (step.Steps.Count > 0)
+        // {
+        //     step = step.Steps[0];
+        //     parent.Steps.RemoveAt(0); // TODO Does this do what I want? has this.Steps changed?
+        // }
+
+        // If we have a children steps, pop from there. Do not worry about nested for now.
+        if (this.Steps.Count > 0)
         {
-            step = step.Steps[0];
+            var step = this.Steps[0];
+            this.Steps.RemoveAt(0);
+            return step;
         }
 
-        parent.Steps.RemoveAt(0); // TODO Does this do what I want? has this.Steps changed?
-
-        return step;
+        return this;
     }
 }
