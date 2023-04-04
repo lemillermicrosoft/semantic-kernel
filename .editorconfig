@@ -272,7 +272,7 @@ dotnet_diagnostic.IDE0110.severity = none # Remove unnecessary discards
 
 # Disable expression-level style rules by default
 dotnet_diagnostic.IDE0032.severity = none # Use auto property
-
+dotnet_diagnostic.IDE0160.severity = none
 
 
 

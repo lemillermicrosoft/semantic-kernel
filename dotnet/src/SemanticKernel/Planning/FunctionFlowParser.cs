@@ -40,7 +40,7 @@ internal static class FunctionFlowParser
     /// </summary>
     internal const string AppendToResultTag = "appendToResult";
 
-    internal static SimplePlan ToPlanFromXml(this string xmlString, SKContext context)
+    internal static SequentialPlan ToPlanFromXml(this string xmlString, SKContext context)
     {
         try
         {
@@ -60,7 +60,7 @@ internal static class FunctionFlowParser
             // Get the Solution
             XmlNodeList solution = xmlDoc.GetElementsByTagName(SolutionTag);
 
-            var plan = new SimplePlan
+            var plan = new SequentialPlan
             {
                 // Root = new() { Description = goalTxt },
                 Description = goalTxt,
@@ -83,7 +83,7 @@ internal static class FunctionFlowParser
                             //     Description = o2.Value.Trim()
                             // });
                             plan.Steps.Add(
-                                new SimplePlan()
+                                new SequentialPlan()
                                 {
                                     Description = o2.Value.Trim()
                                 });
@@ -95,7 +95,7 @@ internal static class FunctionFlowParser
                     if (o2.Name.StartsWith(FunctionTag, StringComparison.InvariantCultureIgnoreCase))
                     {
                         // var planStep = new PlanStep();
-                        var planStep = new SimplePlan();
+                        var planStep = new SequentialPlan();
 
                         var skillFunctionName = o2.Name.Split(FunctionTag)?[1] ?? string.Empty;
                         GetSkillFunctionNames(skillFunctionName, out var skillName, out var functionName);
@@ -106,8 +106,16 @@ internal static class FunctionFlowParser
                             Verify.NotNull(functionName, nameof(functionName));
                             Verify.NotNull(skillFunction, nameof(skillFunction));
 
-                            planStep.Name = functionName;
-                            planStep.SkillName = skillName;
+                            // planStep.Name = functionName;
+                            // planStep.SkillName = skillName;
+
+                            // TODO This cast doesn't actually work. We need to figure out how to get the skillFunction
+                            // to be a SequentialPlan instead of an ISKFunction.
+                            //     System.InvalidCastException : Unable to cast object of type 'Microsoft.SemanticKernel.Orchestration.SKFunction' to type 'Microsoft.SemanticKernel.Planning.SequentialPlan'.
+                            // planStep = (ISKFunction)skillFunction as SequentialPlan ?? throw new InvalidCastException("WHOOPS Unable to cast object of type 'Microsoft.SemanticKernel.Orchestration.SKFunction' to type 'Microsoft.SemanticKernel.Planning.SequentialPlan'.");
+                            planStep = SequentialPlan.FromISKFunction(skillFunction) ?? throw new InvalidCastException("WHOOPS Unable to cast object of type 'Microsoft.SemanticKernel.Orchestration.SKFunction' to type 'Microsoft.SemanticKernel.Planning.SequentialPlan'.");
+
+                            // skillFunction which is ISKFunction to SequentialPlan (which extends Plan which implements ISKFunction)
 
                             // planStep.Description How different than manifest?
                             // planStep.Manifests What else is needed here?
@@ -175,6 +183,7 @@ internal static class FunctionFlowParser
                                 }
                             }
 
+                            // Plan properties
                             planStep.OutputKey = variableTargetName;
                             planStep.ResultKey = appendToResultName;
                             planStep.NamedParameters = functionVariables;
@@ -188,7 +197,7 @@ internal static class FunctionFlowParser
                             // {
                             //     Description = o2.InnerText // TODO DEBUG THIS
                             // });
-                            plan.Steps.Add(new SimplePlan()
+                            plan.Steps.Add(new SequentialPlan()
                             {
                                 Description = o2.InnerText // TODO DEBUG THIS
                             });
@@ -201,7 +210,7 @@ internal static class FunctionFlowParser
                     // {
                     //     Description = o2.InnerText // TODO DEBUG THIS
                     // });
-                    plan.Steps.Add(new SimplePlan()
+                    plan.Steps.Add(new SequentialPlan()
                     {
                         Description = o2.InnerText // TODO DEBUG THIS
                     });

@@ -63,7 +63,7 @@ public class PlannerSkill
         public const string IncludedFunctions = "includedFunctions";
     }
 
-    public sealed class PlannerSkillConfig
+    internal sealed class PlannerSkillConfig
     {
         // 0.78 is a good value for our samples and demonstrations.
         // Depending on the embeddings engine used, the user ask,

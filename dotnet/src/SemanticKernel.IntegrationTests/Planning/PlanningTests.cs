@@ -63,7 +63,7 @@ public sealed class PlanningTests : IDisposable
         var planner = new Planner(target);
 
         // Act
-        if (await planner.CreatePlanAsync(prompt) is SimplePlan plan)
+        if (await planner.CreatePlanAsync(prompt) is SequentialPlan plan)
         {
             // Assert
             // Assert.Empty(actual.LastErrorDescription);
@@ -133,7 +133,7 @@ public sealed class PlanningTests : IDisposable
         var planner = new Planner(target, Planner.Mode.GoalRelevant);
 
         // Act
-        if (await planner.CreatePlanAsync(prompt) is SimplePlan plan)
+        if (await planner.CreatePlanAsync(prompt) is SequentialPlan plan)
         {
             // Assert
             // Assert.Empty(actual.LastErrorDescription);
@@ -228,15 +228,15 @@ public sealed class PlanningTests : IDisposable
 
         var cv = new ContextVariables();
         cv.Set("email_address", "$TheEmailFromState");
-        // var plan = new SimplePlan() { Root = new() { Description = goal } };
-        var plan = new SimplePlan() { Description = goal };
+        // var plan = new SequentialPlan() { Root = new() { Description = goal } };
+        var plan = new SequentialPlan() { Description = goal };
         // plan.Root.Steps.Add(new PlanStep()
         // {
         //     SelectedFunction = "SendEmailAsync",
         //     SelectedSkill = "_GLOBAL_FUNCTIONS_",
         //     NamedParameters = cv
         // });
-        plan.Steps.Add(new SimplePlan()
+        plan.Steps.Add(new SequentialPlan()
         {
             Name = "SendEmailAsync",
             SkillName = "_GLOBAL_FUNCTIONS_",

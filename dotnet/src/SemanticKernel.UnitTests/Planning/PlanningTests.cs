@@ -48,9 +48,12 @@ public sealed class PlanningTests
         // };
         var summarizeFunctionView = new FunctionView("Summarize", "SummarizeSkill", "Summarize something", new List<ParameterView>(), true, true);
         functionsView.AddFunction(summarizeFunctionView);
-        functionsView.AddFunction(new FunctionView("Translate", "WriterSkill", "Translate something", new List<ParameterView>(), true, true));
-        functionsView.AddFunction(new FunctionView("GetEmailAddress", "EmailSkill", "Get an e-mail address", new List<ParameterView>(), true, true));
-        functionsView.AddFunction(new FunctionView("SendEmail", "EmailSkill", "Send an e-mail", new List<ParameterView>(), true, true));
+        var translateFunctionView = new FunctionView("Translate", "WriterSkill", "Translate something", new List<ParameterView>(), true, true);
+        functionsView.AddFunction(translateFunctionView);
+        var getEmailAddressFunctionView = new FunctionView("GetEmailAddress", "email", "Get an e-mail address", new List<ParameterView>(), true, true);
+        functionsView.AddFunction(getEmailAddressFunctionView);
+        var sendEmailFunctionView = new FunctionView("SendEmail", "email", "Send an e-mail", new List<ParameterView>(), true, true);
+        functionsView.AddFunction(sendEmailFunctionView);
 
 
         // ****************************************************
@@ -60,11 +63,34 @@ public sealed class PlanningTests
 
         // bool HasNativeFunction(string skillName, string functionName);
         // ISKFunction GetNativeFunction(string skillName, string functionName);
-        var mockFunction = new Mock<ISKFunction>();
-        mockFunction.Setup(x => x.Describe()).Returns(summarizeFunctionView);
         skills.Setup(x => x.HasNativeFunction(It.IsAny<string>(), It.IsAny<string>())).Returns(true);
-        skills.Setup(x => x.GetNativeFunction(It.IsAny<string>(), It.IsAny<string>())).Returns(mockFunction.Object);
         skills.Setup(x => x.GetFunctionsView(It.IsAny<bool>(), It.IsAny<bool>())).Returns(functionsView);
+
+
+        var summarizeMockFunction = new Mock<ISKFunction>();
+        summarizeMockFunction.Setup(x => x.Describe()).Returns(summarizeFunctionView);
+        summarizeMockFunction.Setup(x => x.Name).Returns("Summarize");
+        summarizeMockFunction.Setup(x => x.SkillName).Returns("SummarizeSkill");
+
+        var translateMockFunction = new Mock<ISKFunction>();
+        translateMockFunction.Setup(x => x.Describe()).Returns(translateFunctionView);
+        translateMockFunction.Setup(x => x.Name).Returns("Translate");
+        translateMockFunction.Setup(x => x.SkillName).Returns("WriterSkill");
+
+        var getEmailAddressMockFunction = new Mock<ISKFunction>();
+        getEmailAddressMockFunction.Setup(x => x.Describe()).Returns(getEmailAddressFunctionView);
+        getEmailAddressMockFunction.Setup(x => x.Name).Returns("GetEmailAddress");
+        getEmailAddressMockFunction.Setup(x => x.SkillName).Returns("email");
+
+        var sendEmailMockFunction = new Mock<ISKFunction>();
+        sendEmailMockFunction.Setup(x => x.Describe()).Returns(sendEmailFunctionView);
+        sendEmailMockFunction.Setup(x => x.Name).Returns("SendEmail");
+        sendEmailMockFunction.Setup(x => x.SkillName).Returns("email");
+
+        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == "SummarizeSkill"), It.Is<string>(s => s == "Summarize"))).Returns(summarizeMockFunction.Object);
+        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == "WriterSkill"), It.Is<string>(s => s == "Translate"))).Returns(translateMockFunction.Object);
+        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == "email"), It.Is<string>(s => s == "GetEmailAddress"))).Returns(getEmailAddressMockFunction.Object);
+        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == "email"), It.Is<string>(s => s == "SendEmail"))).Returns(sendEmailMockFunction.Object);
 
         var mockFunctionFlowFunction = new Mock<ISKFunction>();
         var summarizeFunction = new Mock<ISKFunction>();
@@ -90,11 +116,11 @@ public sealed class PlanningTests
 <plan>
     <function.SummarizeSkill.Summarize/>
     <function.WriterSkill.Translate language=""French"" setContextVariable=""TRANSLATED_SUMMARY""/>
-    <function.email.GetEmailAddressAsync input=""John Doe"" setContextVariable=""EMAIL_ADDRESS""/>
-    <function.email.SendEmailAsync input=""$TRANSLATED_SUMMARY"" email_address=""$EMAIL_ADDRESS""/>
+    <function.email.GetEmailAddress input=""John Doe"" setContextVariable=""EMAIL_ADDRESS""/>
+    <function.email.SendEmail input=""$TRANSLATED_SUMMARY"" email_address=""$EMAIL_ADDRESS""/>
 </plan>";
 
-        var expectedFunctions = new List<string>() { "SendEmailAsync", "GetEmailAddressAsync", "Translate", "Summarize" };
+        var expectedFunctions = new List<string>() { "SendEmail", "GetEmailAddress", "Translate", "Summarize" };
         var expectedSkills = new List<string>() { "email", "WriterSkill", "WriterSkill", "SummarizeSkill" };
 
         returnContext.Variables.Update(planString);
@@ -124,8 +150,8 @@ public sealed class PlanningTests
 
         // Act
         // var context = await kernel.RunAsync(GoalText, planner["CreatePlan"]);
-
-        if (await planner.CreatePlanAsync(goal) is SimplePlan plan)
+        var plan = await planner.CreatePlanAsync(goal);
+        if (plan is SequentialPlan sequentialPlan)
         {
             // Assert
             // Assert.Empty(actual.LastErrorDescription);
@@ -137,7 +163,7 @@ public sealed class PlanningTests
             //         expectedSkills.Contains(step.SelectedSkill));
 
             Assert.Contains(
-                plan.Steps,
+                sequentialPlan.Steps,
                 step =>
                     expectedFunctions.Contains(step.Name) &&
                     expectedSkills.Contains(step.SkillName));
@@ -148,7 +174,7 @@ public sealed class PlanningTests
                 //     plan.Root.Steps,
                 //     step => step.SelectedFunction == expectedFunction);
                 Assert.Contains(
-                    plan.Steps,
+                    sequentialPlan.Steps,
                     step => step.Name == expectedFunction);
             }
 
@@ -158,12 +184,12 @@ public sealed class PlanningTests
                 //     plan.Root.Steps,
                 //     step => step.SelectedSkill == expectedSkill);
                 Assert.Contains(
-                    plan.Steps,
+                    sequentialPlan.Steps,
                     step => step.SkillName == expectedSkill);
             }
 
             // Assert.Equal(goal, plan.Root.Description);
-            Assert.Equal(goal, plan.Description);
+            Assert.Equal(goal, sequentialPlan.Description);
         }
         else
         {
@@ -209,7 +235,7 @@ public sealed class PlanningTests
     //     var planner = new Planner(target);
 
     //     // Act
-    //     if (await planner.CreatePlanAsync(prompt) is SimplePlan plan)
+    //     if (await planner.CreatePlanAsync(prompt) is SequentialPlan plan)
     //     {
     //         // Assert
     //         // Assert.Empty(actual.LastErrorDescription);
@@ -275,7 +301,7 @@ public sealed class PlanningTests
     //     var planner = new Planner(target, Planner.Mode.Root.DescriptionRelevant);
 
     //     // Act
-    //     if (await planner.CreatePlanAsync(prompt) is SimplePlan plan)
+    //     if (await planner.CreatePlanAsync(prompt) is SequentialPlan plan)
     //     {
     //         // Assert
     //         // Assert.Empty(actual.LastErrorDescription);
@@ -365,7 +391,7 @@ public sealed class PlanningTests
 
     //     var cv = new ContextVariables();
     //     cv.Set("email_address", "$TheEmailFromState");
-    //     var plan = new SimplePlan() { Goal = goal };
+    //     var plan = new SequentialPlan() { Goal = goal };
     //     plan.Root.Steps.Add(new PlanStep()
     //     {
     //         SelectedFunction = "SendEmailAsync",

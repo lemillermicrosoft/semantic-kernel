@@ -3,28 +3,24 @@
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel.CoreSkills;
 using Microsoft.SemanticKernel.Orchestration;
-using static Microsoft.SemanticKernel.CoreSkills.PlannerSkill;
 
 namespace Microsoft.SemanticKernel.Planning.Planners;
 
 public class FunctionFlowPlanner : IPlanner
 {
-    public FunctionFlowPlanner(IKernel kernel, int maxTokens) : this(kernel, maxTokens, null)
+    public FunctionFlowPlanner(IKernel kernel, PlannerConfig? config)
     {
-    }
 
-    protected FunctionFlowPlanner(IKernel kernel, int maxTokens, PlannerSkillConfig? config)
-    {
+        this.Config = config ?? new();
+
         this._functionFlowFunction = kernel.CreateSemanticFunction(
             promptTemplate: SemanticFunctionConstants.FunctionFlowFunctionDefinition,
             skillName: RestrictedSkillName,
             description: "Given a request or command or goal generate a step by step plan to " +
                          "fulfill the request using functions. This ability is also known as decision making and function flow",
-            maxTokens: maxTokens,
+            maxTokens: this.Config.MaxTokens,
             temperature: 0.0,
             stopSequences: new[] { "<!--" });
-
-        this.Config = config ?? new();
 
         this._context = kernel.CreateNewContext();
     }
@@ -46,7 +42,7 @@ public class FunctionFlowPlanner : IPlanner
         return plan;
     }
 
-    protected PlannerSkillConfig Config { get; }
+    protected PlannerConfig Config { get; }
 
     private readonly SKContext _context;
 
@@ -63,11 +59,11 @@ public class FunctionFlowPlanner : IPlanner
 
 public class GoalRelevantPlanner : FunctionFlowPlanner
 {
-    public GoalRelevantPlanner(IKernel kernel, int maxTokens) : base(kernel, maxTokens, new() { RelevancyThreshold = 0.78 })
+    public GoalRelevantPlanner(IKernel kernel) : base(kernel, new() { RelevancyThreshold = 0.78 })
     {
     }
 
-    public GoalRelevantPlanner(IKernel kernel, int maxTokens, PlannerSkillConfig config) : base(kernel, maxTokens, config)
+    public GoalRelevantPlanner(IKernel kernel, PlannerConfig? config) : base(kernel, config)
     {
     }
 }

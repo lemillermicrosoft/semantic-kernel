@@ -45,7 +45,8 @@ public class FunctionFlowRunnerTests
         var writerSkill = TestHelpers.GetSkill("WriterSkill", kernel);
 
         _ = kernel.Config.AddAzureOpenAITextCompletionService("test", "test", "test", "test");
-        var functionFlowRunner = new FunctionFlowRunner(kernel);
+        // var functionFlowRunner = new FunctionFlowRunner(kernel);
+
         var planString =
 @"<goal>
 Summarize an input, translate to french, and e-mail to John Doe

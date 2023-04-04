@@ -13,8 +13,16 @@ using Microsoft.SemanticKernel.Orchestration;
 
 namespace Microsoft.SemanticKernel.Planning;
 
-public class SimplePlan : BasePlan
+public class SequentialPlan : BasePlan
 {
+    public static new SequentialPlan FromISKFunction(ISKFunction function)
+    {
+        var plan = new SequentialPlan();
+
+        plan.SetFunction(function);
+
+        return plan;
+    }
 
     /// <inheritdoc/>
     public override async Task<SKContext> InvokeAsync(SKContext? context = null, CompleteRequestSettings? settings = null, ILogger? log = null, CancellationToken? cancel = null)
@@ -22,7 +30,6 @@ public class SimplePlan : BasePlan
         context ??= new SKContext(new ContextVariables(), null!, null, log ?? NullLogger.Instance, cancel ?? CancellationToken.None);
 
         var nextStep = this.PopNextStep();
-
 
         // todo -- if nextStep.Steps has children, execute them [first]
         // Otherwise, execute the function
