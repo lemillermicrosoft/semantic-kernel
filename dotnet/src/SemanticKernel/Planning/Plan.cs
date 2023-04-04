@@ -29,9 +29,9 @@ public class Plan : ISKFunction
         this.RequestSettings = function.RequestSettings;
     }
 
-    public static BasePlan FromISKFunction(ISKFunction function)
+    public static Plan FromISKFunction(ISKFunction function)
     {
-        var plan = new BasePlan();
+        var plan = new Plan();
 
         plan.SetFunction(function);
 
@@ -63,7 +63,7 @@ public class Plan : ISKFunction
     /// <param name="variables">Variables to use</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The updated plan</returns>
-    public Task<Plan> RunNextStepAsync(IKernel kernel, ContextVariables variables, CancellationToken cancellationToken = default)
+    public virtual Task<Plan> RunNextStepAsync(IKernel kernel, ContextVariables variables, CancellationToken cancellationToken = default)
     {
         // no-op, return self
         return Task.FromResult<Plan>(this);
@@ -98,7 +98,7 @@ public class Plan : ISKFunction
     }
 
     /// <inheritdoc/>
-    public Task<SKContext> InvokeAsync(string input, SKContext? context = null, CompleteRequestSettings? settings = null, ILogger? log = null, CancellationToken? cancel = null)
+    public virtual Task<SKContext> InvokeAsync(string input, SKContext? context = null, CompleteRequestSettings? settings = null, ILogger? log = null, CancellationToken? cancel = null)
     {
         return this.Function is null
             ? throw new NotImplementedException()
@@ -106,7 +106,7 @@ public class Plan : ISKFunction
     }
 
     /// <inheritdoc/>
-    public Task<SKContext> InvokeAsync(SKContext? context = null, CompleteRequestSettings? settings = null, ILogger? log = null, CancellationToken? cancel = null)
+    public virtual Task<SKContext> InvokeAsync(SKContext? context = null, CompleteRequestSettings? settings = null, ILogger? log = null, CancellationToken? cancel = null)
     {
         return this.Function is null
             ? throw new NotImplementedException()

@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -13,8 +14,20 @@ using Microsoft.SemanticKernel.Orchestration;
 
 namespace Microsoft.SemanticKernel.Planning;
 
-public class SequentialPlan : BasePlan
+public class SequentialPlan : Plan
 {
+    /// <summary>
+    /// Key used to store the function output of the step in the state
+    /// </summary>
+    [JsonPropertyName("output_key")]
+    public string OutputKey { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Key used to store the function output as a plan result in the state
+    /// </summary>
+    [JsonPropertyName("result_key")]
+    public string ResultKey { get; set; } = string.Empty;
+
     public static new SequentialPlan FromISKFunction(ISKFunction function)
     {
         var plan = new SequentialPlan();
@@ -32,10 +45,15 @@ public class SequentialPlan : BasePlan
 
         var nextStep = this.PopNextStep();
 
+        if (nextStep == null)
+        {
+            return context; // todo
+        }
+
         // todo -- if nextStep.Steps has children, execute them [first]
         // Otherwise, execute the function
 
-        var functionVariables = this.GetNextStepVariables(context.Variables, nextStep);
+        var functionVariables = this.GetNextStepVariables(context.Variables, nextStep!);
 
         var skillName = nextStep.SkillName;
         var functionName = nextStep.Name;
@@ -101,7 +119,12 @@ public class SequentialPlan : BasePlan
         // todo -- if nextStep.Steps has children, execute them [first]
         // Otherwise, execute the function
 
-        var functionVariables = this.GetNextStepVariables(variables, nextStep);
+        if (nextStep == null)
+        {
+            return this;
+        }
+
+        var functionVariables = this.GetNextStepVariables(variables, nextStep!);
 
         var skillName = nextStep.SkillName;
         var functionName = nextStep.Name;
@@ -156,7 +179,7 @@ public class SequentialPlan : BasePlan
         }
     }
 
-    private ContextVariables GetNextStepVariables(ContextVariables variables, Plan step)
+    private ContextVariables GetNextStepVariables(ContextVariables variables, SequentialPlan step)
     {
         // Initialize function-scoped ContextVariables
         // Default input should be the Input from the SKContext, or the Input from the Plan.State, or the Plan.Goal
@@ -218,7 +241,7 @@ public class SequentialPlan : BasePlan
         return functionVariables;
     }
 
-    private Plan PopNextStep()
+    private SequentialPlan? PopNextStep()
     {
         // var step = this.Steps.First();
         // var parent = step;
@@ -233,7 +256,7 @@ public class SequentialPlan : BasePlan
         {
             var step = this.Steps[0];
             this.Steps.RemoveAt(0);
-            return step;
+            return step as SequentialPlan;
         }
 
         return this;

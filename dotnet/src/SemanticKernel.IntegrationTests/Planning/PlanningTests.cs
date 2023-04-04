@@ -184,7 +184,7 @@ public sealed class PlanningTests : IDisposable
 
         // Act
         var act = await planner.CreatePlanAsync(prompt);
-        if (act is BasePlan plan)
+        if (act is Plan plan)
         {
             // Assert
             // Assert.Empty(actual.LastErrorDescription);
