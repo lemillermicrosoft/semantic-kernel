@@ -33,7 +33,6 @@ public class FunctionFlowPlanner : IPlanner
 
         var planResult = await this._functionFlowFunction.InvokeAsync(this._context);
 
-        // TODO Do we need to do this actually?
         string fullPlan = $"<{FunctionFlowParser.GoalTag}>\n{goal}\n</{FunctionFlowParser.GoalTag}>\n{planResult.Result.Trim()}";
 
         var plan = fullPlan.ToPlanFromXml(this._context);

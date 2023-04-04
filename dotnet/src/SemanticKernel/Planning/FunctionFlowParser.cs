@@ -61,9 +61,7 @@ internal static class FunctionFlowParser
 
             var plan = new SequentialPlan
             {
-                // Root = new() { Description = goalTxt },
                 Description = goalTxt,
-                // State = new() // todo eventually this will need to parse the String
             };
 
             // loop through solution node and add to Steps
@@ -100,33 +98,13 @@ internal static class FunctionFlowParser
                             Verify.NotNull(functionName, nameof(functionName));
                             Verify.NotNull(skillFunction, nameof(skillFunction));
 
-                            // planStep.Name = functionName;
-                            // planStep.SkillName = skillName;
+                            planStep = SequentialPlan.FromISKFunction(skillFunction);
 
-                            // TODO This cast doesn't actually work. We need to figure out how to get the skillFunction
-                            // to be a SequentialPlan instead of an ISKFunction.
-                            //     System.InvalidCastException : Unable to cast object of type 'Microsoft.SemanticKernel.Orchestration.SKFunction' to type 'Microsoft.SemanticKernel.Planning.SequentialPlan'.
-                            // planStep = (ISKFunction)skillFunction as SequentialPlan ?? throw new InvalidCastException("WHOOPS Unable to cast object of type 'Microsoft.SemanticKernel.Orchestration.SKFunction' to type 'Microsoft.SemanticKernel.Planning.SequentialPlan'.");
-                            planStep = SequentialPlan.FromISKFunction(skillFunction) ?? throw new InvalidCastException(
-                                "WHOOPS Unable to cast object of type 'Microsoft.SemanticKernel.Orchestration.SKFunction' to type 'Microsoft.SemanticKernel.Planning.SequentialPlan'.");
-
-                            // skillFunction which is ISKFunction to SequentialPlan (which extends Plan which implements ISKFunction)
-
-                            // planStep.Description How different than manifest?
-                            // planStep.Manifests What else is needed here?
-
-                            // planStep.NameParameters TODO
-                            // Today, this would be a string key (attr.ToString()) and a string value (attr.InnerText)
-                            // where the value is either the value itself or a reference (to the ContextVariables).
-                            // Most importantly though, we need to put here what is defined in the FunctionView
-
-                            var functionVariables = new ContextVariables( /*functionInput*/); // todo when does this get set? on first execute?
+                            var functionVariables = new ContextVariables();
 
                             var view = skillFunction.Describe();
                             foreach (var p in view.Parameters)
                             {
-                                // Check state or use DefaultValue
-                                // TODO
                                 functionVariables.Set(p.Name, p.DefaultValue);
                             }
 
@@ -139,28 +117,7 @@ internal static class FunctionFlowParser
                                     context.Log.LogTrace("{0}: processing attribute {1}", parentNodeName, attr.ToString());
                                     if (attr.InnerText.StartsWith("$", StringComparison.InvariantCultureIgnoreCase))
                                     {
-                                        // TODO - I think we can just pass forward the value of the attribute as a named Parameter and we don't need context.Variables
                                         functionVariables.Set(attr.Name, attr.InnerText);
-
-                                        // // // Split the attribute value on the comma or ; character
-                                        // // var attrValues = attr.InnerText.Split(new char[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
-                                        // // if (attrValues.Length > 0)
-                                        // // {
-                                        // //     // If there are multiple values, create a list of the values
-                                        // //     var attrValueList = new List<string>();
-                                        // //     foreach (var attrValue in attrValues)
-                                        // //     {
-                                        // //         if (context.Variables.Get(attrValue[1..], out var variableReplacement))
-                                        // //         {
-                                        // //             attrValueList.Add(variableReplacement);
-                                        // //         }
-                                        // //     }
-
-                                        // //     if (attrValueList.Count > 0)
-                                        // //     {
-                                        // //         functionVariables.Set(attr.Name, string.Concat(attrValueList));
-                                        // //     }
-                                        // // }
                                     }
                                     else if (attr.Name.Equals(SetContextVariableTag, StringComparison.OrdinalIgnoreCase))
                                     {
