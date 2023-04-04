@@ -270,11 +270,13 @@ dotnet_diagnostic.IDE0080.severity = none # Remove unnecessary suppression opera
 dotnet_diagnostic.IDE0100.severity = none # Remove unnecessary equality operator
 dotnet_diagnostic.IDE0110.severity = none # Remove unnecessary discards
 
-# Disable expression-level style rules by default
+# Disable select expression-level style rules
+[*.cs]
 dotnet_diagnostic.IDE0032.severity = none # Use auto property
-dotnet_diagnostic.IDE0160.severity = none
 
-
+# Disable select language style rules
+[*.cs]
+dotnet_diagnostic.IDE0160.severity = none # Use block-scoped namespace
 
 ###############################
 # VB Coding Conventions       #
