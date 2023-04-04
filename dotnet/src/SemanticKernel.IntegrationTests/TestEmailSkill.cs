@@ -5,6 +5,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.SkillDefinition;
 
+namespace SemanticKernel.IntegrationTests;
+
 internal class EmailSkill
 {
     [SKFunction("Given an e-mail and message body, send an email")]
