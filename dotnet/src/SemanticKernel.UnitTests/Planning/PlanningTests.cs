@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -19,33 +20,51 @@ namespace SemanticKernel.UnitTests.Planning;
 
 public sealed class PlanningTests
 {
+
     [Theory]
     [InlineData("Write a poem or joke and send it in an e-mail to Kai.")]
     public async Task ItCanCreatePlanAsync(string goal)
     {
         // Arrange
-        // var kernel = KernelBuilder.Create();
-        // _ = kernel.Config.AddOpenAICompletionBackend("test", "test", "test");
-
         var kernel = new Mock<IKernel>();
         kernel.Setup(x => x.Log).Returns(new Mock<ILogger>().Object);
 
         var memory = new Mock<ISemanticTextMemory>();
 
-        // var skills = new SkillCollection();
         var skills = new Mock<ISkillCollection>();
         var functionsView = new FunctionsView();
-        // var semanticFunctions = new ConcurrentDictionary<string, List<FunctionView>>();
-        // semanticFunctions["SummarizeSkill"] = new List<FunctionView>() {
-        //     new FunctionView("Summarize", "SummarizeSkill", "Summarize something", new List<ParameterView>(), true, true)
-        // };
-        // semanticFunctions["WriterSkill"] = new List<FunctionView>() {
-        //     new FunctionView("Translate", "WriterSkill", "Translate something", new List<ParameterView>(), true, true)
-        // };
-        // semanticFunctions["EmailSkill"] = new List<FunctionView>() {
-        //     new FunctionView("GetEmailAddress", "EmailSkill", "Get an e-mail address", new List<ParameterView>(), true, true),
-        //     new FunctionView("SendEmail", "EmailSkill", "Send an e-mail", new List<ParameterView>(), true, true)
-        // };
+
+        var input = new List<(string name, string skillName, string description)>()
+        {
+            ("SendEmail", "email", "Send an e-mail"),
+            ("GetEmailAddress", "email", "Get an e-mail address"),
+            ("Translate", "WriterSkill", "Translate something"),
+            ("Summarize", "WriterSkill", "Summarize something")
+        };
+
+        // create list of mocked functions so they don't get disposed
+        // var mockFunctions = new List<Mock<ISKFunction>>();
+
+        // foreach (var (name, skillName, description) in input)
+        // {
+        //     var functionView = new FunctionView(name, skillName, description, new List<ParameterView>(), true, true);
+        //     functionsView.AddFunction(functionView);
+
+        //     var mockFunction = new Mock<ISKFunction>();
+        //     mockFunction.Setup(x => x.Describe()).Returns(functionView);
+        //     mockFunction.Setup(x => x.Name).Returns(functionView.Name);
+        //     mockFunction.Setup(x => x.SkillName).Returns(functionView.SkillName);
+        //     mockFunctions.Add(mockFunction);
+
+        //     skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == functionView.SkillName), It.Is<string>(s => s == functionView.Name)))
+        //         .Returns(mockFunction.Object);
+        // }
+        var expectedFunctions = input.Select(x => x.name).ToList();
+        var expectedSkills = input.Select(x => x.skillName).ToList();
+
+
+        // var expectedFunctions = new List<string>() { "SendEmail", "GetEmailAddress", "Translate", "Summarize" };
+        // var expectedSkills = new List<string>() { "email", "WriterSkill", "WriterSkill", "SummarizeSkill" };
         var summarizeFunctionView = new FunctionView("Summarize", "SummarizeSkill", "Summarize something", new List<ParameterView>(), true, true);
         functionsView.AddFunction(summarizeFunctionView);
         var translateFunctionView = new FunctionView("Translate", "WriterSkill", "Translate something", new List<ParameterView>(), true, true);
@@ -55,49 +74,38 @@ public sealed class PlanningTests
         var sendEmailFunctionView = new FunctionView("SendEmail", "email", "Send an e-mail", new List<ParameterView>(), true, true);
         functionsView.AddFunction(sendEmailFunctionView);
 
-        // ****************************************************
-        // TODO Add my functions or skills to the skill collection
-        // or mock so it returns that function is registered no matter what.
-        // ****************************************************
-
-        // bool HasNativeFunction(string skillName, string functionName);
-        // ISKFunction GetNativeFunction(string skillName, string functionName);
         skills.Setup(x => x.HasNativeFunction(It.IsAny<string>(), It.IsAny<string>())).Returns(true);
         skills.Setup(x => x.GetFunctionsView(It.IsAny<bool>(), It.IsAny<bool>())).Returns(functionsView);
 
         var summarizeMockFunction = new Mock<ISKFunction>();
         summarizeMockFunction.Setup(x => x.Describe()).Returns(summarizeFunctionView);
-        summarizeMockFunction.Setup(x => x.Name).Returns("Summarize");
-        summarizeMockFunction.Setup(x => x.SkillName).Returns("SummarizeSkill");
+        summarizeMockFunction.Setup(x => x.Name).Returns(summarizeFunctionView.Name);
+        summarizeMockFunction.Setup(x => x.SkillName).Returns(summarizeFunctionView.SkillName);
 
         var translateMockFunction = new Mock<ISKFunction>();
         translateMockFunction.Setup(x => x.Describe()).Returns(translateFunctionView);
-        translateMockFunction.Setup(x => x.Name).Returns("Translate");
-        translateMockFunction.Setup(x => x.SkillName).Returns("WriterSkill");
+        translateMockFunction.Setup(x => x.Name).Returns(translateFunctionView.Name);
+        translateMockFunction.Setup(x => x.SkillName).Returns(translateFunctionView.SkillName);
 
         var getEmailAddressMockFunction = new Mock<ISKFunction>();
         getEmailAddressMockFunction.Setup(x => x.Describe()).Returns(getEmailAddressFunctionView);
-        getEmailAddressMockFunction.Setup(x => x.Name).Returns("GetEmailAddress");
-        getEmailAddressMockFunction.Setup(x => x.SkillName).Returns("email");
+        getEmailAddressMockFunction.Setup(x => x.Name).Returns(getEmailAddressFunctionView.Name);
+        getEmailAddressMockFunction.Setup(x => x.SkillName).Returns(getEmailAddressFunctionView.SkillName);
 
         var sendEmailMockFunction = new Mock<ISKFunction>();
         sendEmailMockFunction.Setup(x => x.Describe()).Returns(sendEmailFunctionView);
-        sendEmailMockFunction.Setup(x => x.Name).Returns("SendEmail");
-        sendEmailMockFunction.Setup(x => x.SkillName).Returns("email");
+        sendEmailMockFunction.Setup(x => x.Name).Returns(sendEmailFunctionView.Name);
+        sendEmailMockFunction.Setup(x => x.SkillName).Returns(sendEmailFunctionView.SkillName);
 
-        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == "SummarizeSkill"), It.Is<string>(s => s == "Summarize")))
+        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == summarizeFunctionView.SkillName), It.Is<string>(s => s == summarizeFunctionView.Name)))
             .Returns(summarizeMockFunction.Object);
-        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == "WriterSkill"), It.Is<string>(s => s == "Translate")))
+        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == translateFunctionView.SkillName), It.Is<string>(s => s == translateFunctionView.Name)))
             .Returns(translateMockFunction.Object);
-        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == "email"), It.Is<string>(s => s == "GetEmailAddress")))
+        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == getEmailAddressFunctionView.SkillName), It.Is<string>(s => s == getEmailAddressFunctionView.Name)))
             .Returns(getEmailAddressMockFunction.Object);
-        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == "email"), It.Is<string>(s => s == "SendEmail"))).Returns(sendEmailMockFunction.Object);
+        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == sendEmailFunctionView.SkillName), It.Is<string>(s => s == sendEmailFunctionView.Name)))
+            .Returns(sendEmailMockFunction.Object);
 
-        var mockFunctionFlowFunction = new Mock<ISKFunction>();
-        var summarizeFunction = new Mock<ISKFunction>();
-        var translateFunction = new Mock<ISKFunction>();
-        var getEmailAddressFunction = new Mock<ISKFunction>();
-        var sendEmailFunction = new Mock<ISKFunction>();
 
         var context = new SKContext(
             new ContextVariables(),
@@ -121,11 +129,9 @@ public sealed class PlanningTests
     <function.email.SendEmail input=""$TRANSLATED_SUMMARY"" email_address=""$EMAIL_ADDRESS""/>
 </plan>";
 
-        var expectedFunctions = new List<string>() { "SendEmail", "GetEmailAddress", "Translate", "Summarize" };
-        var expectedSkills = new List<string>() { "email", "WriterSkill", "WriterSkill", "SummarizeSkill" };
-
         returnContext.Variables.Update(planString);
 
+        var mockFunctionFlowFunction = new Mock<ISKFunction>();
         mockFunctionFlowFunction.Setup(x => x.InvokeAsync(
             It.IsAny<SKContext>(),
             null,
