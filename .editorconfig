@@ -249,7 +249,6 @@ csharp_style_prefer_top_level_statements = true:silent
 csharp_style_expression_bodied_lambdas = true:silent
 csharp_style_expression_bodied_local_functions = false:silent
 
-
 ##################
 # C# Style       #
 ##################
