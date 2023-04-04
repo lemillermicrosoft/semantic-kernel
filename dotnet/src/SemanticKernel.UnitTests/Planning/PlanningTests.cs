@@ -21,6 +21,16 @@ namespace SemanticKernel.UnitTests.Planning;
 public sealed class PlanningTests
 {
 
+    // Method to create Mock<ISKFunction> objects
+    private static Mock<ISKFunction> CreateMockFunction(FunctionView functionView)
+    {
+        var mockFunction = new Mock<ISKFunction>();
+        mockFunction.Setup(x => x.Describe()).Returns(functionView);
+        mockFunction.Setup(x => x.Name).Returns(functionView.Name);
+        mockFunction.Setup(x => x.SkillName).Returns(functionView.SkillName);
+        return mockFunction;
+    }
+
     [Theory]
     [InlineData("Write a poem or joke and send it in an e-mail to Kai.")]
     public async Task ItCanCreatePlanAsync(string goal)
@@ -31,81 +41,39 @@ public sealed class PlanningTests
 
         var memory = new Mock<ISemanticTextMemory>();
 
-        var skills = new Mock<ISkillCollection>();
-        var functionsView = new FunctionsView();
-
-        var input = new List<(string name, string skillName, string description)>()
+        var input = new List<(string name, string skillName, string description, bool isSemantic)>()
         {
-            ("SendEmail", "email", "Send an e-mail"),
-            ("GetEmailAddress", "email", "Get an e-mail address"),
-            ("Translate", "WriterSkill", "Translate something"),
-            ("Summarize", "WriterSkill", "Summarize something")
+            ("SendEmail", "email", "Send an e-mail", false),
+            ("GetEmailAddress", "email", "Get an e-mail address", false),
+            ("Translate", "WriterSkill", "Translate something", true),
+            ("Summarize", "SummarizeSkill", "Summarize something", true)
         };
 
-        // create list of mocked functions so they don't get disposed
-        // var mockFunctions = new List<Mock<ISKFunction>>();
+        var functionsView = new FunctionsView();
+        var skills = new Mock<ISkillCollection>();
+        foreach (var (name, skillName, description, isSemantic) in input)
+        {
+            var functionView = new FunctionView(name, skillName, description, new List<ParameterView>(), isSemantic, true);
+            var mockFunction = CreateMockFunction(functionView);
+            functionsView.AddFunction(functionView);
 
-        // foreach (var (name, skillName, description) in input)
-        // {
-        //     var functionView = new FunctionView(name, skillName, description, new List<ParameterView>(), true, true);
-        //     functionsView.AddFunction(functionView);
-
-        //     var mockFunction = new Mock<ISKFunction>();
-        //     mockFunction.Setup(x => x.Describe()).Returns(functionView);
-        //     mockFunction.Setup(x => x.Name).Returns(functionView.Name);
-        //     mockFunction.Setup(x => x.SkillName).Returns(functionView.SkillName);
-        //     mockFunctions.Add(mockFunction);
-
-        //     skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == functionView.SkillName), It.Is<string>(s => s == functionView.Name)))
-        //         .Returns(mockFunction.Object);
-        // }
-        var expectedFunctions = input.Select(x => x.name).ToList();
-        var expectedSkills = input.Select(x => x.skillName).ToList();
-
-
-        // var expectedFunctions = new List<string>() { "SendEmail", "GetEmailAddress", "Translate", "Summarize" };
-        // var expectedSkills = new List<string>() { "email", "WriterSkill", "WriterSkill", "SummarizeSkill" };
-        var summarizeFunctionView = new FunctionView("Summarize", "SummarizeSkill", "Summarize something", new List<ParameterView>(), true, true);
-        functionsView.AddFunction(summarizeFunctionView);
-        var translateFunctionView = new FunctionView("Translate", "WriterSkill", "Translate something", new List<ParameterView>(), true, true);
-        functionsView.AddFunction(translateFunctionView);
-        var getEmailAddressFunctionView = new FunctionView("GetEmailAddress", "email", "Get an e-mail address", new List<ParameterView>(), true, true);
-        functionsView.AddFunction(getEmailAddressFunctionView);
-        var sendEmailFunctionView = new FunctionView("SendEmail", "email", "Send an e-mail", new List<ParameterView>(), true, true);
-        functionsView.AddFunction(sendEmailFunctionView);
-
-        skills.Setup(x => x.HasNativeFunction(It.IsAny<string>(), It.IsAny<string>())).Returns(true);
+            if (isSemantic)
+            {
+                skills.Setup(x => x.GetSemanticFunction(It.Is<string>(s => s == skillName), It.Is<string>(s => s == name)))
+                        .Returns(mockFunction.Object);
+                skills.Setup(x => x.HasSemanticFunction(It.Is<string>(s => s == skillName), It.Is<string>(s => s == name))).Returns(true);
+            }
+            else
+            {
+                skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == skillName), It.Is<string>(s => s == name)))
+                        .Returns(mockFunction.Object);
+                skills.Setup(x => x.HasNativeFunction(It.Is<string>(s => s == skillName), It.Is<string>(s => s == name))).Returns(true);
+            }
+        }
         skills.Setup(x => x.GetFunctionsView(It.IsAny<bool>(), It.IsAny<bool>())).Returns(functionsView);
 
-        var summarizeMockFunction = new Mock<ISKFunction>();
-        summarizeMockFunction.Setup(x => x.Describe()).Returns(summarizeFunctionView);
-        summarizeMockFunction.Setup(x => x.Name).Returns(summarizeFunctionView.Name);
-        summarizeMockFunction.Setup(x => x.SkillName).Returns(summarizeFunctionView.SkillName);
-
-        var translateMockFunction = new Mock<ISKFunction>();
-        translateMockFunction.Setup(x => x.Describe()).Returns(translateFunctionView);
-        translateMockFunction.Setup(x => x.Name).Returns(translateFunctionView.Name);
-        translateMockFunction.Setup(x => x.SkillName).Returns(translateFunctionView.SkillName);
-
-        var getEmailAddressMockFunction = new Mock<ISKFunction>();
-        getEmailAddressMockFunction.Setup(x => x.Describe()).Returns(getEmailAddressFunctionView);
-        getEmailAddressMockFunction.Setup(x => x.Name).Returns(getEmailAddressFunctionView.Name);
-        getEmailAddressMockFunction.Setup(x => x.SkillName).Returns(getEmailAddressFunctionView.SkillName);
-
-        var sendEmailMockFunction = new Mock<ISKFunction>();
-        sendEmailMockFunction.Setup(x => x.Describe()).Returns(sendEmailFunctionView);
-        sendEmailMockFunction.Setup(x => x.Name).Returns(sendEmailFunctionView.Name);
-        sendEmailMockFunction.Setup(x => x.SkillName).Returns(sendEmailFunctionView.SkillName);
-
-        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == summarizeFunctionView.SkillName), It.Is<string>(s => s == summarizeFunctionView.Name)))
-            .Returns(summarizeMockFunction.Object);
-        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == translateFunctionView.SkillName), It.Is<string>(s => s == translateFunctionView.Name)))
-            .Returns(translateMockFunction.Object);
-        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == getEmailAddressFunctionView.SkillName), It.Is<string>(s => s == getEmailAddressFunctionView.Name)))
-            .Returns(getEmailAddressMockFunction.Object);
-        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == sendEmailFunctionView.SkillName), It.Is<string>(s => s == sendEmailFunctionView.Name)))
-            .Returns(sendEmailMockFunction.Object);
-
+        var expectedFunctions = input.Select(x => x.name).ToList();
+        var expectedSkills = input.Select(x => x.skillName).ToList();
 
         var context = new SKContext(
             new ContextVariables(),
@@ -151,24 +119,12 @@ public sealed class PlanningTests
             It.IsAny<SemanticFunctionConfig>()
         )).Returns(mockFunctionFlowFunction.Object);
 
-        // var plannerSkill = new PlannerSkill(kernel);
-        // var planner = kernel.ImportSkill(plannerSkill, "planner");
         var planner = new Planner(kernel.Object);
 
         // Act
-        // var context = await kernel.RunAsync(GoalText, planner["CreatePlan"]);
         var plan = await planner.CreatePlanAsync(goal);
         if (plan is SequentialPlan sequentialPlan)
         {
-            // Assert
-            // Assert.Empty(actual.LastErrorDescription);
-            // Assert.False(actual.ErrorOccurred);
-            // Assert.Contains(
-            //     plan.Root.Steps,
-            //     step =>
-            //         expectedFunctions.Contains(step.SelectedFunction) &&
-            //         expectedSkills.Contains(step.SelectedSkill));
-
             Assert.Contains(
                 sequentialPlan.Steps,
                 step =>
@@ -177,9 +133,6 @@ public sealed class PlanningTests
 
             foreach (var expectedFunction in expectedFunctions)
             {
-                // Assert.Contains(
-                //     plan.Root.Steps,
-                //     step => step.SelectedFunction == expectedFunction);
                 Assert.Contains(
                     sequentialPlan.Steps,
                     step => step.Name == expectedFunction);
@@ -187,15 +140,11 @@ public sealed class PlanningTests
 
             foreach (var expectedSkill in expectedSkills)
             {
-                // Assert.Contains(
-                //     plan.Root.Steps,
-                //     step => step.SelectedSkill == expectedSkill);
                 Assert.Contains(
                     sequentialPlan.Steps,
                     step => step.SkillName == expectedSkill);
             }
 
-            // Assert.Equal(goal, plan.Root.Description);
             Assert.Equal(goal, sequentialPlan.Description);
         }
         else
@@ -204,11 +153,7 @@ public sealed class PlanningTests
         }
 
         // Assert
-        //     var plan = context.Variables.ToPlan();
-        // Assert.NotNull(plan);
-        // Assert.NotNull(plan.Id);
-        // Assert.Equal(GoalText, plan.Root.Description);
-        // Assert.StartsWith("<goal>\nSolve the equation x^2 = 2.\n</goal>", plan.PlanString, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(goal, plan.Description);
     }
 
     // [Theory]
