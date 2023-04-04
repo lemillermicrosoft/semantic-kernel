@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
-using System.Collections.Generic;
 using System.Text;
 using System.Xml;
 using Microsoft.Extensions.Logging;
@@ -78,12 +77,8 @@ internal static class FunctionFlowParser
                     {
                         if (o2.Value != null)
                         {
-                            // plan.Root.Steps.Add(new PlanStep()
-                            // {
-                            //     Description = o2.Value.Trim()
-                            // });
                             plan.Steps.Add(
-                                new SequentialPlan()
+                                new SequentialPlan() // TODO Being a sequential plan does not seem correct -- more accurately just a Plan (default plan is a wrapper for a function)
                                 {
                                     Description = o2.Value.Trim()
                                 });
@@ -94,7 +89,6 @@ internal static class FunctionFlowParser
 
                     if (o2.Name.StartsWith(FunctionTag, StringComparison.InvariantCultureIgnoreCase))
                     {
-                        // var planStep = new PlanStep();
                         var planStep = new SequentialPlan();
 
                         var skillFunctionName = o2.Name.Split(FunctionTag)?[1] ?? string.Empty;
@@ -146,26 +140,27 @@ internal static class FunctionFlowParser
                                     if (attr.InnerText.StartsWith("$", StringComparison.InvariantCultureIgnoreCase))
                                     {
                                         // TODO - I think we can just pass forward the value of the attribute as a named Parameter and we don't need context.Variables
+                                        functionVariables.Set(attr.Name, attr.InnerText);
 
-                                        // Split the attribute value on the comma or ; character
-                                        var attrValues = attr.InnerText.Split(new char[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
-                                        if (attrValues.Length > 0)
-                                        {
-                                            // If there are multiple values, create a list of the values
-                                            var attrValueList = new List<string>();
-                                            foreach (var attrValue in attrValues)
-                                            {
-                                                if (context.Variables.Get(attrValue[1..], out var variableReplacement))
-                                                {
-                                                    attrValueList.Add(variableReplacement);
-                                                }
-                                            }
+                                        // // // Split the attribute value on the comma or ; character
+                                        // // var attrValues = attr.InnerText.Split(new char[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+                                        // // if (attrValues.Length > 0)
+                                        // // {
+                                        // //     // If there are multiple values, create a list of the values
+                                        // //     var attrValueList = new List<string>();
+                                        // //     foreach (var attrValue in attrValues)
+                                        // //     {
+                                        // //         if (context.Variables.Get(attrValue[1..], out var variableReplacement))
+                                        // //         {
+                                        // //             attrValueList.Add(variableReplacement);
+                                        // //         }
+                                        // //     }
 
-                                            if (attrValueList.Count > 0)
-                                            {
-                                                functionVariables.Set(attr.Name, string.Concat(attrValueList));
-                                            }
-                                        }
+                                        // //     if (attrValueList.Count > 0)
+                                        // //     {
+                                        // //         functionVariables.Set(attr.Name, string.Concat(attrValueList));
+                                        // //     }
+                                        // // }
                                     }
                                     else if (attr.Name.Equals(SetContextVariableTag, StringComparison.OrdinalIgnoreCase))
                                     {
@@ -186,16 +181,16 @@ internal static class FunctionFlowParser
                             planStep.OutputKey = variableTargetName;
                             planStep.ResultKey = appendToResultName;
                             planStep.NamedParameters = functionVariables;
-                            // plan.Root.Steps.Add(planStep);
                             plan.Steps.Add(planStep);
+
+                            if (!string.IsNullOrEmpty(variableTargetName))
+                            {
+                                context.Variables.Set(variableTargetName, "<NOT_YET_SET>"); // TODO - this is a hack to make sure the variable is set (even if it is empty)
+                            }
                         }
                         else
                         {
                             context.Log.LogTrace("{0}: appending function node {1}", parentNodeName, skillFunctionName);
-                            // plan.Root.Steps.Add(new PlanStep()
-                            // {
-                            //     Description = o2.InnerText // TODO DEBUG THIS
-                            // });
                             plan.Steps.Add(new SequentialPlan()
                             {
                                 Description = o2.InnerText // TODO DEBUG THIS
@@ -205,10 +200,6 @@ internal static class FunctionFlowParser
                         continue;
                     }
 
-                    // plan.Root.Steps.Add(new PlanStep()
-                    // {
-                    //     Description = o2.InnerText // TODO DEBUG THIS
-                    // });
                     plan.Steps.Add(new SequentialPlan()
                     {
                         Description = o2.InnerText // TODO DEBUG THIS
