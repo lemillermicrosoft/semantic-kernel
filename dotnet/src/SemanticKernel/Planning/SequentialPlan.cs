@@ -25,7 +25,8 @@ public class SequentialPlan : BasePlan
     }
 
     /// <inheritdoc/>
-    public override async Task<SKContext> InvokeAsync(SKContext? context = null, CompleteRequestSettings? settings = null, ILogger? log = null, CancellationToken? cancel = null)
+    public override async Task<SKContext> InvokeAsync(SKContext? context = null, CompleteRequestSettings? settings = null, ILogger? log = null,
+        CancellationToken? cancel = null)
     {
         context ??= new SKContext(new ContextVariables(), null!, null, log ?? NullLogger.Instance, cancel ?? CancellationToken.None);
 
@@ -146,6 +147,7 @@ public class SequentialPlan : BasePlan
                 this.State.Set(SkillPlan.ResultKey,
                     string.Join(Environment.NewLine + Environment.NewLine, resultsSoFar, result.Result.Trim()));
             }
+
             return this;
         }
         else

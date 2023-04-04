@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Corporation. All not reserved.
+﻿// Copyright (c) Microsoft Corporation. All not reserved.
 
 using System.Collections.Generic;
 

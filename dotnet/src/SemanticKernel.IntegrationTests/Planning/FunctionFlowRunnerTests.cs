@@ -48,7 +48,7 @@ public class FunctionFlowRunnerTests
         // var functionFlowRunner = new FunctionFlowRunner(kernel);
 
         var planString =
-@"<goal>
+            @"<goal>
 Summarize an input, translate to french, and e-mail to John Doe
 </goal>
 <plan>
@@ -109,4 +109,3 @@ Summarize an input, translate to french, and e-mail to John Doe
 
     private readonly IConfigurationRoot _configuration;
 }
-

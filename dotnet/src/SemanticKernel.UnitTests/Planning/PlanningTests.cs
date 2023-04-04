@@ -55,7 +55,6 @@ public sealed class PlanningTests
         var sendEmailFunctionView = new FunctionView("SendEmail", "email", "Send an e-mail", new List<ParameterView>(), true, true);
         functionsView.AddFunction(sendEmailFunctionView);
 
-
         // ****************************************************
         // TODO Add my functions or skills to the skill collection
         // or mock so it returns that function is registered no matter what.
@@ -65,7 +64,6 @@ public sealed class PlanningTests
         // ISKFunction GetNativeFunction(string skillName, string functionName);
         skills.Setup(x => x.HasNativeFunction(It.IsAny<string>(), It.IsAny<string>())).Returns(true);
         skills.Setup(x => x.GetFunctionsView(It.IsAny<bool>(), It.IsAny<bool>())).Returns(functionsView);
-
 
         var summarizeMockFunction = new Mock<ISKFunction>();
         summarizeMockFunction.Setup(x => x.Describe()).Returns(summarizeFunctionView);
@@ -87,9 +85,12 @@ public sealed class PlanningTests
         sendEmailMockFunction.Setup(x => x.Name).Returns("SendEmail");
         sendEmailMockFunction.Setup(x => x.SkillName).Returns("email");
 
-        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == "SummarizeSkill"), It.Is<string>(s => s == "Summarize"))).Returns(summarizeMockFunction.Object);
-        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == "WriterSkill"), It.Is<string>(s => s == "Translate"))).Returns(translateMockFunction.Object);
-        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == "email"), It.Is<string>(s => s == "GetEmailAddress"))).Returns(getEmailAddressMockFunction.Object);
+        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == "SummarizeSkill"), It.Is<string>(s => s == "Summarize")))
+            .Returns(summarizeMockFunction.Object);
+        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == "WriterSkill"), It.Is<string>(s => s == "Translate")))
+            .Returns(translateMockFunction.Object);
+        skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == "email"), It.Is<string>(s => s == "GetEmailAddress")))
+            .Returns(getEmailAddressMockFunction.Object);
         skills.Setup(x => x.GetNativeFunction(It.Is<string>(s => s == "email"), It.Is<string>(s => s == "SendEmail"))).Returns(sendEmailMockFunction.Object);
 
         var mockFunctionFlowFunction = new Mock<ISKFunction>();
@@ -112,7 +113,7 @@ public sealed class PlanningTests
             new Mock<ILogger>().Object
         );
         var planString =
-@"
+            @"
 <plan>
     <function.SummarizeSkill.Summarize/>
     <function.WriterSkill.Translate language=""French"" setContextVariable=""TRANSLATED_SUMMARY""/>
@@ -294,7 +295,6 @@ public sealed class PlanningTests
     //     var classificationSkill = TestHelpers.GetSkill("ClassificationSkill", target);
 
     //     // TODO This is still unreliable in creating a valid plan xml -- what's going on?
-
 
     //     var emailSkill = target.ImportSkill(new EmailSkill());
 

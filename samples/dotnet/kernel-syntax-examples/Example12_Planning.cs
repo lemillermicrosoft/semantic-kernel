@@ -84,7 +84,6 @@ What's the tallest building in Europe?
         SKContext planResults = await kernel.RunAsync(planContext.Variables, plannerSkill["ExecutePlan"]);
         SkillPlan plan = planResults.Variables.ToPlan();
 
-
         // ********************
         // Option 2: Using the planner class directly
         // ********************
@@ -92,9 +91,9 @@ What's the tallest building in Europe?
 
         var plannerObject = new Planner(kernel); // Mode = Simple by default
 
-        IPlan planObject = await plannerObject.CreatePlanAsync(goal);
+        var planObject = await plannerObject.CreatePlanAsync(goal);
 
-        IPlan updatedPlan = await kernel.RunAsync(goal, planObject);
+        var updatedPlan = await kernel.RunAsync(goal, planObject);
     }
 
     private static IKernel InitializeKernel()

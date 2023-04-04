@@ -20,7 +20,7 @@ public sealed class PlanningTests : IDisposable
 {
     public PlanningTests(ITestOutputHelper output)
     {
-        this._logger = NullLogger.Instance;//new XunitLogger<object>(output);
+        this._logger = NullLogger.Instance; //new XunitLogger<object>(output);
         this._testOutputHelper = new RedirectOutput(output);
 
         // Load configuration
@@ -126,7 +126,6 @@ public sealed class PlanningTests : IDisposable
         var classificationSkill = TestHelpers.GetSkill("ClassificationSkill", target);
 
         // TODO This is still unreliable in creating a valid plan xml -- what's going on?
-
 
         var emailSkill = target.ImportSkill(new EmailSkill());
 

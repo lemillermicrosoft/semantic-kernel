@@ -39,9 +39,9 @@ internal static class SKContextPlanningExtensions
     }
 
     internal static async Task<string> GetFunctionsManualAsync(
-    this SKContext context,
-    string? semanticQuery = null,
-    PlannerConfig? config = null)
+        this SKContext context,
+        string? semanticQuery = null,
+        PlannerConfig? config = null)
     {
         config ??= new PlannerConfig();
         var functions = await context.GetAvailableFunctionsAsync(config, semanticQuery);

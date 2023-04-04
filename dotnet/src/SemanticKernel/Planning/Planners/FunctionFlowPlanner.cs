@@ -10,7 +10,6 @@ public class FunctionFlowPlanner : IPlanner
 {
     public FunctionFlowPlanner(IKernel kernel, PlannerConfig? config)
     {
-
         this.Config = config ?? new();
 
         this._functionFlowFunction = kernel.CreateSemanticFunction(

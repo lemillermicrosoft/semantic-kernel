@@ -113,7 +113,8 @@ internal static class FunctionFlowParser
                             // to be a SequentialPlan instead of an ISKFunction.
                             //     System.InvalidCastException : Unable to cast object of type 'Microsoft.SemanticKernel.Orchestration.SKFunction' to type 'Microsoft.SemanticKernel.Planning.SequentialPlan'.
                             // planStep = (ISKFunction)skillFunction as SequentialPlan ?? throw new InvalidCastException("WHOOPS Unable to cast object of type 'Microsoft.SemanticKernel.Orchestration.SKFunction' to type 'Microsoft.SemanticKernel.Planning.SequentialPlan'.");
-                            planStep = SequentialPlan.FromISKFunction(skillFunction) ?? throw new InvalidCastException("WHOOPS Unable to cast object of type 'Microsoft.SemanticKernel.Orchestration.SKFunction' to type 'Microsoft.SemanticKernel.Planning.SequentialPlan'.");
+                            planStep = SequentialPlan.FromISKFunction(skillFunction) ?? throw new InvalidCastException(
+                                "WHOOPS Unable to cast object of type 'Microsoft.SemanticKernel.Orchestration.SKFunction' to type 'Microsoft.SemanticKernel.Planning.SequentialPlan'.");
 
                             // skillFunction which is ISKFunction to SequentialPlan (which extends Plan which implements ISKFunction)
 
@@ -124,8 +125,6 @@ internal static class FunctionFlowParser
                             // Today, this would be a string key (attr.ToString()) and a string value (attr.InnerText)
                             // where the value is either the value itself or a reference (to the ContextVariables).
                             // Most importantly though, we need to put here what is defined in the FunctionView
-
-
 
                             var functionVariables = new ContextVariables( /*functionInput*/); // todo when does this get set? on first execute?
 
@@ -248,5 +247,4 @@ internal static class FunctionFlowParser
         skillName = skillFunctionNameParts?.Length > 0 ? skillFunctionNameParts[0] : string.Empty;
         functionName = skillFunctionNameParts?.Length > 1 ? skillFunctionNameParts[1] : skillFunctionName;
     }
-
 }
