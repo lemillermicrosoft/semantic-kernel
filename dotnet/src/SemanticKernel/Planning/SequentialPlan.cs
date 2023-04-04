@@ -184,7 +184,7 @@ public class SequentialPlan : Plan
         // Initialize function-scoped ContextVariables
         // Default input should be the Input from the SKContext, or the Input from the Plan.State, or the Plan.Goal
         var planInput = string.IsNullOrEmpty(variables.Input) ? this.State.Input : variables.Input;
-        var functionInput = string.IsNullOrEmpty(planInput) ? this.Steps.First().Description : planInput;
+        var functionInput = string.IsNullOrEmpty(planInput) ? (this.Steps.FirstOrDefault()?.Description ?? string.Empty) : planInput;
         var functionVariables = new ContextVariables(functionInput);
 
         // NameParameters are the parameters that are passed to the function

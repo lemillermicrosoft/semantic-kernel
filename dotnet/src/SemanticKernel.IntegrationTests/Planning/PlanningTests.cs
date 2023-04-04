@@ -37,27 +37,12 @@ public sealed class PlanningTests : IDisposable
     public async Task CreatePlanDefaultAsync(string prompt, string expectedFunction, string expectedSkill)
     {
         // Arrange
-        AzureOpenAIConfiguration? azureOpenAIConfiguration = this._configuration.GetSection("AzureOpenAI").Get<AzureOpenAIConfiguration>();
-        Assert.NotNull(azureOpenAIConfiguration);
+        IKernel target = this.InitializeKernel();
 
-        IKernel target = Kernel.Builder
-            .WithLogger(this._logger)
-            .Configure(config =>
-            {
-                config.AddAzureOpenAITextCompletionService(
-                    serviceId: azureOpenAIConfiguration.ServiceId,
-                    deploymentName: azureOpenAIConfiguration.DeploymentName,
-                    endpoint: azureOpenAIConfiguration.Endpoint,
-                    apiKey: azureOpenAIConfiguration.ApiKey);
-                config.SetDefaultTextCompletionService(azureOpenAIConfiguration.ServiceId);
-            })
-            .Build();
-
-        // Import all sample skills available for demonstration purposes.
-        // TestHelpers.ImportSampleSkills(target);
-        // If I import everything with no relevance, the changes of an invalid xml being returned is very high.
+        // If all sample skills are imported with no relevance filtering
+        // the chances of an invalid xml being returned is very high.
+        // So, only importing the skills that are relevant to the test.
         var writerSkill = TestHelpers.GetSkill("WriterSkill", target);
-
         var emailSkill = target.ImportSkill(new EmailSkill());
 
         var planner = new Planner(target);
@@ -66,14 +51,9 @@ public sealed class PlanningTests : IDisposable
         if (await planner.CreatePlanAsync(prompt) is SequentialPlan plan)
         {
             // Assert
-            // Assert.Empty(actual.LastErrorDescription);
-            // Assert.False(actual.ErrorOccurred);
             Assert.Contains(
-                // plan.Root.Steps,
                 plan.Steps,
                 step =>
-                    // step.SelectedFunction.Equals(expectedFunction, StringComparison.OrdinalIgnoreCase) &&
-                    // step.SelectedSkill.Equals(expectedSkill, StringComparison.OrdinalIgnoreCase));
                     step.Name.Equals(expectedFunction, StringComparison.OrdinalIgnoreCase) &&
                     step.SkillName.Equals(expectedSkill, StringComparison.OrdinalIgnoreCase));
         }
@@ -88,46 +68,7 @@ public sealed class PlanningTests : IDisposable
     public async Task CreatePlanFunctionFlowAsync(string prompt, string expectedFunction, string expectedSkill)
     {
         // Arrange
-        AzureOpenAIConfiguration? azureOpenAIConfiguration = this._configuration.GetSection("AzureOpenAI").Get<AzureOpenAIConfiguration>();
-        Assert.NotNull(azureOpenAIConfiguration);
-
-        AzureOpenAIConfiguration? azureOpenAIEmbeddingsConfiguration = this._configuration.GetSection("AzureOpenAIEmbeddings").Get<AzureOpenAIConfiguration>();
-        Assert.NotNull(azureOpenAIEmbeddingsConfiguration);
-
-        IKernel target = Kernel.Builder
-            .WithLogger(this._logger)
-            .Configure(config =>
-            {
-                config.AddAzureOpenAITextCompletionService(
-                    serviceId: azureOpenAIConfiguration.ServiceId,
-                    deploymentName: azureOpenAIConfiguration.DeploymentName,
-                    endpoint: azureOpenAIConfiguration.Endpoint,
-                    apiKey: azureOpenAIConfiguration.ApiKey);
-
-                config.AddAzureOpenAIEmbeddingGenerationService(
-                    serviceId: azureOpenAIEmbeddingsConfiguration.ServiceId,
-                    deploymentName: azureOpenAIEmbeddingsConfiguration.DeploymentName,
-                    endpoint: azureOpenAIEmbeddingsConfiguration.Endpoint,
-                    apiKey: azureOpenAIEmbeddingsConfiguration.ApiKey);
-
-                config.SetDefaultTextCompletionService(azureOpenAIConfiguration.ServiceId);
-                // config.SetDefaultTextEmbeddingGenerationService(azureOpenAIEmbeddingsConfiguration.ServiceId);
-            })
-            .WithMemoryStorage(new VolatileMemoryStore())
-            .Build();
-
-        // Import all sample skills available for demonstration purposes.
-        // TestHelpers.ImportSampleSkills(target);
-        var chatSkill = TestHelpers.GetSkill("ChatSkill", target);
-        var summarizeSkill = TestHelpers.GetSkill("SummarizeSkill", target);
-        var writerSkill = TestHelpers.GetSkill("WriterSkill", target);
-        var calendarSkill = TestHelpers.GetSkill("CalendarSkill", target);
-        var childrensBookSkill = TestHelpers.GetSkill("ChildrensBookSkill", target);
-        var classificationSkill = TestHelpers.GetSkill("ClassificationSkill", target);
-
-        // TODO This is still unreliable in creating a valid plan xml -- what's going on?
-
-        var emailSkill = target.ImportSkill(new EmailSkill());
+        IKernel target = this.InitializeKernel(true);
 
         var planner = new Planner(target, Planner.Mode.GoalRelevant);
 
@@ -135,14 +76,9 @@ public sealed class PlanningTests : IDisposable
         if (await planner.CreatePlanAsync(prompt) is SequentialPlan plan)
         {
             // Assert
-            // Assert.Empty(actual.LastErrorDescription);
-            // Assert.False(actual.ErrorOccurred);
             Assert.Contains(
-                // plan.Root.Steps,
                 plan.Steps,
                 step =>
-                    // step.SelectedFunction.Equals(expectedFunction, StringComparison.OrdinalIgnoreCase) &&
-                    // step.SelectedSkill.Equals(expectedSkill, StringComparison.OrdinalIgnoreCase));
                     step.Name.Equals(expectedFunction, StringComparison.OrdinalIgnoreCase) &&
                     step.SkillName.Equals(expectedSkill, StringComparison.OrdinalIgnoreCase));
         }
@@ -157,27 +93,10 @@ public sealed class PlanningTests : IDisposable
     public async Task CreatePlanSimpleAsync(string prompt)
     {
         // Arrange
-        AzureOpenAIConfiguration? azureOpenAIConfiguration = this._configuration.GetSection("AzureOpenAI").Get<AzureOpenAIConfiguration>();
-        Assert.NotNull(azureOpenAIConfiguration);
-
-        IKernel target = Kernel.Builder
-            .WithLogger(this._logger)
-            .Configure(config =>
-            {
-                config.AddAzureOpenAITextCompletionService(
-                    serviceId: azureOpenAIConfiguration.ServiceId,
-                    deploymentName: azureOpenAIConfiguration.DeploymentName,
-                    endpoint: azureOpenAIConfiguration.Endpoint,
-                    apiKey: azureOpenAIConfiguration.ApiKey);
-                config.SetDefaultTextCompletionService(azureOpenAIConfiguration.ServiceId);
-            })
-            .Build();
+        IKernel target = this.InitializeKernel();
 
         // Import all sample skills available for demonstration purposes.
-        // TestHelpers.ImportSampleSkills(target);
-        // If I import everything with no relevance, the changes of an invalid xml being returned is very high.
-        var writerSkill = TestHelpers.GetSkill("WriterSkill", target);
-
+        TestHelpers.ImportSampleSkills(target);
         var emailSkill = target.ImportSkill(new EmailSkill());
 
         var planner = new Planner(target, Planner.Mode.Simple);
@@ -187,10 +106,10 @@ public sealed class PlanningTests : IDisposable
         if (act is Plan plan)
         {
             // Assert
-            // Assert.Empty(actual.LastErrorDescription);
-            // Assert.False(actual.ErrorOccurred);
-            // Assert.Equal(prompt, plan.Root.Description);
             Assert.Equal(prompt, plan.Description);
+            Assert.Empty(plan.Name);
+            Assert.Empty(plan.SkillName);
+            Assert.Empty(plan.Steps);
         }
         else
         {
@@ -199,27 +118,13 @@ public sealed class PlanningTests : IDisposable
     }
 
     [Theory]
-    // [InlineData(null, "Write a poem or joke and send it in an e-mail to Kai.", null)]
-    // [InlineData("", "Write a poem or joke and send it in an e-mail to Kai.", "")]
+    [InlineData(null, "Write a poem or joke and send it in an e-mail to Kai.", null)]
+    [InlineData("", "Write a poem or joke and send it in an e-mail to Kai.", "")]
     [InlineData("Hello World!", "Write a poem or joke and send it in an e-mail to Kai.", "some_email@email.com")]
     public async Task CanExecuteRunPlanSimpleAsync(string input, string goal, string email)
     {
         // Arrange
-        AzureOpenAIConfiguration? azureOpenAIConfiguration = this._configuration.GetSection("AzureOpenAI").Get<AzureOpenAIConfiguration>();
-        Assert.NotNull(azureOpenAIConfiguration);
-
-        IKernel target = Kernel.Builder
-            .WithLogger(this._logger)
-            .Configure(config =>
-            {
-                config.AddAzureOpenAITextCompletionService(
-                    serviceId: azureOpenAIConfiguration.ServiceId,
-                    deploymentName: azureOpenAIConfiguration.DeploymentName,
-                    endpoint: azureOpenAIConfiguration.Endpoint,
-                    apiKey: azureOpenAIConfiguration.ApiKey);
-                config.SetDefaultTextCompletionService(azureOpenAIConfiguration.ServiceId);
-            })
-            .Build();
+        IKernel target = this.InitializeKernel();
 
         // Import all sample skills available for demonstration purposes.
         TestHelpers.ImportSampleSkills(target);
@@ -253,13 +158,58 @@ public sealed class PlanningTests : IDisposable
         // Assert
         // Assert.Empty(plan.LastErrorDescription);
         // Assert.False(plan.ErrorOccurred);
-        var expectedBody = string.IsNullOrEmpty(input) ? goal : input;
+        var expectedBody = input;//string.IsNullOrEmpty(input) ? goal : input;
         // Assert.Equal(0, plan.Root.Steps.Count);
         Assert.Empty(plan.Steps);
         // Assert.Equal(goal, plan.Root.Description);
         Assert.Equal(goal, plan.Description);
-        Assert.Equal($"Sent email to: {email}. Body: {expectedBody}", plan.State.ToString()); // TODO Make a Result and other properties
+        Assert.Equal($"Sent email to: {email}. Body: {expectedBody}".Trim(), plan.State.ToString()); // TODO Make a Result and other properties
     }
+
+    private IKernel InitializeKernel(bool useEmbeddings = false)
+    {
+        AzureOpenAIConfiguration? azureOpenAIConfiguration = this._configuration.GetSection("AzureOpenAI").Get<AzureOpenAIConfiguration>();
+        Assert.NotNull(azureOpenAIConfiguration);
+
+        AzureOpenAIConfiguration? azureOpenAIEmbeddingsConfiguration = this._configuration.GetSection("AzureOpenAIEmbeddings").Get<AzureOpenAIConfiguration>();
+        Assert.NotNull(azureOpenAIEmbeddingsConfiguration);
+
+        var builder = Kernel.Builder
+            .WithLogger(this._logger)
+            .Configure(config =>
+            {
+                config.AddAzureOpenAITextCompletionService(
+                    serviceId: azureOpenAIConfiguration.ServiceId,
+                    deploymentName: azureOpenAIConfiguration.DeploymentName,
+                    endpoint: azureOpenAIConfiguration.Endpoint,
+                    apiKey: azureOpenAIConfiguration.ApiKey);
+
+                if (useEmbeddings)
+                {
+                    config.AddAzureOpenAIEmbeddingGenerationService(
+                        serviceId: azureOpenAIEmbeddingsConfiguration.ServiceId,
+                        deploymentName: azureOpenAIEmbeddingsConfiguration.DeploymentName,
+                        endpoint: azureOpenAIEmbeddingsConfiguration.Endpoint,
+                        apiKey: azureOpenAIEmbeddingsConfiguration.ApiKey);
+                }
+
+                config.SetDefaultTextCompletionService(azureOpenAIConfiguration.ServiceId);
+            });
+
+        if (useEmbeddings)
+        {
+            builder = builder.WithMemoryStorage(new VolatileMemoryStore());
+        }
+
+        var kernel = builder.Build();
+
+        // Import all sample skills available for demonstration purposes.
+        TestHelpers.ImportSampleSkills(kernel);
+
+        var emailSkill = kernel.ImportSkill(new EmailSkill());
+        return kernel;
+    }
+
 
     private readonly ILogger _logger;
     private readonly RedirectOutput _testOutputHelper;
