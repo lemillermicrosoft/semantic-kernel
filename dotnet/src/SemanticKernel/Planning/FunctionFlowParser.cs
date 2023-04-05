@@ -87,8 +87,6 @@ internal static class FunctionFlowParser
 
                     if (o2.Name.StartsWith(FunctionTag, StringComparison.InvariantCultureIgnoreCase))
                     {
-                        var planStep = new SequentialPlan();
-
                         var skillFunctionName = o2.Name.Split(FunctionTag)?[1] ?? string.Empty;
                         GetSkillFunctionNames(skillFunctionName, out var skillName, out var functionName);
 
@@ -98,7 +96,7 @@ internal static class FunctionFlowParser
                             Verify.NotNull(functionName, nameof(functionName));
                             Verify.NotNull(skillFunction, nameof(skillFunction));
 
-                            planStep = SequentialPlan.FromISKFunction(skillFunction);
+                            var planStep = new SequentialPlan(skillFunction);
 
                             var functionVariables = new ContextVariables();
 

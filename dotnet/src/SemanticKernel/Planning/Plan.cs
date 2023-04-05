@@ -19,7 +19,7 @@ public class Plan : ISKFunction
 {
     protected ISKFunction? Function { get; set; } = null;
 
-    public void SetFunction(ISKFunction function)
+    protected void SetFunction(ISKFunction function)
     {
         this.Function = function;
         this.Name = function.Name;
@@ -29,14 +29,24 @@ public class Plan : ISKFunction
         this.RequestSettings = function.RequestSettings;
     }
 
-    public static Plan FromISKFunction(ISKFunction function)
+    public Plan()
     {
-        var plan = new Plan();
 
-        plan.SetFunction(function);
-
-        return plan;
     }
+
+    public Plan(ISKFunction function)
+    {
+        this.SetFunction(function);
+    }
+
+    // public static Plan FromISKFunction(ISKFunction function)
+    // {
+    //     var plan = new Plan();
+
+    //     plan.SetFunction(function);
+
+    //     return plan;
+    // }
 
     /// <summary>
     /// State of the plan

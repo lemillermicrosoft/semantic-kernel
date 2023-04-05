@@ -27,14 +27,24 @@ public class SequentialPlan : Plan
     [JsonPropertyName("result_key")]
     public string ResultKey { get; set; } = string.Empty;
 
-    public static new SequentialPlan FromISKFunction(ISKFunction function)
+    public SequentialPlan() : base()
     {
-        var plan = new SequentialPlan();
 
-        plan.SetFunction(function);
-
-        return plan;
     }
+
+    public SequentialPlan(ISKFunction function) : base(function)
+    {
+
+    }
+
+    // public static SequentialPlan FromISKFunction(ISKFunction function)
+    // {
+    //     var plan = new SequentialPlan();
+
+    //     plan.SetFunction(function);
+
+    //     return plan;
+    // }
 
     /// <inheritdoc/>
     public override async Task<SKContext> InvokeAsync(SKContext? context = null, CompleteRequestSettings? settings = null, ILogger? log = null,
@@ -46,9 +56,8 @@ public class SequentialPlan : Plan
         while (this.Steps.Count > 0)
         {
             await this.InvokeNextStepAsync(context);
+            context.Variables.Update(this.State.ToString());
         }
-
-        context.Variables.Update(this.State.ToString());
 
         return context;
     }
@@ -153,6 +162,17 @@ public class SequentialPlan : Plan
         var functionInput = string.IsNullOrEmpty(planInput) ? (this.Steps.FirstOrDefault()?.Description ?? string.Empty) : planInput;
         var functionVariables = new ContextVariables(functionInput);
 
+        var functionParameters = step.Describe();
+        foreach (var param in functionParameters.Parameters)
+        {
+            // otherwise get it from the state if present
+            // todo how was language going through correctly?
+            if (variables.Get(param.Name, out var value) && !string.IsNullOrEmpty(value))
+            {
+                functionVariables.Set(param.Name, value);
+            }
+        }
+
         // NameParameters are the parameters that are passed to the function
         // These should be pre-populated by the plan, either with a value or a template expression (e.g. $variableName)
         // The template expression will be replaced with the value of the variable in the variables or the Plan.State
@@ -200,6 +220,15 @@ public class SequentialPlan : Plan
                 if (param.Key != "INPUT" || !string.IsNullOrEmpty(param.Value))
                 {
                     functionVariables.Set(param.Key, param.Value);
+                }
+                else
+                {
+                    // otherwise get it from the state if present
+                    // todo how was language going through correctly?
+                    if (this.State.Get(param.Key, out var value) && !string.IsNullOrEmpty(value))
+                    {
+                        functionVariables.Set(param.Key, value);
+                    }
                 }
             }
         }

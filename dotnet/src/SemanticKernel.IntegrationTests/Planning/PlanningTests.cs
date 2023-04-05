@@ -171,13 +171,10 @@ public sealed class PlanningTests : IDisposable
         // Create the input mapping from parent (plan) plan state to child plan (sendEmailPlan) state.
         var cv = new ContextVariables();
         cv.Set("email_address", "$TheEmailFromState");
-        var sendEmailPlan = new Plan()
+        var sendEmailPlan = new Plan(emailSkill["SendEmailAsync"])
         {
-            // Name = "SendEmailAsync",
-            // SkillName = "_GLOBAL_FUNCTIONS_",
             NamedParameters = cv
         };
-        sendEmailPlan.SetFunction(emailSkill["SendEmailAsync"]);
 
         var plan = new SequentialPlan() { Description = goal };
         plan.Steps.Add(sendEmailPlan);
@@ -264,7 +261,6 @@ public sealed class PlanningTests : IDisposable
         Assert.True(expectedBody.Length < plan.State.ToString().Length);
     }
 
-
     [Theory]
     [InlineData("Summarize an input, translate to french, and e-mail to Kai", "This is a story about a dog.", "French", "Kai", "Kai@example.com")]
     public async Task CanExecuteRunSimpleAsync(string goal, string inputToSummarize, string inputLanguage, string inputName, string expectedEmail)
@@ -322,6 +318,40 @@ public sealed class PlanningTests : IDisposable
 
         // Act
         var result = await target.RunAsync(inputToSummarize, plan);
+
+        // Assert
+        Assert.Contains(expectedBody, result.Result, StringComparison.OrdinalIgnoreCase);
+        Assert.True(expectedBody.Length < result.Result.Length);
+    }
+
+    [Theory]
+    [InlineData("Summarize an input, translate to french, and e-mail to Kai", "This is a story about a dog.", "French", "kai@email.com")]
+    public async Task CanExecuteRunSequentialAsync(string goal, string inputToSummarize, string inputLanguage, string expectedEmail)
+    {
+        // Arrange
+        IKernel target = this.InitializeKernel();
+
+        var summarizeSkill = TestHelpers.GetSkill("SummarizeSkill", target);
+        var writerSkill = TestHelpers.GetSkill("WriterSkill", target);
+        var emailSkill = target.ImportSkill(new EmailSkill());
+
+        var expectedBody = $"Sent email to: {expectedEmail}. Body:".Trim();
+
+        var summarizePlan = new Plan(summarizeSkill["Summarize"]);
+        var translatePlan = new Plan(writerSkill["Translate"]);
+        var sendEmailPlan = new Plan(emailSkill["SendEmailAsync"]);
+
+        var plan = new SequentialPlan() { Description = goal };
+        plan.Steps.Add(summarizePlan);
+        plan.Steps.Add(translatePlan);
+        plan.Steps.Add(sendEmailPlan);
+
+        // Act
+        var cv = new ContextVariables();
+        cv.Update(inputToSummarize);
+        cv.Set("email_address", expectedEmail);
+        cv.Set("language", inputLanguage);
+        var result = await target.RunAsync(cv, plan);
 
         // Assert
         Assert.Contains(expectedBody, result.Result, StringComparison.OrdinalIgnoreCase);
