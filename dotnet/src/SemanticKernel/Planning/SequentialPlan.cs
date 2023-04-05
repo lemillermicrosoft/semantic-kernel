@@ -51,74 +51,6 @@ public class SequentialPlan : Plan
         context.Variables.Update(this.State.ToString());
 
         return context;
-
-
-        // var nextStep = this.PopNextStep();
-
-        // if (nextStep == null)
-        // {
-        //     return context; // todo
-        // }
-
-        // // todo -- if nextStep.Steps has children, execute them [first]
-        // // Otherwise, execute the function
-
-        // var functionVariables = this.GetNextStepVariables(context.Variables, nextStep!);
-
-        // var skillName = nextStep.SkillName;
-        // var functionName = nextStep.Name;
-
-        // if (context.IsFunctionRegistered(skillName, functionName, out var skillFunction))
-        // {
-        //     Verify.NotNull(skillFunction, nameof(skillFunction));
-        //     // If a function is registered, we will execute it and remove it from the list
-        //     // The functionVariables will be passed to the functions.
-        //     var keysToIgnore = functionVariables.Select(x => x.Key).ToList();
-        //     // var result = await kernel.RunAsync(functionVariables, cancellationToken, skillFunction!);
-        //     var functionContext = new SKContext(functionVariables, context.Memory, context.Skills, context.Log, context.CancellationToken);
-        //     var result = await skillFunction.InvokeAsync(functionContext, settings, log, cancel);
-
-        //     if (result.ErrorOccurred)
-        //     {
-        //         throw new InvalidOperationException($"Function {skillName}.{functionName} failed: {result.LastErrorDescription}", result.LastException);
-        //     }
-
-        //     foreach (var (key, _) in functionVariables)
-        //     {
-        //         if (!keysToIgnore.Contains(key, StringComparer.InvariantCultureIgnoreCase) && functionVariables.Get(key, out var value))
-        //         {
-        //             this.State.Set(key, value);
-        //         }
-        //     }
-
-        //     if (!string.IsNullOrEmpty(nextStep.OutputKey))
-        //     {
-        //         _ = this.State.Update(result.Result.Trim());
-        //     }
-        //     else
-        //     {
-        //         this.State.Set(nextStep.OutputKey, result.Result.Trim());
-        //     }
-
-        //     _ = this.State.Update(result.Result.Trim());
-        //     if (!string.IsNullOrEmpty(nextStep.OutputKey))
-        //     {
-        //         this.State.Set(nextStep.OutputKey, result.Result.Trim());
-        //     }
-
-        //     if (!string.IsNullOrEmpty(nextStep.ResultKey))
-        //     {
-        //         _ = this.State.Get(SkillPlan.ResultKey, out var resultsSoFar);
-        //         this.State.Set(SkillPlan.ResultKey,
-        //             string.Join(Environment.NewLine + Environment.NewLine, resultsSoFar, result.Result.Trim()));
-        //     }
-
-        //     return result;
-        // }
-        // else
-        // {
-        //     throw new InvalidOperationException($"Function {skillName}.{functionName} is not registered");
-        // }
     }
 
     public async Task<Plan> InvokeNextStepAsync(SKContext context)
@@ -165,94 +97,33 @@ public class SequentialPlan : Plan
                 }
             }
 
-            if (string.IsNullOrEmpty(nextStep.OutputKey))
+            if (nextStep is SequentialPlan sequentialPlan)
             {
-                _ = this.State.Update(result.Result.Trim());
-            }
-            else
-            {
-                this.State.Set(nextStep.OutputKey, result.Result.Trim());
-            }
-
-            _ = this.State.Update(result.Result.Trim());
-            if (!string.IsNullOrEmpty(nextStep.OutputKey))
-            {
-                this.State.Set(nextStep.OutputKey, result.Result.Trim());
-            }
-
-            if (!string.IsNullOrEmpty(nextStep.ResultKey))
-            {
-                _ = this.State.Get(SkillPlan.ResultKey, out var resultsSoFar);
-                this.State.Set(SkillPlan.ResultKey,
-                    string.Join(Environment.NewLine + Environment.NewLine, resultsSoFar, result.Result.Trim()));
-            }
-
-            return this;
-        }
-        else
-        {
-            throw new InvalidOperationException($"Function {skillName}.{functionName} is not registered");
-        }
-    }
-
-    public override async Task<Plan> RunNextStepAsync(IKernel kernel, ContextVariables variables, CancellationToken cancellationToken = default)
-    {
-        var context = kernel.CreateNewContext();
-        var nextStep = this.PopNextStep();
-
-        // todo -- if nextStep.Steps has children, execute them [first]
-        // Otherwise, execute the function
-
-        if (nextStep == null)
-        {
-            return this;
-        }
-
-        var functionVariables = this.GetNextStepVariables(variables, nextStep!);
-
-        var skillName = nextStep.SkillName;
-        var functionName = nextStep.Name;
-
-        if (context.IsFunctionRegistered(skillName, functionName, out var skillFunction))
-        {
-            // If a function is registered, we will execute it and remove it from the list
-            // The functionVariables will be passed to the functions.
-            var keysToIgnore = functionVariables.Select(x => x.Key).ToList();
-            var result = await kernel.RunAsync(functionVariables, cancellationToken, skillFunction!);
-
-            if (result.ErrorOccurred)
-            {
-                throw new InvalidOperationException($"Function {skillName}.{functionName} failed: {result.LastErrorDescription}", result.LastException);
-            }
-
-            foreach (var (key, _) in functionVariables)
-            {
-                if (!keysToIgnore.Contains(key, StringComparer.InvariantCultureIgnoreCase) && functionVariables.Get(key, out var value))
+                if (string.IsNullOrEmpty(sequentialPlan.OutputKey))
                 {
-                    this.State.Set(key, value);
+                    _ = this.State.Update(result.Result.Trim());
+                }
+                else
+                {
+                    this.State.Set(sequentialPlan.OutputKey, result.Result.Trim());
+                }
+
+                _ = this.State.Update(result.Result.Trim());
+                if (!string.IsNullOrEmpty(sequentialPlan.OutputKey))
+                {
+                    this.State.Set(sequentialPlan.OutputKey, result.Result.Trim());
+                }
+
+                if (!string.IsNullOrEmpty(sequentialPlan.ResultKey))
+                {
+                    _ = this.State.Get(SkillPlan.ResultKey, out var resultsSoFar);
+                    this.State.Set(SkillPlan.ResultKey,
+                        string.Join(Environment.NewLine + Environment.NewLine, resultsSoFar, result.Result.Trim()));
                 }
             }
-
-            if (string.IsNullOrEmpty(nextStep.OutputKey))
-            {
-                _ = this.State.Update(result.Result.Trim());
-            }
             else
             {
-                this.State.Set(nextStep.OutputKey, result.Result.Trim());
-            }
-
-            _ = this.State.Update(result.Result.Trim());
-            if (!string.IsNullOrEmpty(nextStep.OutputKey))
-            {
-                this.State.Set(nextStep.OutputKey, result.Result.Trim());
-            }
-
-            if (!string.IsNullOrEmpty(nextStep.ResultKey))
-            {
-                _ = this.State.Get(SkillPlan.ResultKey, out var resultsSoFar);
-                this.State.Set(SkillPlan.ResultKey,
-                    string.Join(Environment.NewLine + Environment.NewLine, resultsSoFar, result.Result.Trim()));
+                this.State.Update(result.Result.Trim());
             }
 
             return this;
@@ -263,7 +134,18 @@ public class SequentialPlan : Plan
         }
     }
 
-    private ContextVariables GetNextStepVariables(ContextVariables variables, SequentialPlan step)
+    public override Task<Plan> RunNextStepAsync(IKernel kernel, ContextVariables variables, CancellationToken cancellationToken = default)
+    {
+        var context = new SKContext(
+            variables,
+            kernel.Memory,
+            kernel.Skills,
+            kernel.Log,
+            cancellationToken);
+        return this.InvokeNextStepAsync(context);
+    }
+
+    private ContextVariables GetNextStepVariables(ContextVariables variables, Plan step)
     {
         // Initialize function-scoped ContextVariables
         // Default input should be the Input from the SKContext, or the Input from the Plan.State, or the Plan.Goal
@@ -325,7 +207,7 @@ public class SequentialPlan : Plan
         return functionVariables;
     }
 
-    private SequentialPlan? PopNextStep()
+    private Plan? PopNextStep()
     {
         // var step = this.Steps.First();
         // var parent = step;
@@ -340,7 +222,7 @@ public class SequentialPlan : Plan
         {
             var step = this.Steps[0];
             this.Steps.RemoveAt(0);
-            return step as SequentialPlan;
+            return step;
         }
 
         return this;

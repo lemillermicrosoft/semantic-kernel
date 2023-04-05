@@ -154,6 +154,45 @@ public sealed class PlanningTests : IDisposable
         Assert.Equal($"Sent email to: {email}. Body: {expectedBody}".Trim(), plan.State.ToString());
     }
 
+
+    [Theory]
+    [InlineData(null, "Write a poem or joke and send it in an e-mail to Kai.", null)]
+    [InlineData("", "Write a poem or joke and send it in an e-mail to Kai.", "")]
+    [InlineData("Hello World!", "Write a poem or joke and send it in an e-mail to Kai.", "some_email@email.com")]
+    public async Task CanExecuteRunPlanManualStateAsync(string input, string goal, string email)
+    {
+        // Arrange
+        IKernel target = this.InitializeKernel();
+
+        // Import all sample skills available for demonstration purposes.
+        TestHelpers.ImportSampleSkills(target);
+        var emailSkill = target.ImportSkill(new EmailSkill());
+
+        // Create the input mapping from parent (plan) plan state to child plan (sendEmailPlan) state.
+        var cv = new ContextVariables();
+        cv.Set("email_address", "$TheEmailFromState");
+        var sendEmailPlan = new Plan()
+        {
+            // Name = "SendEmailAsync",
+            // SkillName = "_GLOBAL_FUNCTIONS_",
+            NamedParameters = cv
+        };
+        sendEmailPlan.SetFunction(emailSkill["SendEmailAsync"]);
+
+        var plan = new SequentialPlan() { Description = goal };
+        plan.Steps.Add(sendEmailPlan);
+        plan.State.Set("TheEmailFromState", email); // manually prepare the state
+
+        // Act
+        var result = await target.StepAsync(input, plan);
+
+        // Assert
+        var expectedBody = input;
+        Assert.Empty(plan.Steps);
+        Assert.Equal(goal, plan.Description);
+        Assert.Equal($"Sent email to: {email}. Body: {expectedBody}".Trim(), plan.State.ToString());
+    }
+
     [Theory]
     [InlineData("Summarize an input, translate to french, and e-mail to Kai", "This is a story about a dog.", "French", "Kai", "Kai@example.com")]
     public async Task CanExecuteRunPlanSimpleAsync(string goal, string inputToSummarize, string inputLanguage, string inputName, string expectedEmail)
@@ -285,8 +324,6 @@ public sealed class PlanningTests : IDisposable
         var result = await target.RunAsync(inputToSummarize, plan);
 
         // Assert
-        // Assert.Empty(plan.Steps);
-        // Assert.Equal(goal, plan.Description);
         Assert.Contains(expectedBody, result.Result, StringComparison.OrdinalIgnoreCase);
         Assert.True(expectedBody.Length < result.Result.Length);
     }
@@ -334,7 +371,6 @@ public sealed class PlanningTests : IDisposable
         var emailSkill = kernel.ImportSkill(new EmailSkill());
         return kernel;
     }
-
 
     private readonly ILogger _logger;
     private readonly RedirectOutput _testOutputHelper;
