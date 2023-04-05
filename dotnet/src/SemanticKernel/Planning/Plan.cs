@@ -94,7 +94,7 @@ public class Plan : ISKFunction
     /// <inheritdoc/>
     public FunctionView Describe()
     {
-        return this.Function?.Describe() ?? new(); // todo new()???
+        return this.Function?.Describe() ?? new();
     }
 
     /// <inheritdoc/>

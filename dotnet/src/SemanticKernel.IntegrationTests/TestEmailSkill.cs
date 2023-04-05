@@ -23,8 +23,16 @@ internal class EmailSkill
     [SKFunctionInput(Description = "The name of the person to email.")]
     public Task<SKContext> GetEmailAddressAsync(string input, SKContext context)
     {
-        context.Log.LogDebug("Returning hard coded email for {0}", input);
-        context.Variables.Update("johndoe1234@example.com");
+        if (string.IsNullOrEmpty(input))
+        {
+            context.Log.LogDebug("Returning hard coded email for {0}", input);
+            context.Variables.Update("johndoe1234@example.com");
+        }
+        else
+        {
+            context.Log.LogDebug("Returning dynamic email for {0}", input);
+            context.Variables.Update($"{input}@example.com");
+        }
         return Task.FromResult(context);
     }
 

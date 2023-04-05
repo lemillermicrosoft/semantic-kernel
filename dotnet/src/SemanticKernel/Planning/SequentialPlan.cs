@@ -231,7 +231,7 @@ public class SequentialPlan : Plan
                 // TODO
                 // What to do when step.NameParameters conflicts with the current context?
                 // Does that only happen with INPUT?
-                if (param.Key != "INPUT")
+                if (param.Key != "INPUT" || !string.IsNullOrEmpty(param.Value))
                 {
                     functionVariables.Set(param.Key, param.Value);
                 }
