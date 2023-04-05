@@ -15,7 +15,6 @@ using Microsoft.SemanticKernel.AI.TextCompletion;
 using Microsoft.SemanticKernel.Diagnostics;
 using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.Orchestration;
-using Microsoft.SemanticKernel.Planning;
 using Microsoft.SemanticKernel.SemanticFunctions;
 using Microsoft.SemanticKernel.SkillDefinition;
 using Microsoft.SemanticKernel.TemplateEngine;
@@ -197,15 +196,15 @@ public sealed class Kernel : IKernel, IDisposable
 
             try
             {
-                if (f is Plan p)
-                {
-                    this._log.LogTrace("Executing plan {0}", p.Name);
+                // if (f is Plan p)
+                // {
+                //     this._log.LogTrace("Executing plan {0}", p.Name);
 
-                    // TODO What does this mean/do?
-                    var updatedPlan = await p.RunNextStepAsync(this, context.Variables, cancellationToken);
+                //     // TODO What does this mean/do?
+                //     var updatedPlan = await p.RunNextStepAsync(this, context.Variables, cancellationToken);
 
-                    continue;
-                }
+                //     continue;
+                // }
 
                 cancellationToken.ThrowIfCancellationRequested();
                 context = await f.InvokeAsync(context);

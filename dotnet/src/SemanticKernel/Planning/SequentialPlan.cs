@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.SemanticKernel.AI.TextCompletion;
-using Microsoft.SemanticKernel.Diagnostics;
 using Microsoft.SemanticKernel.Orchestration;
 
 namespace Microsoft.SemanticKernel.Planning;
@@ -43,15 +42,96 @@ public class SequentialPlan : Plan
     {
         context ??= new SKContext(new ContextVariables(), null!, null, log ?? NullLogger.Instance, cancel ?? CancellationToken.None);
 
-        var nextStep = this.PopNextStep();
-
-        if (nextStep == null)
+        // loop through steps and execute until completion
+        while (this.Steps.Count > 0)
         {
-            return context; // todo
+            await this.InvokeNextStepAsync(context);
         }
+
+        context.Variables.Update(this.State.ToString());
+
+        return context;
+
+
+        // var nextStep = this.PopNextStep();
+
+        // if (nextStep == null)
+        // {
+        //     return context; // todo
+        // }
+
+        // // todo -- if nextStep.Steps has children, execute them [first]
+        // // Otherwise, execute the function
+
+        // var functionVariables = this.GetNextStepVariables(context.Variables, nextStep!);
+
+        // var skillName = nextStep.SkillName;
+        // var functionName = nextStep.Name;
+
+        // if (context.IsFunctionRegistered(skillName, functionName, out var skillFunction))
+        // {
+        //     Verify.NotNull(skillFunction, nameof(skillFunction));
+        //     // If a function is registered, we will execute it and remove it from the list
+        //     // The functionVariables will be passed to the functions.
+        //     var keysToIgnore = functionVariables.Select(x => x.Key).ToList();
+        //     // var result = await kernel.RunAsync(functionVariables, cancellationToken, skillFunction!);
+        //     var functionContext = new SKContext(functionVariables, context.Memory, context.Skills, context.Log, context.CancellationToken);
+        //     var result = await skillFunction.InvokeAsync(functionContext, settings, log, cancel);
+
+        //     if (result.ErrorOccurred)
+        //     {
+        //         throw new InvalidOperationException($"Function {skillName}.{functionName} failed: {result.LastErrorDescription}", result.LastException);
+        //     }
+
+        //     foreach (var (key, _) in functionVariables)
+        //     {
+        //         if (!keysToIgnore.Contains(key, StringComparer.InvariantCultureIgnoreCase) && functionVariables.Get(key, out var value))
+        //         {
+        //             this.State.Set(key, value);
+        //         }
+        //     }
+
+        //     if (!string.IsNullOrEmpty(nextStep.OutputKey))
+        //     {
+        //         _ = this.State.Update(result.Result.Trim());
+        //     }
+        //     else
+        //     {
+        //         this.State.Set(nextStep.OutputKey, result.Result.Trim());
+        //     }
+
+        //     _ = this.State.Update(result.Result.Trim());
+        //     if (!string.IsNullOrEmpty(nextStep.OutputKey))
+        //     {
+        //         this.State.Set(nextStep.OutputKey, result.Result.Trim());
+        //     }
+
+        //     if (!string.IsNullOrEmpty(nextStep.ResultKey))
+        //     {
+        //         _ = this.State.Get(SkillPlan.ResultKey, out var resultsSoFar);
+        //         this.State.Set(SkillPlan.ResultKey,
+        //             string.Join(Environment.NewLine + Environment.NewLine, resultsSoFar, result.Result.Trim()));
+        //     }
+
+        //     return result;
+        // }
+        // else
+        // {
+        //     throw new InvalidOperationException($"Function {skillName}.{functionName} is not registered");
+        // }
+    }
+
+    public async Task<Plan> InvokeNextStepAsync(SKContext context)
+    {
+        var nextStep = this.PopNextStep();
 
         // todo -- if nextStep.Steps has children, execute them [first]
         // Otherwise, execute the function
+
+        if (nextStep == null)
+        {
+            return this;
+        }
 
         var functionVariables = this.GetNextStepVariables(context.Variables, nextStep!);
 
@@ -60,13 +140,17 @@ public class SequentialPlan : Plan
 
         if (context.IsFunctionRegistered(skillName, functionName, out var skillFunction))
         {
-            Verify.NotNull(skillFunction, nameof(skillFunction));
+            if (skillFunction is null)
+            {
+                throw new InvalidOperationException($"Function {skillName}.{functionName} is not registered");
+            }
+
             // If a function is registered, we will execute it and remove it from the list
             // The functionVariables will be passed to the functions.
             var keysToIgnore = functionVariables.Select(x => x.Key).ToList();
-            // var result = await kernel.RunAsync(functionVariables, cancellationToken, skillFunction!);
+            // var result = await kernel.RunAsync(functionVariables, context.CancellationToken, skillFunction!);
             var functionContext = new SKContext(functionVariables, context.Memory, context.Skills, context.Log, context.CancellationToken);
-            var result = await skillFunction.InvokeAsync(functionContext, settings, log, cancel);
+            var result = await skillFunction.InvokeAsync(functionContext);
 
             if (result.ErrorOccurred)
             {
@@ -81,7 +165,7 @@ public class SequentialPlan : Plan
                 }
             }
 
-            if (!string.IsNullOrEmpty(nextStep.OutputKey))
+            if (string.IsNullOrEmpty(nextStep.OutputKey))
             {
                 _ = this.State.Update(result.Result.Trim());
             }
@@ -103,7 +187,7 @@ public class SequentialPlan : Plan
                     string.Join(Environment.NewLine + Environment.NewLine, resultsSoFar, result.Result.Trim()));
             }
 
-            return result;
+            return this;
         }
         else
         {

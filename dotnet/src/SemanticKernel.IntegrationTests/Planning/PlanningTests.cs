@@ -121,7 +121,7 @@ public sealed class PlanningTests : IDisposable
     [InlineData(null, "Write a poem or joke and send it in an e-mail to Kai.", null)]
     [InlineData("", "Write a poem or joke and send it in an e-mail to Kai.", "")]
     [InlineData("Hello World!", "Write a poem or joke and send it in an e-mail to Kai.", "some_email@email.com")]
-    public async Task CanExecuteRunPlanSimpleAsync(string input, string goal, string email)
+    public async Task CanExecuteRunPlanSimpleManualStateAsync(string input, string goal, string email)
     {
         // Arrange
         IKernel target = this.InitializeKernel();
@@ -130,40 +130,165 @@ public sealed class PlanningTests : IDisposable
         TestHelpers.ImportSampleSkills(target);
         var emailSkill = target.ImportSkill(new EmailSkill());
 
+        // Create the input mapping from parent (plan) plan state to child plan (sendEmailPlan) state.
         var cv = new ContextVariables();
         cv.Set("email_address", "$TheEmailFromState");
-        // var plan = new SequentialPlan() { Root = new() { Description = goal } };
-        var plan = new SequentialPlan() { Description = goal };
-        // plan.Root.Steps.Add(new PlanStep()
-        // {
-        //     SelectedFunction = "SendEmailAsync",
-        //     SelectedSkill = "_GLOBAL_FUNCTIONS_",
-        //     NamedParameters = cv
-        // });
-        plan.Steps.Add(new SequentialPlan()
+        var sendEmailPlan = new SequentialPlan()
         {
             Name = "SendEmailAsync",
             SkillName = "_GLOBAL_FUNCTIONS_",
             NamedParameters = cv
-        });
-        plan.State.Set("TheEmailFromState", email);
+        }; // TODO A separate test where this is just a Plan() object using the function
+
+        var plan = new SequentialPlan() { Description = goal };
+        plan.Steps.Add(sendEmailPlan);
+        plan.State.Set("TheEmailFromState", email); // manually prepare the state
 
         // Act
-        // When Plan was IPlan, this hit extension method. Now that Plan is ISKFunction, it will hit default kernel methods
-        // await target.RunAsync(input, plan);
-        var result = await target.StepAsync(input, plan); // renaming Extensions to 'stepasync' to avoid confusion with 'runasync'
-
-        // BUG FOUND -- The parameters of the Step are not populated properly
+        var result = await target.StepAsync(input, plan);
 
         // Assert
-        // Assert.Empty(plan.LastErrorDescription);
-        // Assert.False(plan.ErrorOccurred);
-        var expectedBody = input;//string.IsNullOrEmpty(input) ? goal : input;
-        // Assert.Equal(0, plan.Root.Steps.Count);
+        var expectedBody = input;
         Assert.Empty(plan.Steps);
-        // Assert.Equal(goal, plan.Root.Description);
         Assert.Equal(goal, plan.Description);
-        Assert.Equal($"Sent email to: {email}. Body: {expectedBody}".Trim(), plan.State.ToString()); // TODO Make a Result and other properties
+        Assert.Equal($"Sent email to: {email}. Body: {expectedBody}".Trim(), plan.State.ToString());
+    }
+
+    [Theory]
+    [InlineData("Summarize an input, translate to french, and e-mail to Kai", "This is a story about a dog.", "French", "Kai", "Kai@example.com")]
+    public async Task CanExecuteRunPlanSimpleAsync(string goal, string inputToSummarize, string inputLanguage, string inputName, string expectedEmail)
+    {
+        // Arrange
+        IKernel target = this.InitializeKernel();
+
+        // Import all sample skills available for demonstration purposes.
+        TestHelpers.ImportSampleSkills(target);
+        var emailSkill = target.ImportSkill(new EmailSkill());
+
+        var expectedBody = $"Sent email to: {expectedEmail}. Body:".Trim();
+
+        var summarizePlan = new SequentialPlan()
+        {
+            Name = "Summarize",
+            SkillName = "SummarizeSkill"
+        };
+
+        var cv = new ContextVariables();
+        cv.Set("language", inputLanguage);
+        var translatePlan = new SequentialPlan()
+        {
+            Name = "Translate",
+            SkillName = "WriterSkill",
+            OutputKey = "TRANSLATED_SUMMARY",
+            NamedParameters = cv
+        };
+
+        cv = new ContextVariables();
+        cv.Update(inputName);
+        var getEmailPlan = new SequentialPlan()
+        {
+            Name = "GetEmailAddressAsync",
+            SkillName = "_GLOBAL_FUNCTIONS_",
+            OutputKey = "TheEmailFromState",
+            NamedParameters = cv,
+        };
+
+        cv = new ContextVariables();
+        cv.Set("email_address", "$TheEmailFromState");
+        cv.Set("input", "$TRANSLATED_SUMMARY");
+        var sendEmailPlan = new SequentialPlan()
+        {
+            Name = "SendEmailAsync",
+            SkillName = "_GLOBAL_FUNCTIONS_",
+            NamedParameters = cv
+        };
+
+        var plan = new SequentialPlan() { Description = goal };
+        plan.Steps.Add(summarizePlan);
+        plan.Steps.Add(translatePlan);
+        plan.Steps.Add(getEmailPlan);
+        plan.Steps.Add(sendEmailPlan);
+
+        // Act
+        var result = await target.StepAsync(inputToSummarize, plan);
+        Assert.Equal(3, result.Steps.Count);
+        result = await target.StepAsync(result);
+        Assert.Equal(2, result.Steps.Count);
+        result = await target.StepAsync(result);
+        Assert.Single(result.Steps);
+        result = await target.StepAsync(result);
+
+        // Assert
+        Assert.Empty(plan.Steps);
+        Assert.Equal(goal, plan.Description);
+        Assert.Contains(expectedBody, plan.State.ToString(), StringComparison.OrdinalIgnoreCase);
+        Assert.True(expectedBody.Length < plan.State.ToString().Length);
+    }
+
+
+    [Theory]
+    [InlineData("Summarize an input, translate to french, and e-mail to Kai", "This is a story about a dog.", "French", "Kai", "Kai@example.com")]
+    public async Task CanExecuteRunSimpleAsync(string goal, string inputToSummarize, string inputLanguage, string inputName, string expectedEmail)
+    {
+        // Arrange
+        IKernel target = this.InitializeKernel();
+
+        // Import all sample skills available for demonstration purposes.
+        TestHelpers.ImportSampleSkills(target);
+        var emailSkill = target.ImportSkill(new EmailSkill());
+
+        var expectedBody = $"Sent email to: {expectedEmail}. Body:".Trim();
+
+        var summarizePlan = new SequentialPlan()
+        {
+            Name = "Summarize",
+            SkillName = "SummarizeSkill"
+        };
+
+        var cv = new ContextVariables();
+        cv.Set("language", inputLanguage);
+        var translatePlan = new SequentialPlan()
+        {
+            Name = "Translate",
+            SkillName = "WriterSkill",
+            OutputKey = "TRANSLATED_SUMMARY",
+            NamedParameters = cv
+        };
+
+        cv = new ContextVariables();
+        cv.Update(inputName);
+        var getEmailPlan = new SequentialPlan()
+        {
+            Name = "GetEmailAddressAsync",
+            SkillName = "_GLOBAL_FUNCTIONS_",
+            OutputKey = "TheEmailFromState",
+            NamedParameters = cv,
+        };
+
+        cv = new ContextVariables();
+        cv.Set("email_address", "$TheEmailFromState");
+        cv.Set("input", "$TRANSLATED_SUMMARY");
+        var sendEmailPlan = new SequentialPlan()
+        {
+            Name = "SendEmailAsync",
+            SkillName = "_GLOBAL_FUNCTIONS_",
+            NamedParameters = cv
+        };
+
+        var plan = new SequentialPlan() { Description = goal };
+        plan.Steps.Add(summarizePlan);
+        plan.Steps.Add(translatePlan);
+        plan.Steps.Add(getEmailPlan);
+        plan.Steps.Add(sendEmailPlan);
+
+        // Act
+        var result = await target.RunAsync(inputToSummarize, plan);
+
+        // Assert
+        // Assert.Empty(plan.Steps);
+        // Assert.Equal(goal, plan.Description);
+        Assert.Contains(expectedBody, result.Result, StringComparison.OrdinalIgnoreCase);
+        Assert.True(expectedBody.Length < result.Result.Length);
     }
 
     private IKernel InitializeKernel(bool useEmbeddings = false)
