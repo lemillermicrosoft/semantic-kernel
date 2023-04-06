@@ -267,7 +267,7 @@ public sealed class Plan : ISKFunction
         return this;
     }
 
-    public void SetFunction(ISKFunction function)
+    internal void SetFunction(ISKFunction function)
     {
         this.Function = function;
         this.Name = function.Name;

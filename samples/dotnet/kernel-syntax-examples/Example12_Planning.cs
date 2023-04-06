@@ -3,12 +3,17 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.CoreSkills;
 using Microsoft.SemanticKernel.KernelExtensions;
 using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.Orchestration;
+using Microsoft.SemanticKernel.Planning;
+using Microsoft.SemanticKernel.Planning.Planners;
+using Microsoft.SemanticKernel.Skills.Web;
+using Microsoft.SemanticKernel.Skills.Web.Bing;
 using RepoUtils;
 using Skills;
 using TextSkill = Skills.TextSkill;
@@ -18,11 +23,12 @@ internal static class Example12_Planning
 {
     public static async Task RunAsync()
     {
-        await PoetrySamplesAsync();
-        await EmailSamplesAsync();
-        await BookSamplesAsync();
-        await MemorySampleAsync();
-        await ConditionalSampleAsync();
+        // await PoetrySamplesAsync();
+        // await EmailSamplesAsync();
+        // await BookSamplesAsync();
+        // await MemorySampleAsync();
+        // await ConditionalSampleAsync();
+        await CompareContrastPlanningAsync();
     }
 
     private static async Task ConditionalSampleAsync()
@@ -62,6 +68,92 @@ internal static class Example12_Planning
         Console.WriteLine(originalPlan.Variables.ToPlan().PlanString);
 
         await ExecutePlanAsync(kernel, planner, originalPlan, 20);
+        await GitHubIssueAsync();
+    }
+
+    private static async Task GitHubIssueAsync()
+    {
+        var kernel = InitializeKernel();
+
+        using BingConnector connector = new(Env.Var("BING_API_KEY"));
+        var webSearchSkill = new WebSearchEngineSkill(connector);
+
+        IDictionary<string, ISKFunction> plannerSkill = kernel.ImportSkill(new PlannerSkill(kernel), "planning");
+
+        kernel.ImportSkill(webSearchSkill, nameof(WebSearchEngineSkill));
+
+        string folder = RepoFiles.SampleSkillsPath();
+        kernel.ImportSemanticSkillFromDirectory(folder, "SummarizeSkill");
+        kernel.ImportSemanticSkillFromDirectory(folder, "FunSkill");
+
+        var planXml = @"
+<goal>
+What's the tallest building in Europe?
+</goal>
+<plan>
+  <function.WebSearchEngineSkill.SearchAsync/>
+</plan>";
+
+        var plan = new SkillPlan()
+        {
+            PlanString = planXml,
+            Goal = "What's the tallest building in Europe?",
+        };
+
+        var cv = new ContextVariables();
+        cv.UpdateWithPlanEntry(plan);
+        var planContext = new SKContext(
+            cv,
+            kernel.Memory,
+            kernel.Skills,
+            kernel.Log,
+            CancellationToken.None);
+
+        await ExecutePlanAsync(kernel, plannerSkill, planContext);
+    }
+
+    private static async Task CompareContrastPlanningAsync()
+    {
+        const string goal = "Write a poem about John Doe, then translate it into Italian.";
+        IKernel kernel;
+        // ********************
+        // Option 1: Using the planner skill directly
+        // ********************
+        kernel = InitializeKernel();
+
+        IDictionary<string, ISKFunction> plannerSkill = kernel.ImportSkill(new PlannerSkill(kernel), "planning");
+
+        SKContext planContext = await kernel.RunAsync(goal, plannerSkill["CreatePlan"]);
+
+        SKContext planResults = await kernel.RunAsync(planContext.Variables, plannerSkill["ExecutePlan"]);
+        SkillPlan plan = planResults.Variables.ToPlan();
+
+        // ********************
+        // Option 2: Using the planner class directly
+        // ********************
+        kernel = InitializeKernel();
+
+        var plannerObject = new Planner(); // Mode = Simple by default
+
+        var planObject = await plannerObject.CreatePlanAsync(goal);
+
+        var updatedPlan = await kernel.RunAsync(goal, planObject);
+    }
+
+    private static IKernel InitializeKernel()
+    {
+        var kernel = new KernelBuilder().WithLogger(ConsoleLogger.Log).Build();
+        kernel.Config.AddAzureOpenAITextCompletionService(
+            Env.Var("AZURE_OPENAI_DEPLOYMENT_LABEL"),
+            Env.Var("AZURE_OPENAI_DEPLOYMENT_NAME"),
+            Env.Var("AZURE_OPENAI_ENDPOINT"),
+            Env.Var("AZURE_OPENAI_KEY"));
+
+        string folder = RepoFiles.SampleSkillsPath();
+        kernel.ImportSemanticSkillFromDirectory(folder, "SummarizeSkill");
+        kernel.ImportSemanticSkillFromDirectory(folder, "WriterSkill");
+
+        return kernel;
     }
 
     private static async Task PoetrySamplesAsync()
@@ -257,8 +349,8 @@ internal static class Example12_Planning
                     break;
                 }
 
-                // Console.WriteLine($"Step {step} - Results so far:");
-                // Console.WriteLine(results.ToPlan().Result);
+                Console.WriteLine($"Step {step} - Results so far:");
+                Console.WriteLine(results.Result);
             }
             else
             {

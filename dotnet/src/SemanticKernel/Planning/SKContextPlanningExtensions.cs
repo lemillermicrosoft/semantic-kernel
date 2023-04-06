@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel.Memory;
+using Microsoft.SemanticKernel.Planning.Planners;
 using Microsoft.SemanticKernel.SkillDefinition;
 using static Microsoft.SemanticKernel.CoreSkills.PlannerSkill;
 
@@ -36,6 +37,68 @@ internal static class SKContextPlanningExtensions
         var functions = await context.GetAvailableFunctionsAsync(config, semanticQuery);
 
         return string.Join("\n\n", functions.Select(x => x.ToManualString()));
+    }
+
+    internal static async Task<string> GetFunctionsManualAsync(
+        this SKContext context,
+        string? semanticQuery = null,
+        PlannerConfig? config = null)
+    {
+        config ??= new PlannerConfig();
+        var functions = await context.GetAvailableFunctionsAsync(config, semanticQuery);
+
+        return string.Join("\n\n", functions.Select(x => x.ToManualString()));
+    }
+
+    internal static async Task<List<FunctionView>> GetAvailableFunctionsAsync(
+        this SKContext context,
+        PlannerConfig config,
+        string? semanticQuery = null)
+    {
+        var excludedSkills = config.ExcludedSkills ?? new();
+        var excludedFunctions = config.ExcludedFunctions ?? new();
+        var includedFunctions = config.IncludedFunctions ?? new();
+
+        context.ThrowIfSkillCollectionNotSet();
+
+        var functionsView = context.Skills!.GetFunctionsView();
+
+        var availableFunctions = functionsView.SemanticFunctions
+            .Concat(functionsView.NativeFunctions)
+            .SelectMany(x => x.Value)
+            .Where(s => !excludedSkills.Contains(s.SkillName) && !excludedFunctions.Contains(s.Name))
+            .ToList();
+
+        List<FunctionView>? result = null;
+        if (string.IsNullOrEmpty(semanticQuery) || context.Memory is NullMemory || config.RelevancyThreshold is null)
+        {
+            // If no semantic query is provided, return all available functions.
+            // If a Memory provider has not been registered, return all available functions.
+            result = availableFunctions;
+        }
+        else
+        {
+            result = new List<FunctionView>();
+
+            // Remember functions in memory so that they can be searched.
+            await RememberFunctionsAsync(context, availableFunctions);
+
+            // Search for functions that match the semantic query.
+            var memories = context.Memory.SearchAsync(PlannerMemoryCollectionName, semanticQuery, config.MaxRelevantFunctions, config.RelevancyThreshold.Value,
+                context.CancellationToken);
+
+            // Add functions that were found in the search results.
+            result.AddRange(await GetRelevantFunctionsAsync(context, availableFunctions, memories));
+
+            // Add any missing functions that were included but not found in the search results.
+            var missingFunctions = includedFunctions
+                .Except(result.Select(x => x.Name))
+                .Join(availableFunctions, f => f, af => af.Name, (_, af) => af);
+
+            result.AddRange(missingFunctions);
+        }
+
+        return result;
     }
 
     /// <summary>
