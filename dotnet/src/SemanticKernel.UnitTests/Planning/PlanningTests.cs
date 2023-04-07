@@ -9,7 +9,6 @@ using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.AI.TextCompletion;
 using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.Orchestration;
-using Microsoft.SemanticKernel.Planning;
 using Microsoft.SemanticKernel.Planning.Planners;
 using Microsoft.SemanticKernel.SemanticFunctions;
 using Microsoft.SemanticKernel.SkillDefinition;
@@ -55,6 +54,18 @@ public sealed class PlanningTests
             var functionView = new FunctionView(name, skillName, description, new List<ParameterView>(), isSemantic, true);
             var mockFunction = CreateMockFunction(functionView);
             functionsView.AddFunction(functionView);
+
+            // Task<SKContext> InvokeAsync(
+            //     SKContext? context = null,
+            //     CompleteRequestSettings? settings = null,
+            //     ILogger? log = null,
+            //     CancellationToken? cancel = null);
+            mockFunction.Setup(x => x.InvokeAsync(It.IsAny<SKContext>(), It.IsAny<CompleteRequestSettings>(), It.IsAny<ILogger>(), It.IsAny<CancellationToken>()))
+                .Returns<SKContext, CompleteRequestSettings, ILogger, CancellationToken>((context, settings, log, cancel) =>
+                {
+                    context.Variables.Update("MOCK FUNCTION CALLED");
+                    return Task.FromResult(context);
+                });
 
             if (isSemantic)
             {
@@ -119,41 +130,33 @@ public sealed class PlanningTests
             It.IsAny<SemanticFunctionConfig>()
         )).Returns(mockFunctionFlowFunction.Object);
 
-        var planner = new Planner(Planner.Mode.FunctionFlow, kernel.Object);
+        // var planner = new Planner(Planner.Mode.FunctionFlow, kernel.Object);
+        var planner = new FunctionFlowPlanner(kernel.Object);
 
         // Act
         var plan = await planner.CreatePlanAsync(goal);
-        if (plan is SequentialPlan sequentialPlan)
-        {
-            Assert.Contains(
-                sequentialPlan.Steps,
-                step =>
-                    expectedFunctions.Contains(step.Name) &&
-                    expectedSkills.Contains(step.SkillName));
-
-            foreach (var expectedFunction in expectedFunctions)
-            {
-                Assert.Contains(
-                    sequentialPlan.Steps,
-                    step => step.Name == expectedFunction);
-            }
-
-            foreach (var expectedSkill in expectedSkills)
-            {
-                Assert.Contains(
-                    sequentialPlan.Steps,
-                    step => step.SkillName == expectedSkill);
-            }
-
-            Assert.Equal(goal, sequentialPlan.Description);
-        }
-        else
-        {
-            Assert.Fail("Plan was not created successfully.");
-        }
-
         // Assert
         Assert.Equal(goal, plan.Description);
+
+        Assert.Contains(
+            plan.Steps,
+            step =>
+                expectedFunctions.Contains(step.Name) &&
+                expectedSkills.Contains(step.SkillName));
+
+        foreach (var expectedFunction in expectedFunctions)
+        {
+            Assert.Contains(
+                plan.Steps,
+                step => step.Name == expectedFunction);
+        }
+
+        foreach (var expectedSkill in expectedSkills)
+        {
+            Assert.Contains(
+                plan.Steps,
+                step => step.SkillName == expectedSkill);
+        }
     }
 
     // [Theory]

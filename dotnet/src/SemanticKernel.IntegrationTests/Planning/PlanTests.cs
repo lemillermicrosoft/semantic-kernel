@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.Orchestration;
+using Microsoft.SemanticKernel.Planning.Planners;
 using SemanticKernel.IntegrationTests.Fakes;
 using SemanticKernel.IntegrationTests.TestSettings;
 using Xunit;
@@ -54,22 +55,16 @@ public sealed class PlanTests : IDisposable
         // Arrange
         IKernel target = this.InitializeKernel();
 
-        var planner = new Planner(Planner.Mode.FunctionFlow, target);
+        var planner = new FunctionFlowPlanner(target);
 
         // Act
-        if (await planner.CreatePlanAsync(prompt) is SequentialPlan plan)
-        {
-            // Assert
-            Assert.Contains(
-                plan.Steps,
-                step =>
-                    step.Name.Equals(expectedFunction, StringComparison.OrdinalIgnoreCase) &&
-                    step.SkillName.Equals(expectedSkill, StringComparison.OrdinalIgnoreCase));
-        }
-        else
-        {
-            Assert.Fail("Plan was not created successfully.");
-        }
+        var plan = await planner.CreatePlanAsync(prompt);
+        // Assert
+        Assert.Contains(
+            plan.Steps,
+            step =>
+                step.Name.Equals(expectedFunction, StringComparison.OrdinalIgnoreCase) &&
+                step.SkillName.Equals(expectedSkill, StringComparison.OrdinalIgnoreCase));
     }
 
     [Theory]
@@ -79,22 +74,17 @@ public sealed class PlanTests : IDisposable
         // Arrange
         IKernel target = this.InitializeKernel(true);
 
-        var planner = new Planner(Planner.Mode.GoalRelevant, target);
+        var planner = new FunctionFlowPlanner(target, new PlannerConfig() { RelevancyThreshold = 0.78 });
 
         // Act
-        if (await planner.CreatePlanAsync(prompt) is SequentialPlan plan)
-        {
-            // Assert
-            Assert.Contains(
-                plan.Steps,
-                step =>
-                    step.Name.Equals(expectedFunction, StringComparison.OrdinalIgnoreCase) &&
-                    step.SkillName.Equals(expectedSkill, StringComparison.OrdinalIgnoreCase));
-        }
-        else
-        {
-            Assert.Fail("Plan was not created successfully.");
-        }
+        var plan = await planner.CreatePlanAsync(prompt);
+        // Assert
+        Assert.Contains(
+            plan.Steps,
+            step =>
+                step.Name.Equals(expectedFunction, StringComparison.OrdinalIgnoreCase) &&
+                step.SkillName.Equals(expectedSkill, StringComparison.OrdinalIgnoreCase));
+
     }
 
     [Theory]
@@ -183,13 +173,13 @@ public sealed class PlanTests : IDisposable
         // Create the input mapping from parent (plan) plan state to child plan (sendEmailPlan) state.
         var cv = new ContextVariables();
         cv.Set("email_address", "$TheEmailFromState");
-        var sendEmailPlan = new SequentialPlan("SendEmailAsync")
+        var sendEmailPlan = new Plan("SendEmailAsync")
         {
             SkillName = "_GLOBAL_FUNCTIONS_",
             NamedParameters = cv
         }; // TODO A separate test where this is just a Plan() object using the function //todo I think I did this
 
-        var plan = new SequentialPlan(goal);
+        var plan = new Plan(goal);
         plan.Steps.Add(sendEmailPlan);
         plan.State.Set("TheEmailFromState", email); // manually prepare the state
 
@@ -222,7 +212,7 @@ public sealed class PlanTests : IDisposable
             NamedParameters = cv
         };
 
-        var plan = new SequentialPlan(goal);
+        var plan = new Plan(goal);
         plan.Steps.Add(sendEmailPlan);
         plan.State.Set("TheEmailFromState", email); // manually prepare the state
 
@@ -245,39 +235,39 @@ public sealed class PlanTests : IDisposable
 
         var expectedBody = $"Sent email to: {expectedEmail}. Body:".Trim();
 
-        var summarizePlan = new SequentialPlan("Summarize")
+        var summarizePlan = new Plan("Summarize")
         {
             SkillName = "SummarizeSkill"
         };
 
         var cv = new ContextVariables();
         cv.Set("language", inputLanguage);
-        var translatePlan = new SequentialPlan("Translate")
+        var translatePlan = new Plan("Translate")
         {
             SkillName = "WriterSkill",
-            OutputKey = "TRANSLATED_SUMMARY",
+            // OutputKey = "TRANSLATED_SUMMARY",
             NamedParameters = cv
         };
 
         cv = new ContextVariables();
         cv.Update(inputName);
-        var getEmailPlan = new SequentialPlan("GetEmailAddressAsync")
+        var getEmailPlan = new Plan("GetEmailAddressAsync")
         {
             SkillName = "_GLOBAL_FUNCTIONS_",
-            OutputKey = "TheEmailFromState",
+            // OutputKey = "TheEmailFromState",
             NamedParameters = cv,
         };
 
         cv = new ContextVariables();
         cv.Set("email_address", "$TheEmailFromState");
         cv.Set("input", "$TRANSLATED_SUMMARY");
-        var sendEmailPlan = new SequentialPlan("SendEmailAsync")
+        var sendEmailPlan = new Plan("SendEmailAsync")
         {
             SkillName = "_GLOBAL_FUNCTIONS_",
             NamedParameters = cv
         };
 
-        var plan = new SequentialPlan(goal);
+        var plan = new Plan(goal);
         plan.Steps.Add(summarizePlan);
         plan.Steps.Add(translatePlan);
         plan.Steps.Add(getEmailPlan);
@@ -285,15 +275,23 @@ public sealed class PlanTests : IDisposable
 
         // Act
         var result = await target.StepAsync(inputToSummarize, plan);
-        Assert.Equal(3, result.Steps.Count);
+        Assert.Equal(4, result.Steps.Count);
+        Assert.Equal(1, result.NextStep);
+        Assert.True(result.HasNextStep);
         result = await target.StepAsync(result);
-        Assert.Equal(2, result.Steps.Count);
+        Assert.Equal(4, result.Steps.Count);
+        Assert.Equal(2, result.NextStep);
+        Assert.True(result.HasNextStep);
         result = await target.StepAsync(result);
-        Assert.Single(result.Steps);
+        Assert.Equal(4, result.Steps.Count);
+        Assert.Equal(3, result.NextStep);
+        Assert.True(result.HasNextStep);
         result = await target.StepAsync(result);
 
         // Assert
-        Assert.Empty(plan.Steps);
+        Assert.Equal(4, result.Steps.Count);
+        Assert.Equal(4, result.NextStep);
+        Assert.False(result.HasNextStep);
         Assert.Equal(goal, plan.Description);
         Assert.Contains(expectedBody, plan.State.ToString(), StringComparison.OrdinalIgnoreCase);
         Assert.True(expectedBody.Length < plan.State.ToString().Length);
@@ -308,39 +306,39 @@ public sealed class PlanTests : IDisposable
 
         var expectedBody = $"Sent email to: {expectedEmail}. Body:".Trim();
 
-        var summarizePlan = new SequentialPlan("Summarize")
+        var summarizePlan = new Plan("Summarize")
         {
             SkillName = "SummarizeSkill"
         };
 
         var cv = new ContextVariables();
         cv.Set("language", inputLanguage);
-        var translatePlan = new SequentialPlan("Translate")
+        var translatePlan = new Plan("Translate")
         {
             SkillName = "WriterSkill",
-            OutputKey = "TRANSLATED_SUMMARY",
+            // OutputKey = "TRANSLATED_SUMMARY",
             NamedParameters = cv
         };
 
         cv = new ContextVariables();
         cv.Update(inputName);
-        var getEmailPlan = new SequentialPlan("GetEmailAddressAsync")
+        var getEmailPlan = new Plan("GetEmailAddressAsync")
         {
             SkillName = "_GLOBAL_FUNCTIONS_",
-            OutputKey = "TheEmailFromState",
+            // OutputKey = "TheEmailFromState",
             NamedParameters = cv,
         };
 
         cv = new ContextVariables();
         cv.Set("email_address", "$TheEmailFromState");
         cv.Set("input", "$TRANSLATED_SUMMARY");
-        var sendEmailPlan = new SequentialPlan("SendEmailAsync")
+        var sendEmailPlan = new Plan("SendEmailAsync")
         {
             SkillName = "_GLOBAL_FUNCTIONS_",
             NamedParameters = cv
         };
 
-        var plan = new SequentialPlan(goal);
+        var plan = new Plan(goal);
         plan.Steps.Add(summarizePlan);
         plan.Steps.Add(translatePlan);
         plan.Steps.Add(getEmailPlan);
@@ -371,7 +369,7 @@ public sealed class PlanTests : IDisposable
         var translatePlan = new Plan(writerSkill["Translate"]);
         var sendEmailPlan = new Plan(emailSkill["SendEmailAsync"]);
 
-        var plan = new SequentialPlan(goal);
+        var plan = new Plan(goal);
         plan.Steps.Add(summarizePlan);
         plan.Steps.Add(translatePlan);
         plan.Steps.Add(sendEmailPlan);

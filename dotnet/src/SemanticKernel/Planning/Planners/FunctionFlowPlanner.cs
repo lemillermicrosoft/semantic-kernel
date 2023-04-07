@@ -7,9 +7,9 @@ using Microsoft.SemanticKernel.Orchestration;
 
 namespace Microsoft.SemanticKernel.Planning.Planners;
 
-public class FunctionFlowPlanner : IPlanner
+public class FunctionFlowPlanner
 {
-    public FunctionFlowPlanner(IKernel? kernel, PlannerConfig? config)
+    public FunctionFlowPlanner(IKernel? kernel, PlannerConfig? config = null)
     {
         Verify.NotNull(kernel, $"{this.GetType().FullName} requires a kernel instance.");
         this.Config = config ?? new();

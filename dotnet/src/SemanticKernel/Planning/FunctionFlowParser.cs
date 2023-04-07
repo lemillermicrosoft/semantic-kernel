@@ -39,7 +39,7 @@ internal static class FunctionFlowParser
     /// </summary>
     internal const string AppendToResultTag = "appendToResult";
 
-    internal static SequentialPlan ToPlanFromXml(this string xmlString, SKContext context)
+    internal static Plan ToPlanFromXml(this string xmlString, SKContext context)
     {
         try
         {
@@ -59,7 +59,7 @@ internal static class FunctionFlowParser
             // Get the Solution
             XmlNodeList solution = xmlDoc.GetElementsByTagName(SolutionTag);
 
-            var plan = new SequentialPlan(goalTxt);
+            var plan = new Plan(goalTxt);
 
             // loop through solution node and add to Steps
             foreach (XmlNode o in solution)
@@ -89,7 +89,7 @@ internal static class FunctionFlowParser
                             Verify.NotNull(functionName, nameof(functionName));
                             Verify.NotNull(skillFunction, nameof(skillFunction));
 
-                            var planStep = new SequentialPlan(skillFunction);
+                            var planStep = new Plan(skillFunction);
 
                             var functionVariables = new ContextVariables();
 
@@ -126,8 +126,8 @@ internal static class FunctionFlowParser
                             }
 
                             // Plan properties
-                            planStep.OutputKey = variableTargetName;
-                            planStep.ResultKey = appendToResultName;
+                            // planStep.OutputKey = variableTargetName;
+                            // planStep.ResultKey = appendToResultName;
                             planStep.NamedParameters = functionVariables;
                             plan.Steps.Add(planStep);
 
