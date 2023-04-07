@@ -326,6 +326,7 @@ public sealed class PlanTests
 
         // Assert
         Assert.NotNull(plan);
+        // TODO another UT failure catching a bug
         Assert.Equal($"{stepOutput}{planInput}foo", plan.State.ToString());
 
         // Act
@@ -464,6 +465,7 @@ public sealed class PlanTests
 
         // Assert
         Assert.NotNull(plan);
+        // TODO GOod this UT caught a bug, we're being a little too loose with input getting overwritten.
         Assert.Equal($"Child 3 heard Child 2 is happy about Child 1 output! - this just happened.", plan.State.ToString());
         nodeFunction1.Verify(x => x.InvokeAsync(It.IsAny<SKContext>(), null, null, null), Times.Once);
         childFunction1.Verify(x => x.InvokeAsync(It.IsAny<SKContext>(), null, null, null), Times.Once);
