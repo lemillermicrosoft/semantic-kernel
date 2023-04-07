@@ -169,15 +169,20 @@ public sealed class PlanTests : IDisposable
     {
         // Arrange
         IKernel target = this.InitializeKernel();
+        var emailSkill = target.ImportSkill(new EmailSkill());
 
         // Create the input mapping from parent (plan) plan state to child plan (sendEmailPlan) state.
         var cv = new ContextVariables();
         cv.Set("email_address", "$TheEmailFromState");
-        var sendEmailPlan = new Plan("SendEmailAsync")
+        // var sendEmailPlan = new Plan("SendEmailAsync")
+        // {
+        //     SkillName = "_GLOBAL_FUNCTIONS_",
+        //     NamedParameters = cv
+        // }; // TODO A separate test where this is just a Plan() object using the function //todo I think I did this
+        var sendEmailPlan = new Plan(emailSkill["SendEmailAsync"])
         {
-            SkillName = "_GLOBAL_FUNCTIONS_",
-            NamedParameters = cv
-        }; // TODO A separate test where this is just a Plan() object using the function //todo I think I did this
+            NamedParameters = cv,
+        };
 
         var plan = new Plan(goal);
         plan.Steps.Add(sendEmailPlan);
@@ -187,8 +192,10 @@ public sealed class PlanTests : IDisposable
         var result = await target.StepAsync(input, plan);
 
         // Assert
-        var expectedBody = input;
-        Assert.Empty(plan.Steps);
+        var expectedBody = string.IsNullOrEmpty(input) ? goal : input;
+        Assert.Single(result.Steps);
+        Assert.Equal(1, result.NextStep);
+        Assert.False(result.HasNextStep);
         Assert.Equal(goal, plan.Description);
         Assert.Equal($"Sent email to: {email}. Body: {expectedBody}".Trim(), plan.State.ToString());
     }
@@ -220,50 +227,52 @@ public sealed class PlanTests : IDisposable
         var result = await target.StepAsync(input, plan);
 
         // Assert
-        var expectedBody = input;
-        Assert.Empty(plan.Steps);
+        var expectedBody = string.IsNullOrEmpty(input) ? goal : input;
+        Assert.False(plan.HasNextStep);
         Assert.Equal(goal, plan.Description);
         Assert.Equal($"Sent email to: {email}. Body: {expectedBody}".Trim(), plan.State.ToString());
     }
 
     [Theory]
     [InlineData("Summarize an input, translate to french, and e-mail to Kai", "This is a story about a dog.", "French", "Kai", "Kai@example.com")]
-    public async Task CanExecuteRunPlanSimpleAsync(string goal, string inputToSummarize, string inputLanguage, string inputName, string expectedEmail)
+    public async Task CanExecuteRunPlanAsync(string goal, string inputToSummarize, string inputLanguage, string inputName, string expectedEmail)
     {
         // Arrange
         IKernel target = this.InitializeKernel();
 
+        var summarizeSkill = TestHelpers.GetSkill("SummarizeSkill", target);
+        var writerSkill = TestHelpers.GetSkill("WriterSkill", target);
+        var emailSkill = target.ImportSkill(new EmailSkill());
+
         var expectedBody = $"Sent email to: {expectedEmail}. Body:".Trim();
 
-        var summarizePlan = new Plan("Summarize")
-        {
-            SkillName = "SummarizeSkill"
-        };
+        var summarizePlan = new Plan(summarizeSkill["Summarize"]);
 
         var cv = new ContextVariables();
         cv.Set("language", inputLanguage);
-        var translatePlan = new Plan("Translate")
+        var outputs = new ContextVariables();
+        outputs.Set("RESULT", "TRANSLATED_SUMMARY");
+        var translatePlan = new Plan(writerSkill["Translate"])
         {
-            SkillName = "WriterSkill",
-            // OutputKey = "TRANSLATED_SUMMARY",
-            NamedParameters = cv
+            NamedParameters = cv,
+            NamedOutputs = outputs,
         };
 
         cv = new ContextVariables();
         cv.Update(inputName);
-        var getEmailPlan = new Plan("GetEmailAddressAsync")
+        outputs = new ContextVariables();
+        outputs.Set("RESULT", "TheEmailFromState");
+        var getEmailPlan = new Plan(emailSkill["GetEmailAddressAsync"])
         {
-            SkillName = "_GLOBAL_FUNCTIONS_",
-            // OutputKey = "TheEmailFromState",
             NamedParameters = cv,
+            NamedOutputs = outputs,
         };
 
         cv = new ContextVariables();
         cv.Set("email_address", "$TheEmailFromState");
         cv.Set("input", "$TRANSLATED_SUMMARY");
-        var sendEmailPlan = new Plan("SendEmailAsync")
+        var sendEmailPlan = new Plan(emailSkill["SendEmailAsync"])
         {
-            SkillName = "_GLOBAL_FUNCTIONS_",
             NamedParameters = cv
         };
 
@@ -297,44 +306,140 @@ public sealed class PlanTests : IDisposable
         Assert.True(expectedBody.Length < plan.State.ToString().Length);
     }
 
+    // [Theory]
+    // [InlineData("Summarize an input, translate to french, and e-mail to Kai", "This is a story about a dog.", "French", "Kai", "Kai@example.com")]
+    // public async Task CanExecuteRunPlanSimpleAsync(string goal, string inputToSummarize, string inputLanguage, string inputName, string expectedEmail)
+    // {
+
+    //     // TODO -- Do I even want to support this? Basically getting the functions on the fly rather than initialize at plan creation?
+
+    //     // Arrange
+    //     IKernel target = this.InitializeKernel();
+
+    //     var expectedBody = $"Sent email to: {expectedEmail}. Body:".Trim();
+
+    //     var summarizePlan = new Plan("Summarize")
+    //     {
+    //         SkillName = "SummarizeSkill"
+    //     };
+
+    //     var cv = new ContextVariables();
+    //     cv.Set("language", inputLanguage);
+    //     var translatePlan = new Plan("Translate")
+    //     {
+    //         SkillName = "WriterSkill",
+    //         // OutputKey = "TRANSLATED_SUMMARY",
+    //         NamedParameters = cv
+    //     };
+
+    //     cv = new ContextVariables();
+    //     cv.Update(inputName);
+    //     var getEmailPlan = new Plan("GetEmailAddressAsync")
+    //     {
+    //         SkillName = "_GLOBAL_FUNCTIONS_",
+    //         // OutputKey = "TheEmailFromState",
+    //         NamedParameters = cv,
+    //     };
+
+    //     cv = new ContextVariables();
+    //     cv.Set("email_address", "$TheEmailFromState");
+    //     cv.Set("input", "$TRANSLATED_SUMMARY");
+    //     var sendEmailPlan = new Plan("SendEmailAsync")
+    //     {
+    //         SkillName = "_GLOBAL_FUNCTIONS_",
+    //         NamedParameters = cv
+    //     };
+
+    //     var plan = new Plan(goal);
+    //     plan.Steps.Add(summarizePlan);
+    //     plan.Steps.Add(translatePlan);
+    //     plan.Steps.Add(getEmailPlan);
+    //     plan.Steps.Add(sendEmailPlan);
+
+    //     // Act
+    //     var result = await target.StepAsync(inputToSummarize, plan);
+    //     Assert.Equal(4, result.Steps.Count);
+    //     Assert.Equal(1, result.NextStep);
+    //     Assert.True(result.HasNextStep);
+    //     result = await target.StepAsync(result);
+    //     Assert.Equal(4, result.Steps.Count);
+    //     Assert.Equal(2, result.NextStep);
+    //     Assert.True(result.HasNextStep);
+    //     result = await target.StepAsync(result);
+    //     Assert.Equal(4, result.Steps.Count);
+    //     Assert.Equal(3, result.NextStep);
+    //     Assert.True(result.HasNextStep);
+    //     result = await target.StepAsync(result);
+
+    //     // Assert
+    //     Assert.Equal(4, result.Steps.Count);
+    //     Assert.Equal(4, result.NextStep);
+    //     Assert.False(result.HasNextStep);
+    //     Assert.Equal(goal, plan.Description);
+    //     Assert.Contains(expectedBody, plan.State.ToString(), StringComparison.OrdinalIgnoreCase);
+    //     Assert.True(expectedBody.Length < plan.State.ToString().Length);
+    // }
+
     [Theory]
     [InlineData("Summarize an input, translate to french, and e-mail to Kai", "This is a story about a dog.", "French", "Kai", "Kai@example.com")]
     public async Task CanExecuteRunSequentialAsync(string goal, string inputToSummarize, string inputLanguage, string inputName, string expectedEmail)
     {
         // Arrange
         IKernel target = this.InitializeKernel();
+        var summarizeSkill = TestHelpers.GetSkill("SummarizeSkill", target);
+        var writerSkill = TestHelpers.GetSkill("WriterSkill", target);
+        var emailSkill = target.ImportSkill(new EmailSkill());
 
         var expectedBody = $"Sent email to: {expectedEmail}. Body:".Trim();
 
-        var summarizePlan = new Plan("Summarize")
-        {
-            SkillName = "SummarizeSkill"
-        };
+        // var summarizePlan = new Plan("Summarize")
+        // {
+        //     SkillName = "SummarizeSkill"
+        // };
+        var summarizePlan = new Plan(summarizeSkill["Summarize"]);
 
         var cv = new ContextVariables();
         cv.Set("language", inputLanguage);
-        var translatePlan = new Plan("Translate")
+        var outputs = new ContextVariables();
+        outputs.Set("RESULT", "TRANSLATED_SUMMARY");
+        // var translatePlan = new Plan("Translate")
+        // {
+        //     SkillName = "WriterSkill",
+        //     // OutputKey = "TRANSLATED_SUMMARY",
+        //     NamedParameters = cv
+
+        var translatePlan = new Plan(writerSkill["Translate"])
         {
-            SkillName = "WriterSkill",
-            // OutputKey = "TRANSLATED_SUMMARY",
-            NamedParameters = cv
+            NamedParameters = cv,
+            NamedOutputs = outputs,
         };
 
         cv = new ContextVariables();
         cv.Update(inputName);
-        var getEmailPlan = new Plan("GetEmailAddressAsync")
+        outputs = new ContextVariables();
+        outputs.Set("RESULT", "TheEmailFromState");
+        // var getEmailPlan = new Plan("GetEmailAddressAsync")
+        // {
+        //     SkillName = "_GLOBAL_FUNCTIONS_",
+        //     // OutputKey = "TheEmailFromState",
+        //     NamedParameters = cv,
+        // };
+        var getEmailPlan = new Plan(emailSkill["GetEmailAddressAsync"])
         {
-            SkillName = "_GLOBAL_FUNCTIONS_",
-            // OutputKey = "TheEmailFromState",
             NamedParameters = cv,
+            NamedOutputs = outputs,
         };
 
         cv = new ContextVariables();
         cv.Set("email_address", "$TheEmailFromState");
         cv.Set("input", "$TRANSLATED_SUMMARY");
-        var sendEmailPlan = new Plan("SendEmailAsync")
+        // var sendEmailPlan = new Plan("SendEmailAsync")
+        // {
+        //     SkillName = "_GLOBAL_FUNCTIONS_",
+        //     NamedParameters = cv
+        // };
+        var sendEmailPlan = new Plan(emailSkill["SendEmailAsync"])
         {
-            SkillName = "_GLOBAL_FUNCTIONS_",
             NamedParameters = cv
         };
 
