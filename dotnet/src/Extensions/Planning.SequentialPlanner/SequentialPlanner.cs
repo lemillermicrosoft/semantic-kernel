@@ -29,8 +29,8 @@ public sealed class SequentialPlanner
         IKernel kernel,
         SequentialPlannerConfig? config = null,
         string? prompt = null)
-    {
-        Verify.NotNull(kernel);
+    {  // comment that should make this hit kernel
+        Verify.NotNull(kernel, $"{this.GetType().FullName} requires a kernel instance.");
         this.Config = config ?? new();
 
         this.Config.ExcludedSkills.Add(RestrictedSkillName);
