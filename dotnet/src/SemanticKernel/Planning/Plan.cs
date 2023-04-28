@@ -261,7 +261,7 @@ public sealed class Plan : ISKFunction
                 if (item.Key.ToUpperInvariant() == "INPUT")
                 {
                     continue;
-                }
+                }// this is updating core
 
                 this.State.Set(item.Key, result.Result.Trim());
             }
