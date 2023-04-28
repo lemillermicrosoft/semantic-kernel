@@ -18,7 +18,7 @@ namespace SemanticKernel.Service.Skills;
 /// ChatSkill offers a more coherent chat experience by using memories
 /// to extract conversation history and user intentions.
 /// </summary>
-public class ChatSkill
+public class ChatSkill // stuff
 {
     /// <summary>
     /// Logger
