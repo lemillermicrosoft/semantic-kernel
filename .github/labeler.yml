@@ -1,6 +1,9 @@
 # Add 'kernel' label to any change within the 'dotnet' directory that's not under 'dotnet/src/SemanticKernel' or 'dotnet/src/SemanticKernel.Abstractions'
 kernel:
-  - any:["dotnet/**/*", "!dotnet/src/SemanticKernel/**/*", "!dotnet/src/SemanticKernel.Abstractions/**/*"]
+  - any:
+      - "dotnet/**/*"
+      - "!dotnet/src/SemanticKernel/**/*"
+      - "!dotnet/src/SemanticKernel.Abstractions/**/*"
 
 # Add 'kernel.core' label to any change within the 'SemanticKernel' or 'SemanticKernel.Abstractions' directory
 kernel.core:
