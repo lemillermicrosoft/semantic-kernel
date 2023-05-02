@@ -16,6 +16,20 @@
       "group": "build"
     },
     {
+      "label": "build (Tutor)",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/samples/dotnet/my-tutor-console/my-tutor-console.csproj",
+        "/property:GenerateFullPaths=true",
+        "/consoleloggerparameters:NoSummary",
+        "/property:DebugType=portable"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+    },
+    {
       "label": "watch (KernelSyntaxExamples)",
       "command": "dotnet",
       "type": "process",
@@ -24,6 +38,19 @@
         "run",
         "--project",
         "${workspaceFolder}/samples/dotnet/kernel-syntax-examples/KernelSyntaxExamples.csproj"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+    },
+    {
+      "label": "watch (Tutor)",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "watch",
+        "run",
+        "--project",
+        "${workspaceFolder}/samples/dotnet/my-tutor-console/my-tutor-console.csproj"
       ],
       "problemMatcher": "$msCompile",
       "group": "build"
@@ -225,6 +252,22 @@
         "reveal": "always",
         "panel": "shared",
         "group": "PR-Validate"
+      }
+    },
+    {
+      "label": "Run - Tutor",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/samples/dotnet/my-tutor-console/my-tutor-console.csproj"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
       }
     },
     {
