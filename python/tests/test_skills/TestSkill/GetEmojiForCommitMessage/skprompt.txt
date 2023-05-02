@@ -1,0 +1,7 @@
+Generate an emoji for the given commit message and title in [INPUT]. After the emoji add [END EMOJI].
+
+[INPUT]
+{{$input}}
+[END INPUT]
+
+[EMOJI]
