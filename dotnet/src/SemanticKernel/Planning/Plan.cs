@@ -43,11 +43,18 @@ public sealed class Plan : ISKFunction
     public ContextVariables NamedParameters { get; set; } = new();
 
     /// <summary>
-    /// Named outputs for the function
+    /// Named outputs for the function -- these are used within a plan.-- WHEN DO I Use this compared others?
     /// </summary>
     [JsonPropertyName("named_outputs")]
     [JsonConverter(typeof(ContextVariablesConverter))]
     public ContextVariables NamedOutputs { get; set; } = new();
+
+    /// <summary>
+    /// Named results for the function -- these are used to return results from a plan.
+    /// </summary>
+    [JsonPropertyName("named_results")]
+    [JsonConverter(typeof(ContextVariablesConverter))]
+    public ContextVariables NamedResults { get; set; } = new();
 
     /// <summary>
     /// Gets whether the plan has a next step.
@@ -93,7 +100,6 @@ public sealed class Plan : ISKFunction
     {
         this.Description = goal;
         this.SkillName = this.GetType().FullName;
-        this.Name = goal;
     }
 
     /// <summary>
@@ -254,6 +260,30 @@ public sealed class Plan : ISKFunction
             // Update state with result
             this.State.Update(result.Result.Trim());
 
+            // Update state with name results (if any)
+            bool resultAppended = false;
+            foreach (var item in step.NamedResults)
+            {
+                // ignore the input key
+                if (item.Key.ToUpperInvariant() == "INPUT")
+                {
+                    continue;
+                }
+
+                // Also set the named result in the state for other steps to use
+                this.State.Set(item.Key, result.Result.Trim());
+
+                if (resultAppended)
+                {
+                    continue;
+                }
+
+                // Additionally, append to current plan result
+                this.State.Get(DefaultResultKey, out var currentPlanResult);
+                this.State.Set(DefaultResultKey, string.Join("\n", currentPlanResult.Trim(), result.Result.Trim()));
+                resultAppended = true;
+            }
+
             // Update state with named outputs (if any)
             foreach (var item in step.NamedOutputs)
             {
@@ -263,7 +293,14 @@ public sealed class Plan : ISKFunction
                     continue;
                 }
 
-                this.State.Set(item.Key, result.Result.Trim());
+                if (result.Variables.Get(item.Key, out var val))
+                {
+                    this.State.Set(item.Key, val);
+                }
+                else
+                {
+                    this.State.Set(item.Key, result.Result.Trim());
+                }
             }
 
             #endregion Update State
@@ -325,7 +362,37 @@ public sealed class Plan : ISKFunction
 
                 await this.InvokeNextStepAsync(functionContext).ConfigureAwait(false);
 
-                context.Variables.Update(this.State.ToString());
+                // TODO -- take named outputs and add them to the context.Variables?
+
+                // context.Variables.Update(this.State.ToString());
+                var resultString = this.State.Get(DefaultResultKey, out var result) ? result : this.State.ToString();
+                context.Variables.Update(resultString);
+
+                // copy previous step's variables to the next step
+                foreach (var item in this._steps[this.NextStepIndex - 1].NamedOutputs)
+                {
+                    // ignore the input key
+                    if (item.Key.ToUpperInvariant() == "INPUT")
+                    {
+                        continue;
+                    }
+
+                    if (this.State.Get(item.Key, out var val))
+                    {
+                        // this.State.Set(item.Key, val);
+                        context.Variables.Set(item.Key, val);
+                    }
+                    // else if (functionContext.Variables.Get(item.Key, out val))
+                    // {
+                    //     // this.State.Set(item.Key, val);
+                    //     context.Variables.Set(item.Key, val);
+                    // }
+                    else
+                    {
+                        // this.State.Set(item.Key, result.Trim());
+                        context.Variables.Set(item.Key, resultString);
+                    }
+                }
             }
         }
 
@@ -491,4 +558,6 @@ public sealed class Plan : ISKFunction
     private readonly List<Plan> _steps = new();
 
     private static readonly Regex s_variablesRegex = new(@"\$(?<var>\w+)");
+
+    private const string DefaultResultKey = "PLAN.RESULT";
 }
