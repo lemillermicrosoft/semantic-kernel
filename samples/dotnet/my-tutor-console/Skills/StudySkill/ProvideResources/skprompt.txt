@@ -1,0 +1,5 @@
+Provide resources for additional practice and explanations for the topic(s) in [INPUT].
+
+[INPUT]
+{{$input}}
+[END INPUT]
