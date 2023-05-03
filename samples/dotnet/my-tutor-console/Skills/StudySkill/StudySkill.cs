@@ -101,14 +101,14 @@ public class StudySkill
         }
         // The action needs to be a Plan, really. Prepare Message and then Send Message
         var plan = new Plan("Prepare a message and send it.");
-        plan.NamedOutputs.Set("course", "");
-        plan.NamedOutputs.Set("topic", "");
-        plan.NamedOutputs.Set("context", "");
-        // TODO What if I instead said plan.NamedOutputs.Set("chat_history", "");
+        plan.Outputs.Add("course");
+        plan.Outputs.Add("topic");
+        plan.Outputs.Add("context");
+        // TODO What if I instead said plan.Outputs.Add("chat_history");
         var prepareStep = new Plan(this.nativeSkills["PrepareMessage"]);
-        prepareStep.NamedOutputs.Set("chat_history", "");
+        prepareStep.Outputs.Add("chat_history");
         var sendStep = new Plan(this.chatSkill["SendMessage"]);
-        sendStep.NamedOutputs.Set("chat_history", "");
+        sendStep.Outputs.Add("chat_history");
 
         plan.AddSteps(prepareStep, sendStep);
         doWhileContext.Set("action", plan.ToJson()); // AND THEN WAIT FOR MESSAGE BEFORE EVALUATING CONDITION

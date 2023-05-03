@@ -71,13 +71,13 @@ public static class Program
                 string skillName = step.SkillName;
                 string stepName = step.Name;
 
-                string namedParams = string.Join(" ", step.NamedParameters.Select(param => $"{param.Key}='{param.Value}'"));
+                string namedParams = string.Join(" ", step.Parameters.Select(param => $"{param.Key}='{param.Value}'"));
                 if (!string.IsNullOrEmpty(namedParams))
                 {
                     namedParams = $" {namedParams}";
                 }
 
-                string namedOutputs = step.NamedOutputs.Where(output => output.Key.ToUpper() != "INPUT").Select(output => output.Key).FirstOrDefault();
+                string namedOutputs = step.Outputs.FirstOrDefault();
                 if (!string.IsNullOrEmpty(namedOutputs))
                 {
                     namedOutputs = $" => {namedOutputs}";
