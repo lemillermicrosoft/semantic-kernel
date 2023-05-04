@@ -4,12 +4,9 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.Planning;
-using Microsoft.SemanticKernel.Planning.Sequential;
-using mytutorconsole;
 using RepoUtils;
-
+using Skills;
 
 // Learning objectives: This refers to what you want to learn or achieve by the end of the learning experience. The objectives should be specific, measurable, achievable, relevant, and time-bound.
 
@@ -22,17 +19,18 @@ using RepoUtils;
 // Timeline: This outlines the specific deadlines or milestones for completing the learning activities and achieving the learning objectives.
 
 // Evaluation: This involves assessing your progress and evaluating the effectiveness of the learning plan in achieving your goals. Evaluation can be done through self-reflection, feedback from others, or formal assessment.
+namespace mytutorconsole;
 
-public class LearningPlan
-{
-    public string Subject { get; set; } // e.g. "9th grade Algebra"
-    public string Prompt { get; set; } // e.g. "Help me learn about: '{subject}'\n"
-    public string[] LearningObjectives { get; set; } // e.g. "Learn how to solve linear equations"
-    public string[] LearningActivities { get; set; } // e.g. "Read chapter 1 of textbook"
-    public string[] Resources { get; set; } // e.g. "Textbook: Algebra 1"
-    public string[] Timeline { get; set; } // e.g. "Complete chapter 1 by 9/1/2021"
-    public string[] Evaluation { get; set; } // e.g. "Take quiz on chapter 1"
-}
+// public class LearningPlan
+// {
+//     public string Subject { get; set; } // e.g. "9th grade Algebra"
+//     public string Prompt { get; set; } // e.g. "Help me learn about: '{subject}'\n"
+//     public string[] LearningObjectives { get; set; } // e.g. "Learn how to solve linear equations"
+//     public string[] LearningActivities { get; set; } // e.g. "Read chapter 1 of textbook"
+//     public string[] Resources { get; set; } // e.g. "Textbook: Algebra 1"
+//     public string[] Timeline { get; set; } // e.g. "Complete chapter 1 by 9/1/2021"
+//     public string[] Evaluation { get; set; } // e.g. "Take quiz on chapter 1"
+// }
 
 public static class Program
 {
@@ -40,11 +38,11 @@ public static class Program
     public static async Task Main()
     {
         // Create a kernel
-        var kernel = new KernelBuilder()/*.WithLogger(ConsoleLogger.Log)*/.Build();
+        var kernel = new KernelBuilder() /*.WithLogger(ConsoleLogger.Log)*/.Build();
         kernel.Config.AddAzureChatCompletionService(
-            "gpt-4",//Env.Var("AZURE_OPENAI_DEPLOYMENT_NAME"),
-            "https://lightspeed-team-shared-openai.openai.azure.com/",//Env.Var("AZURE_OPENAI_ENDPOINT"),
-            "");//Env.Var("AZURE_OPENAI_KEY"));
+            Env.Var("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"),
+            Env.Var("AZURE_OPENAI_CHAT_ENDPOINT"),
+            Env.Var("AZURE_OPENAI_CHAT_KEY"));
 
         string folder = RepoFiles.SampleSkillsPath();
         var skills = kernel.ImportSemanticSkillFromDirectory(folder, "StudySkill");
@@ -77,7 +75,7 @@ public static class Program
                     namedParams = $" {namedParams}";
                 }
 
-                string namedOutputs = step.Outputs.FirstOrDefault();
+                string namedOutputs = step.Outputs.FirstOrDefault() ?? string.Empty;
                 if (!string.IsNullOrEmpty(namedOutputs))
                 {
                     namedOutputs = $" => {namedOutputs}";
