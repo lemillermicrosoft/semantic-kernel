@@ -37,22 +37,36 @@ public static class Program
     // ReSharper disable once InconsistentNaming
     public static async Task Main()
     {
+        #region configure kernel
         // Create a kernel
         var kernel = new KernelBuilder() /*.WithLogger(ConsoleLogger.Log)*/.Build();
         kernel.Config.AddAzureChatCompletionService(
             Env.Var("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"),
             Env.Var("AZURE_OPENAI_CHAT_ENDPOINT"),
             Env.Var("AZURE_OPENAI_CHAT_KEY"));
+        // kernel.Config.AddAzureTextCompletionService(
+        //     Env.Var("AZURE_OPENAI_DEPLOYMENT_NAME"),
+        //     Env.Var("AZURE_OPENAI_ENDPOINT"),
+        //     Env.Var("AZURE_OPENAI_KEY"));
+        #endregion
 
         string folder = RepoFiles.SampleSkillsPath();
-        var skills = kernel.ImportSemanticSkillFromDirectory(folder, "StudySkill");
+        var semanticSkills = kernel.ImportSemanticSkillFromDirectory(folder, "StudySkill");
         var studySKill = kernel.ImportSkill(new StudySkill(), "StudySkill");
 
-        // var plan = await kernel.CreatePlanAsync("Help me study for my test on Algebra.");
+        //
+        // Create a plan to start a study session
+        //
         var plan = new Plan("Help me study for my test on Algebra 1.");
         plan.State.Set("course", "Algebra 1");
-        plan.State.Set("context", "No Context Available");
-        plan.AddSteps(skills["CreateLessonTopics"], skills["SelectLessonTopic"], studySKill["StudySession"]); // todo foreach handling
+        plan.State.Set("context", "No Context Available"); // TODO: get context from memory
+
+        plan.AddSteps(semanticSkills["CreateLessonTopics"], semanticSkills["SelectLessonTopic"], studySKill["StudySession"]);
+
+        var result = await plan.InvokeAsync(kernel.CreateNewContext());
+
+        #region comments
+        // TODO -- base chat plan that will take a message and either 1) return a response or 2) start a study session agent
 
         // "What would you like to learn about today?"
         // > "I want to learn about Algebra 1"
@@ -68,8 +82,8 @@ public static class Program
         // Agent naming
 
         // can I ContextVariables.Update(false)
+        #endregion
 
-        var result = await plan.InvokeAsync(kernel.CreateNewContext());
         Console.WriteLine($"Result: {result.Result}");
     }
 

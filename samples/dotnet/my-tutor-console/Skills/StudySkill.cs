@@ -23,23 +23,31 @@ public class StudySkill
 
     public StudySkill()
     {
+        #region create a kernel
         // Create a kernel
         this._studySkillKernel = new KernelBuilder() /*.WithLogger(ConsoleLogger.Log)*/.Build();
         this._studySkillKernel.Config.AddAzureChatCompletionService(
             Env.Var("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"),
             Env.Var("AZURE_OPENAI_CHAT_ENDPOINT"),
             Env.Var("AZURE_OPENAI_CHAT_KEY"));
-
-        this._studySkill = this._studySkillKernel.ImportSkill(this, "StudySkill");
+        // this._studySkillKernel.Config.AddAzureTextCompletionService(
+        //     Env.Var("AZURE_OPENAI_DEPLOYMENT_NAME"),
+        //     Env.Var("AZURE_OPENAI_ENDPOINT"),
+        //     Env.Var("AZURE_OPENAI_KEY"));
+        #endregion
 
         string folder = RepoFiles.SampleSkillsPath();
         this._semanticSkills = this._studySkillKernel.ImportSemanticSkillFromDirectory(folder,
             "StudySkill",
             "DoWhileSkill");
 
+        this._studySkill = this._studySkillKernel.ImportSkill(this, "StudySkill");
+
+        this._doWhileSkill = this._studySkillKernel.ImportSkill(new DoWhileSkill(this._semanticSkills["IsTrue"]), "DoWhileSkill");
+
         this._chatSkill = this._studySkillKernel.ImportSkill(new ChatSkill((context) =>
         {
-            var line = $"Bot: {context.Variables.Input.Trim()}";
+            var line = $"Study Agent: {context.Variables.Input.Trim()}";
             Console.WriteLine(line);
             context.Variables.Update(line);
             context.Variables.Get("chat_history", out var chatHistory);
@@ -55,7 +63,6 @@ public class StudySkill
             return Task.FromResult(context);
         }), "ChatSkill");
 
-        this._doWhileSkill = this._studySkillKernel.ImportSkill(new DoWhileSkill(this._semanticSkills["IsTrue"]), "DoWhileSkill");
     }
 
     // StudySession
@@ -68,27 +75,39 @@ public class StudySkill
         //
         // Create a lesson to read
         //
-        var lessonFunction = this._semanticSkills["CreateLesson"]; // input, course, TODO context
-        var lessonContext = context.Variables.Clone();
+        var studySessionContext = context.Variables.Clone();
+        var lessonFunction = this._semanticSkills["CreateLesson"];
         if (context.Variables.Get("topic", out var topic))
         {
-            lessonContext.Update(topic);
+            studySessionContext.Update(topic);
         }
         else
         {
             topic = context.Variables.Input;
             context.Variables.Set("topic", topic);
-            lessonContext.Update(topic);
+            studySessionContext.Update(topic);
         }
 
-        var lctx = this._studySkillKernel.CreateNewContext();
-
-        foreach (KeyValuePair<string, string> x in lessonContext)
+        var createLessonContext = this._studySkillKernel.CreateNewContext();
+        foreach (KeyValuePair<string, string> x in studySessionContext)
         {
-            lctx.Variables[x.Key] = x.Value;
+            createLessonContext.Variables[x.Key] = x.Value;
         }
 
-        var lessonStart = await lessonFunction.InvokeAsync(lctx);
+        var lessonStart = await lessonFunction.InvokeAsync(createLessonContext);
+
+        //
+        // Chat with the user about the lesson until they say goodbye
+        //
+        var plan = new Plan("Prepare a message and send it.");
+        plan.Outputs.Add("course");
+        plan.Outputs.Add("topic");
+        plan.Outputs.Add("context");
+        var prepareStep = new Plan(this._studySkill["PrepareMessage"]);
+        prepareStep.Outputs.Add("chat_history");
+        var sendStep = new Plan(this._chatSkill["SendMessage"]);
+        sendStep.Outputs.Add("chat_history");
+        plan.AddSteps(prepareStep, sendStep);
 
         var doWhileContext = new ContextVariables(lessonStart.Result);
         doWhileContext.Set("message", lessonStart.Result);
@@ -97,21 +116,7 @@ public class StudySkill
         {
             doWhileContext.Set("course", course);
         }
-
-        // The action needs to be a Plan, really. Prepare Message and then Send Message
-        var plan = new Plan("Prepare a message and send it.");
-        plan.Outputs.Add("course");
-        plan.Outputs.Add("topic");
-        plan.Outputs.Add("context");
-        // TODO What if I instead said plan.Outputs.Add("chat_history");
-        var prepareStep = new Plan(this._studySkill["PrepareMessage"]);
-        prepareStep.Outputs.Add("chat_history");
-        var sendStep = new Plan(this._chatSkill["SendMessage"]);
-        sendStep.Outputs.Add("chat_history");
-
-        plan.AddSteps(prepareStep, sendStep);
-        doWhileContext.Set("action", plan.ToJson()); // AND THEN WAIT FOR MESSAGE BEFORE EVALUATING CONDITION
-        // Instead of passing in `skills["IsTrue"] -- we can pass in a plan object!
+        doWhileContext.Set("action", plan.ToJson());
         doWhileContext.Set("condition", "User does not say 'goodbye'"); // todo advanced condition like amount of time, etc.
 
         return await this._studySkillKernel.RunAsync(doWhileContext, this._doWhileSkill["DoWhile"]);
@@ -249,6 +254,138 @@ public class DoWhileSkill
             context.Log.LogError("IsTrue: condition '{0}' not found", result);
             return false;
         }
+    }
+}
+
+public class ChatAgentSkill
+{
+    private readonly IKernel _chatAgentSkillKernel;
+    private readonly IDictionary<string, ISKFunction> _semanticSkills;
+    private readonly IDictionary<string, ISKFunction> _doWhileSkill;
+    private readonly IDictionary<string, ISKFunction> _chatSkill;
+    private readonly IDictionary<string, ISKFunction> _chatAgentSkill;
+
+    public ChatAgentSkill()
+    {
+        // Create a kernel
+        this._chatAgentSkillKernel = new KernelBuilder() /*.WithLogger(ConsoleLogger.Log)*/.Build();
+        this._chatAgentSkillKernel.Config.AddAzureChatCompletionService(
+            Env.Var("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"),
+            Env.Var("AZURE_OPENAI_CHAT_ENDPOINT"),
+            Env.Var("AZURE_OPENAI_CHAT_KEY"));
+
+        string folder = RepoFiles.SampleSkillsPath();
+        this._semanticSkills = this._chatAgentSkillKernel.ImportSemanticSkillFromDirectory(folder,
+            "ChatAgentSkill",
+            "DoWhileSkill");
+
+        this._chatAgentSkill = this._chatAgentSkillKernel.ImportSkill(this, "ChatAgentSkill");
+
+        this._chatSkill = this._chatAgentSkillKernel.ImportSkill(new ChatSkill((context) =>
+        {
+            var line = $"Chat Agent: {context.Variables.Input.Trim()}";
+            Console.WriteLine(line);
+            context.Variables.Update(line);
+            context.Variables.Get("chat_history", out var chatHistory);
+            context.Variables.Set("chat_history", $"{chatHistory}\n{line}");
+            Console.Write("User: ");
+            return Task.FromResult(context);
+        }, (context) =>
+        {
+            var line = Console.ReadLine();
+            context.Variables.Update($"User: {line}");
+            context.Variables.Get("chat_history", out var chatHistory);
+            context.Variables.Set("chat_history", $"{chatHistory}\nUser: {line}");
+            return Task.FromResult(context);
+        }), "ChatSkill");
+
+        this._doWhileSkill = this._chatAgentSkillKernel.ImportSkill(new DoWhileSkill(this._semanticSkills["IsTrue"]), "DoWhileSkill");
+    }
+
+    // StudySession
+    [SKFunction(description: "Chat session")]
+    [SKFunctionName("ChatSession")]
+    // [SKFunctionContextParameter(Name = "topic", Description = "Topic to study e.g. 'Equations and inequalities'")]
+    // [SKFunctionContextParameter(Name = "course", Description = "The course of study e.g. 'Algebra 1'")]
+    public async Task<SKContext> ChatSessionAsync(SKContext context)
+    {
+        //
+        // Create a lesson to read
+        //
+        var lessonFunction = this._semanticSkills["CreateChat"]; // input, course, TODO context
+        var lessonContext = context.Variables.Clone();
+        if (context.Variables.Get("topic", out var topic))
+        {
+            lessonContext.Update(topic);
+        }
+        else
+        {
+            topic = context.Variables.Input;
+            context.Variables.Set("topic", topic);
+            lessonContext.Update(topic);
+        }
+
+        var lctx = this._chatAgentSkillKernel.CreateNewContext();
+
+        foreach (KeyValuePair<string, string> x in lessonContext)
+        {
+            lctx.Variables[x.Key] = x.Value;
+        }
+
+        var lessonStart = await lessonFunction.InvokeAsync(lctx);
+
+        var doWhileContext = new ContextVariables(lessonStart.Result);
+        doWhileContext.Set("message", lessonStart.Result);
+        doWhileContext.Set("topic", topic);
+        if (context.Variables.Get("course", out var course))
+        {
+            doWhileContext.Set("course", course);
+        }
+
+        // Create a plan to chat with the user until they say goodbye
+        var plan = new Plan("Prepare a message and send it.");
+        plan.Outputs.Add("course");
+        plan.Outputs.Add("topic");
+        plan.Outputs.Add("context");
+        var prepareStep = new Plan(this._chatAgentSkill["ActOnMessage"]);
+        prepareStep.Outputs.Add("chat_history");
+        var sendStep = new Plan(this._chatSkill["SendMessage"]);
+        sendStep.Outputs.Add("chat_history");
+
+        plan.AddSteps(prepareStep, sendStep);
+        doWhileContext.Set("action", plan.ToJson());
+        doWhileContext.Set("condition", "User does not say 'goodbye'"); // todo advanced condition like amount of time, etc.
+
+        return await this._chatAgentSkillKernel.RunAsync(doWhileContext, this._doWhileSkill["DoWhile"]);
+    }
+
+    // ActOnMessage
+    [SKFunction(description: "ActOnMessage")]
+    [SKFunctionName("ActOnMessage")]
+    [SKFunctionContextParameter(Name = "message", Description = "Message to send")]
+    [SKFunctionContextParameter(Name = "chat_history", Description = "Message to send")]
+    public async Task<SKContext> ActOnMessageAsync(SKContext context)
+    {
+        // If there is a message, use it. Otherwise, get the chat history and generate completion for next message.
+        if (context.Variables.Get("chat_history", out var chatHistory))
+        {
+            // course, chat_history, topic, context
+
+            // TODO Use actionPlanner to either ContinueChat or StartStudyAgent
+
+            var completion = await this._semanticSkills["ContinueLesson"].InvokeAsync(context);
+            context.Variables.Update(completion.Result);
+        }
+        else if (context.Variables.Get("message", out var message))
+        {
+            context.Variables.Update(message);
+        }
+        else
+        {
+            // TODO: Get the chat history and generate completion for next message.
+        }
+
+        return context;
     }
 }
 
