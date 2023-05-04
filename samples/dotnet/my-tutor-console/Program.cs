@@ -54,6 +54,21 @@ public static class Program
         plan.State.Set("context", "No Context Available");
         plan.AddSteps(skills["CreateLessonTopics"], skills["SelectLessonTopic"], studySKill["StudySession"]); // todo foreach handling
 
+        // "What would you like to learn about today?"
+        // > "I want to learn about Algebra 1"
+
+        // TODO:
+        // 1. (M) CreateLesson --> produce a plan that can be shared rather than a tightly couple chat message thingy
+        // 1.5 (M) Save/shared lesson plans
+        // 2. (L) Integrate Memory --> use memory to get evaluations, use memory to get context about tutee(s) for lesson creation
+        // 2.5 (M) Gather data from file input re: tests/homework with scores
+        // 3. (M) Update Plan -> based on memory (where do we save/store plans? memory? file? db?)
+        // 4. (S) [Minor] -> update this demo to not be hard coded to Algebra 1.  Maybe use a different skill?
+
+        // Agent naming
+
+        // can I ContextVariables.Update(false)
+
         var result = await plan.InvokeAsync(kernel.CreateNewContext());
         Console.WriteLine($"Result: {result.Result}");
     }
