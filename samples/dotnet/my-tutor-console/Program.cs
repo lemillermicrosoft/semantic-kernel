@@ -39,15 +39,7 @@ public static class Program
     {
         #region configure kernel
         // Create a kernel
-        var kernel = new KernelBuilder() /*.WithLogger(ConsoleLogger.Log)*/.Build();
-        kernel.Config.AddAzureChatCompletionService(
-            Env.Var("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"),
-            Env.Var("AZURE_OPENAI_CHAT_ENDPOINT"),
-            Env.Var("AZURE_OPENAI_CHAT_KEY"));
-        // kernel.Config.AddAzureTextCompletionService(
-        //     Env.Var("AZURE_OPENAI_DEPLOYMENT_NAME"),
-        //     Env.Var("AZURE_OPENAI_ENDPOINT"),
-        //     Env.Var("AZURE_OPENAI_KEY"));
+        var kernel = KernelUtils.CreateKernel();
         #endregion
 
         string folder = RepoFiles.SampleSkillsPath();
@@ -57,13 +49,55 @@ public static class Program
         //
         // Create a plan to start a study session
         //
-        var plan = new Plan("Help me study for my test on Algebra 1.");
-        plan.State.Set("course", "Algebra 1");
-        plan.State.Set("context", "No Context Available"); // TODO: get context from memory
+        // var plan = new Plan("Help me study for my test on Algebra 1.");
+        // plan.State.Set("course", "Algebra 1");
+        // plan.State.Set("context", "No Context Available"); // TODO: get context from memory
 
-        plan.AddSteps(semanticSkills["CreateLessonTopics"], semanticSkills["SelectLessonTopic"], studySKill["StudySession"]);
+        // plan.AddSteps(semanticSkills["CreateLessonTopics"], semanticSkills["SelectLessonTopic"], studySKill["StudySession"]);
 
-        var result = await plan.InvokeAsync(kernel.CreateNewContext());
+        // var result = await plan.InvokeAsync(kernel.CreateNewContext());
+
+
+        // Define a ChatAgent and run it
+        var chatAgent = new ChatAgent();
+        var result = await chatAgent.RunAsync();
+
+        // or Define a StudyAgent and run it -- both conversations right now
+
+
+
+        // this._chatSkill = this._chatAgentSkillKernel.ImportSkill(new ChatSkill((context) =>
+        // {
+        //     var line = $"Chat Agent: {context.Variables.Input.Trim()}";
+        //     Console.WriteLine(line);
+        //     context.Variables.Update(line);
+        //     context.Variables.Get("chat_history", out var chatHistory);
+        //     context.Variables.Set("chat_history", $"{chatHistory}\n{line}");
+        //     Console.Write("User: ");
+        //     return Task.FromResult(context);
+        // }, (context) =>
+        // {
+        //     var line = Console.ReadLine();
+        //     context.Variables.Update($"User: {line}");
+        //     context.Variables.Get("chat_history", out var chatHistory);
+        //     context.Variables.Set("chat_history", $"{chatHistory}\nUser: {line}");
+        //     return Task.FromResult(context);
+        // }), "ChatSkill");
+
+        // var agentSkill = new AgentSkill();
+
+        // // Create a plan to chat with the user using the chat skill
+        // var chatPlan = new Plan("Chat with the user");
+        // chatPlan.AddSteps(chatSkill["ReceiveMessage"], chatSkill["SendMessage"]);
+
+        // // Create a context with the condition and the plan
+        // var chatContext = new ContextVariables("Chat with the user");
+        // chatContext.Set("condition", "User does not say 'goodbye'");
+        // chatContext.Set("plan", chatPlan.ToJson());
+
+        // // Invoke the agent skill with the context
+        // var chatResult = await agentSkill.RunPlanAsync(chatContext);
+
 
         #region comments
         // TODO -- base chat plan that will take a message and either 1) return a response or 2) start a study session agent

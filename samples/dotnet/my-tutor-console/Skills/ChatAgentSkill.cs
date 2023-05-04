@@ -23,11 +23,7 @@ public class ChatAgentSkill
     public ChatAgentSkill()
     {
         // Create a kernel
-        this._chatAgentSkillKernel = (Kernel)new KernelBuilder() /*.WithLogger(ConsoleLogger.Log)*/.Build();
-        this._chatAgentSkillKernel.Config.AddAzureChatCompletionService(
-            Env.Var("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"),
-            Env.Var("AZURE_OPENAI_CHAT_ENDPOINT"),
-            Env.Var("AZURE_OPENAI_CHAT_KEY"));
+        this._chatAgentSkillKernel = KernelUtils.CreateKernel();
 
         string folder = RepoFiles.SampleSkillsPath();
         this._semanticSkills = this._chatAgentSkillKernel.ImportSemanticSkillFromDirectory(folder,

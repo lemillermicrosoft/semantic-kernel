@@ -22,15 +22,7 @@ public class StudySkill
     {
         #region create a kernel
         // Create a kernel
-        this._studySkillKernel = new KernelBuilder() /*.WithLogger(ConsoleLogger.Log)*/.Build();
-        this._studySkillKernel.Config.AddAzureChatCompletionService(
-            Env.Var("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"),
-            Env.Var("AZURE_OPENAI_CHAT_ENDPOINT"),
-            Env.Var("AZURE_OPENAI_CHAT_KEY"));
-        // this._studySkillKernel.Config.AddAzureTextCompletionService(
-        //     Env.Var("AZURE_OPENAI_DEPLOYMENT_NAME"),
-        //     Env.Var("AZURE_OPENAI_ENDPOINT"),
-        //     Env.Var("AZURE_OPENAI_KEY"));
+        this._studySkillKernel = KernelUtils.CreateKernel();
         #endregion
 
         string folder = RepoFiles.SampleSkillsPath();
