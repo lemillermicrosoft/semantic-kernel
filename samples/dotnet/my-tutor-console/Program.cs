@@ -41,10 +41,10 @@ public static class Program
     {
         // Create a kernel
         var kernel = new KernelBuilder()/*.WithLogger(ConsoleLogger.Log)*/.Build();
-        kernel.Config.AddAzureTextCompletionService(
-            Env.Var("AZURE_OPENAI_DEPLOYMENT_NAME"),
-            Env.Var("AZURE_OPENAI_ENDPOINT"),
-            Env.Var("AZURE_OPENAI_KEY"));
+        kernel.Config.AddAzureChatCompletionService(
+            "gpt-4",//Env.Var("AZURE_OPENAI_DEPLOYMENT_NAME"),
+            "https://lightspeed-team-shared-openai.openai.azure.com/",//Env.Var("AZURE_OPENAI_ENDPOINT"),
+            "");//Env.Var("AZURE_OPENAI_KEY"));
 
         string folder = RepoFiles.SampleSkillsPath();
         var skills = kernel.ImportSemanticSkillFromDirectory(folder, "StudySkill");

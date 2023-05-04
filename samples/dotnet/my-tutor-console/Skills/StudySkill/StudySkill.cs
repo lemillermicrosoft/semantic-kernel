@@ -28,10 +28,10 @@ public class StudySkill
     {
         // Create a kernel
         this.studySkillKernel = new KernelBuilder()/*.WithLogger(ConsoleLogger.Log)*/.Build();
-        this.studySkillKernel.Config.AddAzureTextCompletionService(
-            Env.Var("AZURE_OPENAI_DEPLOYMENT_NAME"),
-            Env.Var("AZURE_OPENAI_ENDPOINT"),
-            Env.Var("AZURE_OPENAI_KEY"));
+        this.studySkillKernel.Config.AddAzureChatCompletionService(
+            "gpt-4",//Env.Var("AZURE_OPENAI_DEPLOYMENT_NAME"),
+            "https://lightspeed-team-shared-openai.openai.azure.com/",//Env.Var("AZURE_OPENAI_ENDPOINT"),
+            "");//Env.Var("AZURE_OPENAI_KEY"));
 
         this.nativeSkills = this.studySkillKernel.ImportSkill(this, "StudySkill");
 
