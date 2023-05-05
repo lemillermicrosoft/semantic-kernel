@@ -18,11 +18,14 @@ public class StudySkill
     private readonly IDictionary<string, ISKFunction> _doWhileSkill;
     private readonly IDictionary<string, ISKFunction> _chatSkill;
     private readonly IDictionary<string, ISKFunction> _studySkill;
+
     public StudySkill()
     {
         #region create a kernel
+
         // Create a kernel
         this._studySkillKernel = KernelUtils.CreateKernel();
+
         #endregion
 
         string folder = RepoFiles.SampleSkillsPath();
@@ -51,7 +54,6 @@ public class StudySkill
             context.Variables.Set("chat_history", $"{chatHistory}\nUser: {line}");
             return Task.FromResult(context);
         }), "ChatSkill");
-
     }
 
     // StudySession
@@ -105,6 +107,7 @@ public class StudySkill
         {
             doWhileContext.Set("course", course);
         }
+
         doWhileContext.Set("action", plan.ToJson());
         doWhileContext.Set("condition", "User does not say 'goodbye'"); // todo advanced condition like amount of time, etc.
 

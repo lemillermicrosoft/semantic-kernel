@@ -7,7 +7,6 @@ using Microsoft.SemanticKernel.SkillDefinition;
 
 namespace Skills;
 
-
 // Chat With User until they say Goodbye (Say hello, wait for response, respond, repeat, exit on goodbye)
 // |
 // +-- ChatSkill.SendMessage("Hello")
@@ -19,7 +18,6 @@ namespace Skills;
 // |   |   |   +-- ChatSkill.WaitForResponse()
 // |   |   |   |   |
 // |   |   |   |   +-- ChatSkill.SendMessage("Goodbye")
-
 
 // ChatSkill -- a skill that can be used to chat with the user particularly in conjunction with a plan.
 public class ChatSkill

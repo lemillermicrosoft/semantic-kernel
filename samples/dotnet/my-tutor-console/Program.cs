@@ -36,8 +36,10 @@ public static class Program
     public static async Task Main()
     {
         #region configure kernel
+
         // Create a kernel
         var kernel = KernelUtils.CreateKernel();
+
         #endregion
 
         // string folder = RepoFiles.SampleSkillsPath();
@@ -55,15 +57,12 @@ public static class Program
 
         // var result = await plan.InvokeAsync(kernel.CreateNewContext());
 
-
         // Define a ChatAgent and run it
         var chatAgent = new ChatAgent();
         chatAgent.RegisterMessageHandler(new LearningSkill(), "LearningSkill");
         var result = await chatAgent.RunAsync();
 
         // or Define a StudyAgent and run it -- both conversations right now
-
-
 
         // this._chatSkill = this._chatAgentSkillKernel.ImportSkill(new ChatSkill((context) =>
         // {
@@ -97,8 +96,8 @@ public static class Program
         // // Invoke the agent skill with the context
         // var chatResult = await agentSkill.RunPlanAsync(chatContext);
 
-
         #region comments
+
         // TODO -- base chat plan that will take a message and either 1) return a response or 2) start a study session agent
 
         // "What would you like to learn about today?"
@@ -115,6 +114,7 @@ public static class Program
         // Agent naming
 
         // can I ContextVariables.Update(false)
+
         #endregion
 
         Console.WriteLine($"{result.Result}");

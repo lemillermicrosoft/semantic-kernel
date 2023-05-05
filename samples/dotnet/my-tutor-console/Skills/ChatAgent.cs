@@ -29,7 +29,8 @@ public class ChatAgent
         this._chatAgent = this._chatAgentKernel.ImportSkill(this, "ChatAgent");
 
         string folder = RepoFiles.SampleSkillsPath();
-        this._semanticSkills = this._chatAgentKernel.ImportSemanticSkillFromDirectory(folder, "ChatAgentSkill");
+        this._semanticSkills = this._chatAgentKernel.ImportSemanticSkillFromDirectory(folder, "ChatAgentSkill", "StudySkill");
+        this._chatAgentKernel.ImportSkill(new StudySkill(), "StudySkill"); // tied to learning skill - concerns
 
         this._chatSkill = this._chatAgentKernel.ImportSkill(new ChatSkill((context) =>
         {
@@ -49,7 +50,6 @@ public class ChatAgent
             return Task.FromResult(context);
         }), "ChatSkill");
 
-
         // Create a plan to chat with the user using the chat skill
         this._chatPlan = new Plan("Chat with the user");
         this._chatPlan.Outputs.Add("chat_history");
@@ -61,6 +61,7 @@ public class ChatAgent
         this._chatPlan.AddSteps(actStep, messageStep);
 
         this.RegisterMessageHandler("ChatAgentSkill");
+        // this.RegisterMessageHandler("StudySkill"); // nah, don't want it here.
     }
 
     public void RegisterMessageHandler(string skillName)
@@ -105,7 +106,8 @@ public class ChatAgent
 
             // TODO Use actionPlanner to either ContinueChat or StartStudyAgent
             var planner = new ActionPlanner(this._actionKernel);
-            var plan = await planner.CreatePlanAsync($"Review the most recent 'User:' message and determine which function to run. If unsure, use 'ContinueChat'.\n[MESSAGES]\n{chatHistory}\n[END MESSAGES]\n");
+            var plan = await planner.CreatePlanAsync(
+                $"Review the most recent 'User:' message and determine which function to run. If unsure, use 'ContinueChat'.\n[MESSAGES]\n{chatHistory}\n[END MESSAGES]\n");
 
             // var completion = await this._semanticSkills["ContinueChat"].InvokeAsync(context);
             var completion = await plan.InvokeAsync(context);

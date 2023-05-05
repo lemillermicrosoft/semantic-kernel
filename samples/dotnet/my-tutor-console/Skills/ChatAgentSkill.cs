@@ -11,7 +11,6 @@ using RepoUtils;
 
 namespace Skills;
 
-
 public class ChatAgentSkill
 {
     private readonly IKernel _chatAgentSkillKernel;

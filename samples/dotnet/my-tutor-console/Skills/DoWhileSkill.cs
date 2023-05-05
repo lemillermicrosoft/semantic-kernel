@@ -79,6 +79,7 @@ public class DoWhileSkill
 
             isTrue = await this.IsTrueAsync(context);
         } while (isTrue);
+
         context.Variables.Update($"Exiting. Condition '{context.Variables["condition"]}' is false");
         return context;
     }
