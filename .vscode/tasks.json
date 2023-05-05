@@ -1,6 +1,55 @@
 {
   "version": "2.0.0",
   "tasks": [
+    {
+      "label": "install (CopilotChatApp)",
+      "type": "shell",
+      "group": "build",
+      "command": "yarn",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "showReuseMessage": false,
+        "panel": "shared",
+        "group": "buildTasks"
+      },
+      "options": {
+        "cwd": "${workspaceFolder}/samples/apps/copilot-chat-app/webapp"
+      },
+      "problemMatcher": []
+    },
+    {
+      // build using yarn
+      "label": "build (CopilotChatApp)",
+      "type": "shell",
+      "group": "build",
+      "command": "yarn build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "new",
+        "group": "buildTasks"
+      },
+      "options": {
+        "cwd": "${workspaceFolder}/samples/apps/copilot-chat-app/webapp"
+      },
+      "problemMatcher": []
+    },
+    {
+      // yarn start
+      "label": "start (CopilotChatApp)",
+      "type": "shell",
+      "group": "test",
+      "command": "yarn start",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "group": "copilot"
+      },
+      "options": {
+        "cwd": "${workspaceFolder}/samples/apps/copilot-chat-app/webapp"
+      }
+    },
     //semantic-kernel/samples/apps/copilot-chat-app/webapi
     // build
     {
@@ -28,7 +77,12 @@
         "${workspaceFolder}/samples/apps/copilot-chat-app/webapi/CopilotChatApi.csproj"
       ],
       "problemMatcher": "$msCompile",
-      "group": "test"
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "group": "copilot"
+      }
     },
     // watch
     {
@@ -43,6 +97,13 @@
       ],
       "problemMatcher": "$msCompile",
       "group": "test"
+    },
+    {
+      "label": "Run - Copilot Chat",
+      "detail": "Run all copilot chat components",
+      "group": "test",
+      "dependsOn": ["run (CopilotChatApi)", "start (CopilotChatApp)"],
+      "dependsOrder": "parallel"
     },
     {
       "label": "build (KernelSyntaxExamples)",
