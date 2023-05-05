@@ -14,6 +14,7 @@ namespace Skills;
 public class ChatAgent
 {
     private readonly IKernel _chatAgentKernel;
+    private readonly IKernel _actionKernel;
     private readonly IDictionary<string, ISKFunction> _chatSkill;
     private readonly Plan _chatPlan;
     private readonly IDictionary<string, ISKFunction> _chatAgent;
@@ -23,6 +24,7 @@ public class ChatAgent
     {
         // Create a kernel
         this._chatAgentKernel = KernelUtils.CreateKernel();
+        this._actionKernel = KernelUtils.CreateKernel();
 
         this._chatAgent = this._chatAgentKernel.ImportSkill(this, "ChatAgent");
 
@@ -57,9 +59,21 @@ public class ChatAgent
         messageStep.Outputs.Add("chat_history");
         // this._chatPlan.AddSteps(this._chatAgent["ActOnMessage"], this._chatSkill["SendMessage"]);
         this._chatPlan.AddSteps(actStep, messageStep);
+
+        this.RegisterMessageHandler("ChatAgentSkill");
     }
 
-    // StudySession
+    public void RegisterMessageHandler(string skillName)
+    {
+        string folder = RepoFiles.SampleSkillsPath();
+        this._actionKernel.ImportSemanticSkillFromDirectory(folder, skillName);
+    }
+
+    public void RegisterMessageHandler(object instance, string skillName)
+    {
+        this._actionKernel.ImportSkill(instance, skillName);
+    }
+
     public async Task<SKContext> RunAsync()
     {
         // Create a context with the condition and the plan
@@ -90,8 +104,11 @@ public class ChatAgent
             // course, chat_history, topic, context
 
             // TODO Use actionPlanner to either ContinueChat or StartStudyAgent
+            var planner = new ActionPlanner(this._actionKernel);
+            var plan = await planner.CreatePlanAsync($"Review the most recent 'User:' message and determine which function to run. If unsure, use 'ContinueChat'.\n[MESSAGES]\n{chatHistory}\n[END MESSAGES]\n");
 
-            var completion = await this._semanticSkills["ContinueChat"].InvokeAsync(context);
+            // var completion = await this._semanticSkills["ContinueChat"].InvokeAsync(context);
+            var completion = await plan.InvokeAsync(context);
             context.Variables.Update(completion.Result);
         }
         else if (context.Variables.Get("message", out var message))

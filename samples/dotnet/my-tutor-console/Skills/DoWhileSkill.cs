@@ -75,11 +75,11 @@ public class DoWhileSkill
                 functionOrPlan = Plan.FromJson(action, context);
             }
 
-            doWhileContext.Set("context", context.Variables.Input); // TODO
+            // doWhileContext.Set("context", context.Variables.Input); // TODO
 
             isTrue = await this.IsTrueAsync(context);
         } while (isTrue);
-
+        context.Variables.Update($"Exiting. Condition '{context.Variables["condition"]}' is false");
         return context;
     }
 #pragma warning restore CA1031
@@ -89,7 +89,7 @@ public class DoWhileSkill
     [SKFunctionContextParameter(Name = "condition", Description = "Condition to evaluate")]
     public async Task<bool> IsTrueAsync(SKContext context)
     {
-        var state = JsonSerializer.Serialize(context.Variables);
+        var state = JsonSerializer.Serialize(context.Variables); // todo what is this doing?
         var result = await this._isTrueFunction.InvokeAsync(context);
         if (bool.TryParse(result.Result.ToString(), out var isTrue) || result.Result.ToString().Contains("true", StringComparison.OrdinalIgnoreCase))
         {

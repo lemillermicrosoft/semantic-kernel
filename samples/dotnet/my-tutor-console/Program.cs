@@ -3,9 +3,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Planning;
-using RepoUtils;
 using Skills;
 
 // Learning objectives: This refers to what you want to learn or achieve by the end of the learning experience. The objectives should be specific, measurable, achievable, relevant, and time-bound.
@@ -42,9 +40,9 @@ public static class Program
         var kernel = KernelUtils.CreateKernel();
         #endregion
 
-        string folder = RepoFiles.SampleSkillsPath();
-        var semanticSkills = kernel.ImportSemanticSkillFromDirectory(folder, "StudySkill");
-        var studySKill = kernel.ImportSkill(new StudySkill(), "StudySkill");
+        // string folder = RepoFiles.SampleSkillsPath();
+        // var semanticSkills = kernel.ImportSemanticSkillFromDirectory(folder, "StudySkill");
+        // var studySKill = kernel.ImportSkill(new StudySkill(), "StudySkill");
 
         //
         // Create a plan to start a study session
@@ -60,6 +58,7 @@ public static class Program
 
         // Define a ChatAgent and run it
         var chatAgent = new ChatAgent();
+        chatAgent.RegisterMessageHandler(new LearningSkill(), "LearningSkill");
         var result = await chatAgent.RunAsync();
 
         // or Define a StudyAgent and run it -- both conversations right now
@@ -118,7 +117,7 @@ public static class Program
         // can I ContextVariables.Update(false)
         #endregion
 
-        Console.WriteLine($"Result: {result.Result}");
+        Console.WriteLine($"{result.Result}");
     }
 
     private static string PlanToString(Plan originalPlan, string indent = " ")
