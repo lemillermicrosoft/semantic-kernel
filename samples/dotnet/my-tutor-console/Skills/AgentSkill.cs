@@ -30,6 +30,7 @@ public class AgentSkill
         this._agentSkillKernel.ImportSkill(this, "AgentSkill");
     }
 
+#pragma warning disable CA1031
     // RunPlan
     [SKFunction(description: "Run a plan with a condition")]
     [SKFunctionName("RunPlan")]
@@ -64,4 +65,5 @@ public class AgentSkill
 
         return await this._agentSkillKernel.RunAsync(runPlanContext, this._doWhileSkill["DoWhile"]); // TODO WRONG ONE need native
     }
+#pragma warning restore CA1031
 }

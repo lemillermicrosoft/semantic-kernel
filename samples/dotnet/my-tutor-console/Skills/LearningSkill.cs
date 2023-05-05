@@ -1,11 +1,14 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.Planning;
 using Microsoft.SemanticKernel.SkillDefinition;
+using RepoUtils;
 
 namespace Skills;
 
@@ -14,8 +17,29 @@ public class LearningSkill
     // private readonly IKernel _kernel;
     // private readonly IDictionary<string, ISKFunction> _semanticSkills;
 
+    private readonly IKernel _learningSkillKernel;
+    private readonly IDictionary<string, ISKFunction> _semanticSkills;
+
+    private readonly IDictionary<string, ISKFunction> _forEachSkill;
+    // private readonly IDictionary<string, ISKFunction> _studySkill;
+
+    #region create a kernel
+
     public LearningSkill() // todo callback for OnLessonAdded
     {
+        // Create a kernel
+        this._learningSkillKernel = KernelUtils.CreateKernel();
+
+        #endregion
+
+        string folder = RepoFiles.SampleSkillsPath();
+        this._semanticSkills = this._learningSkillKernel.ImportSemanticSkillFromDirectory(folder,
+            // "StudySkill",
+            "ForEachSkill");
+
+        // this._studySkill = this._learningSkillKernel.ImportSkill(this, "StudySkill");
+
+        this._forEachSkill = this._learningSkillKernel.ImportSkill(new ForEachSkill(this._semanticSkills["ToList"]), "ForEachSkill");
     }
 
     // public LearningSkill(IKernel kernel)
@@ -58,42 +82,98 @@ public class LearningSkill
     [SKFunction("Create a lesson")]
     public async Task<SKContext> CreateLessonAsync(SKContext context)
     {
+        // TODO - This skill could be a chatbot that asks questions for the steps it takes to create a lesson
+
         // TODO: Create a lesson
-        // Crawl - simple ack - "I see you want to create a lesson about..."
-        // Walk - Create a lesson plan and return serialized plan
-        // Speed walk - Create a lesson plan using memories
-        // Run - Create and save a lesson in memory
+        // Crawl - simple ack - "I see you want to create a lesson about..." *done*
+        // Walk - Create a lesson plan and return serialized plan *done*
+        // Speed walk - Create a lesson plan using memories TODO
+        // Run - Create and save a lesson in memory *done*
+        // Final -- Finalize the plan being created (Instruct/Evaluate/Converse) TODO
         context.Variables.Get("lessonName", out var lessonName);
         context.Variables.Get("lessonDescription", out var lessonDescription);
 
-        var plan = new Plan(lessonDescription);
-        plan.State.Set("course", lessonName);
-        plan.State.Set("context", lessonDescription); // TODO: get context from memory
-        if (context.Skills is not null &&
-            context.Skills.TryGetFunction("StudySkill", "CreateLessonTopics", out var createLessonTopics) &&
-            context.Skills.TryGetFunction("StudySkill", "SelectLessonTopic", out var selectLessonTopic) &&
-            context.Skills.TryGetFunction("StudySkill", "StudySession", out var studySession))
-        {
-            // plan.AddSteps(semanticSkills["CreateLessonTopics"], semanticSkills["SelectLessonTopic"], studySKill["StudySession"]);
-            plan.AddSteps(createLessonTopics!, selectLessonTopic!, studySession!);
-        }
-
+        // var plan = new Plan(lessonDescription);
+        // plan.State.Set("course", lessonName);
+        // plan.State.Set("context", lessonDescription); // TODO: get context from memory
+        // if (context.Skills is not null &&
+        //     context.Skills.TryGetFunction("StudySkill", "CreateLessonTopics", out var createLessonTopics) &&
+        //     // context.Skills.TryGetFunction("StudySkill", "SelectLessonTopic", out var selectLessonTopic) &&
+        //     context.Skills.TryGetFunction("StudySkill", "StudySession", out var studySession))
+        // {
+        //     // plan.AddSteps(semanticSkills["CreateLessonTopics"], semanticSkills["SelectLessonTopic"], studySKill["StudySession"]);
+        //     plan.AddSteps(createLessonTopics!, selectLessonTopic!, studySession!);
+        // }
         Console.WriteLine($"*understands* I see you want to create a lesson about {lessonName}");
-        // context.Variables.Update(lessonPlanString);
+
+        var plan = new Plan(lessonDescription);
+        if (context.Skills?.TryGetFunction("StudySkill", "CreateLessonTopics", out var createLessonTopics) == true)
+        {
+            context.Variables.Update(lessonName);
+            context.Variables.Set("context", lessonDescription); // todo make this better
+            context = await createLessonTopics.InvokeAsync(context);
+
+            var studyPlan = new Plan(lessonDescription); // todo maybe use the output of createLessonTopics too
+            // plan.State.Set("course", lessonName);
+            // plan.State.Set("context", lessonDescription); // TODO: get context from memory
+            if (context.Skills is not null &&
+                // context.Skills.TryGetFunction("StudySkill", "CreateLessonTopics", out var createLessonTopics) &&
+                // context.Skills.TryGetFunction("StudySkill", "SelectLessonTopic", out var selectLessonTopic) &&
+                context.Skills.TryGetFunction("StudySkill", "StudySession", out var studySession))
+            {
+                // plan.AddSteps(semanticSkills["CreateLessonTopics"], semanticSkills["SelectLessonTopic"], studySKill["StudySession"]);
+                // plan.AddSteps(createLessonTopics!, selectLessonTopic!, studySession!);
+                studyPlan.AddSteps(studySession!);
+            }
+
+            var forEachContext = new ContextVariables(context.Result.ToString());
+            // forEachContext.Set("message", lessonStart.Result);
+            // forEachContext.Set("topic", topic);
+            // if (context.Variables.Get("course", out var course))
+            // {
+            //     forEachContext.Set("course", course);
+            // }
+
+            forEachContext.Set("goalLabel", "Complete Lesson");
+            forEachContext.Set("action", studyPlan.ToJson());
+            forEachContext.Set("content", context.Result.ToString()); // todo advanced condition like amount of time, etc.
+            var result = await this._learningSkillKernel.RunAsync(forEachContext, this._forEachSkill["ForEach"]);
+            if (result.Variables.Get("FOREACH_RESULT", out var forEachResultPlan))
+            {
+                plan.AddSteps(Plan.FromJson(forEachResultPlan.ToString(), context)!);
+            }
+        } // else say that we can't
 
         var lessonPlanJson = plan.ToJson();
-        context.Variables.Update(LearningSkill.ToPlanString(plan));
+        var lessonPlanString = LearningSkill.ToPlanString(plan);
+        context.Variables.Update(lessonPlanString);
         context.Variables.Set("lessonPlanJson", lessonPlanJson);
 
         await context.Memory.SaveInformationAsync(
             collection: "LearningSkill.LessonPlans",
-            text: lessonPlanJson,
+            text: lessonPlanString,
+            // text: lessonPlanJson,
             id: Guid.NewGuid().ToString(),
             description: $"Lesson plan about {lessonName}",
-            additionalMetadata: null);
+            additionalMetadata: lessonPlanJson);
 
         return context;
     }
+
+    // InstructSession
+    [SKFunctionName("InstructSession")]
+    [SKFunction("Instruct a session")]
+    public Task<SKContext>? InstructSessionAsync(SKContext context)
+    {
+        return null;
+    }
+
+    // EvaluateSession
+
+    // LessonConversation
+
+    // I want to start that learning plan (RunLearningPlan) --> Return Choices (Instruct, Evaluate, Converse) --> Selection
+    //      RunLearningPLan -> Do (give choices)  While (choice is not made)
 
     // ListLessonPlans
     [SKFunctionName("ListLessonPlans")]
@@ -146,12 +226,8 @@ public class LearningSkill
             .Where(pair => !string.IsNullOrEmpty(pair.Value) || !pair.Key.Equals("INPUT", StringComparison.OrdinalIgnoreCase))
             .Select(pair => $"{indent}{indent}{pair.Key} = {pair.Value}"));
 
-        return $"\n{indent}Goal: {originalPlan.Description}\n\n{indent}State:\n{state}\n\n{indent}Steps:\n{stepItems}";
+        return $"\n{indent}Goal: {originalPlan.Description}\n\n{indent}Steps:\n{stepItems}";
+
+        // return $"\n{indent}Goal: {originalPlan.Description}\n\n{indent}State:\n{state}\n\n{indent}Steps:\n{stepItems}";
     }
-
-    // InstructSession
-
-    // EvaluateSession
-
-    // LessonConversation
 }

@@ -2,6 +2,7 @@
 
 using System;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel.Planning;
 using Skills;
@@ -36,6 +37,8 @@ public static class Program
     public static async Task Main()
     {
         #region configure kernel
+
+        Console.OutputEncoding = Encoding.Unicode;
 
         // Create a kernel
         var kernel = KernelUtils.CreateKernel();

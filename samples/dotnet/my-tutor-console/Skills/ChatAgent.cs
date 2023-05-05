@@ -106,11 +106,22 @@ public class ChatAgent
 
             // TODO Use actionPlanner to either ContinueChat or StartStudyAgent
             var planner = new ActionPlanner(this._actionKernel);
+            Console.WriteLine("***reading***");
             var plan = await planner.CreatePlanAsync(
                 $"Review the most recent 'User:' message and determine which function to run. If unsure, use 'ContinueChat'.\n[MESSAGES]\n{chatHistory}\n[END MESSAGES]\n");
 
+            if (plan.Steps[0].Name == "ContinueChat") // todo this is hacky
+            {
+                Console.WriteLine("***typing***");
+            }
+            else
+            {
+                Console.WriteLine("***thinking***");
+            }
+
             // var completion = await this._semanticSkills["ContinueChat"].InvokeAsync(context);
             var completion = await plan.InvokeAsync(context);
+
             context.Variables.Update(completion.Result);
         }
         else if (context.Variables.Get("message", out var message))
