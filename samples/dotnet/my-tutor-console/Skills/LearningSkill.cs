@@ -134,7 +134,8 @@ public class LearningSkill
             //     forEachContext.Set("course", course);
             // }
 
-            forEachContext.Set("goalLabel", "Complete Lesson");
+            forEachContext.Set("goalLabel", "Complete Lessons");
+            forEachContext.Set("stepLabel", "Complete Lesson");
             forEachContext.Set("action", studyPlan.ToJson());
             forEachContext.Set("content", context.Result.ToString()); // todo advanced condition like amount of time, etc.
             var result = await this._learningSkillKernel.RunAsync(forEachContext, this._forEachSkill["ForEach"]);
@@ -189,8 +190,10 @@ public class LearningSkill
         return Task.FromResult(context);
     }
 
-    internal static string ToPlanString(Plan originalPlan, string indent = " ")
+    internal static readonly List<string> lessonMarkers = new() { "Lesson:", "Objective:", "Topic:", "Course:" };
+    internal static string ToPlanString(Plan originalPlan, string indent = " ", int lessonMarkerIndex = 0)
     {
+        var next = lessonMarkerIndex + 1;
         string stepItems = string.Join("\n", originalPlan.Steps.Select(step =>
         {
             if (step.Steps.Count == 0)
@@ -217,7 +220,7 @@ public class LearningSkill
             }
             else
             {
-                string nestedSteps = ToPlanString(step, indent + indent);
+                string nestedSteps = ToPlanString(step, indent + indent, next);
                 return nestedSteps;
             }
         }));
@@ -225,9 +228,7 @@ public class LearningSkill
         string state = string.Join("\n", originalPlan.State
             .Where(pair => !string.IsNullOrEmpty(pair.Value) || !pair.Key.Equals("INPUT", StringComparison.OrdinalIgnoreCase))
             .Select(pair => $"{indent}{indent}{pair.Key} = {pair.Value}"));
-
-        return $"\n{indent}Goal: {originalPlan.Description}\n\n{indent}Steps:\n{stepItems}";
-
-        // return $"\n{indent}Goal: {originalPlan.Description}\n\n{indent}State:\n{state}\n\n{indent}Steps:\n{stepItems}";
+        var prefix = lessonMarkerIndex == 0 ? "Generated learning plan.\n" : string.Empty;
+        return $"{prefix}{indent}{lessonMarkers[Math.Min(lessonMarkerIndex, lessonMarkers.Count - 1)]} {originalPlan.Description}\n{stepItems}";
     }
 }

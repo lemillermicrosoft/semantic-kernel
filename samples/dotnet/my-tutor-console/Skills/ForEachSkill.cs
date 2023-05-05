@@ -25,12 +25,15 @@ public partial class ForEachSkill
     [SKFunction(description: "For-Each")]
     [SKFunctionName("ForEach")]
     [SKFunctionContextParameter(Name = "goalLabel", Description = "Goal labels for plans", DefaultValue = "ForEach")]
+    [SKFunctionContextParameter(Name = "stepLabel", Description = "Goal labels for plan steps", DefaultValue = "Step")]
     [SKFunctionContextParameter(Name = "content", Description = "Content to iterate")]
     [SKFunctionContextParameter(Name = "action", Description = "Action to execute on each entry of content e.g. SomeSkill.CallFunction")]
     public async Task<SKContext> ForEachAsync(SKContext context)
     {
         context.Variables.Get("goalLabel", out var goalLabel);
         goalLabel ??= "ForEach";
+        context.Variables.Get("stepLabel", out var stepLabel);
+        stepLabel ??= "Step";
         var forEachContext = context.Variables.Clone();
         if (!context.Variables.Get("action", out var action))
         {
@@ -77,7 +80,7 @@ public partial class ForEachSkill
             if (functionOrPlan is Plan planStep)
             {
                 planStep.State.Update(context.Variables); // todo is this doing too much?
-                planStep.Description = $"{goalLabel}: {item}";
+                planStep.Description = $"{stepLabel}: {item}";
                 plan.AddSteps(planStep);
                 functionOrPlan = Plan.FromJson(action, context); // reload the plan object
             }
