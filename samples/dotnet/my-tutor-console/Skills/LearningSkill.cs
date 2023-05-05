@@ -1,5 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.SkillDefinition;
@@ -9,6 +11,43 @@ namespace Skills;
 
 public class LearningSkill
 {
+    // private readonly IKernel _kernel;
+    // private readonly IDictionary<string, ISKFunction> _semanticSkills;
+
+    public LearningSkill() // todo callback for OnLessonAdded
+    {
+
+    }
+
+    // public LearningSkill(IKernel kernel)
+    // {
+    //     this._kernel = kernel;
+
+    //     string folder = RepoFiles.SampleSkillsPath();
+    //     this._semanticSkills = this._kernel.ImportSemanticSkillFromDirectory(folder, "ChatAgentSkill");
+
+    // }
+
+    // GatherKnowledge (docs, web, generated)
+
+    // CreateInstructions (based on Knowledge)
+
+    // CreateEvaluations (based on Knowledge)
+
+    // ConverseAboutLesson (based on lesson plan)
+
+
+    // So the 'agent' plan is to:
+    // 1. Gather knowledge
+
+    // 4. Converse about lesson
+
+    // The 'lesson' plan is to:
+    // 1. Create instructions
+    // 2. Create evaluations
+
+
+
     // CreateLesson
     [SKFunctionName("CreateLesson")]
     [SKFunctionContextParameter(Name = "lessonName", Description = "Name of the lesson")]
@@ -21,7 +60,7 @@ public class LearningSkill
     // [SKFunctionContextParameter(Name = "lessonLanguage", Description = "Language of the lesson")]
     // [SKFunctionContextParameter(Name = "lessonLocale", Description = "Locale of the lesson")]
     [SKFunction("Create a lesson")]
-    public Task<SKContext> CreateLessonAsync(SKContext context)
+    public async Task<SKContext> CreateLessonAsync(SKContext context)
     {
         // TODO: Create a lesson
         // Crawl - simple ack - "I see you want to create a lesson about..."
@@ -30,7 +69,30 @@ public class LearningSkill
         // Run - Create and save a lesson in memory
         context.Variables.Get("lessonName", out var lessonName);
         context.Variables.Get("lessonDescription", out var lessonDescription);
-        context.Variables.Update("I see you want to create a lesson about " + lessonName + ". " + lessonDescription + "");
+        var lessonPlanString = "I see you want to create a lesson about " + lessonName + ". " + lessonDescription + "";
+        context.Variables.Update(lessonPlanString);
+
+
+        await context.Memory.SaveInformationAsync(
+            collection: "LearningSkill.LessonPlans",
+            text: lessonPlanString,
+            id: Guid.NewGuid().ToString(),
+            description: $"Lesson plan about {lessonName}",
+            additionalMetadata: null);
+
+        return context;
+    }
+
+    // ListLessonPlans
+    [SKFunctionName("ListLessonPlans")]
+    [SKFunctionContextParameter(Name = "lessonName", Description = "Name of the lesson")]
+    [SKFunctionContextParameter(Name = "lessonDescription", Description = "Description of the lesson")]
+    [SKFunction("List known lesson plans")]
+    public Task<SKContext> ListLessonPlansAsync(SKContext context)
+    {
+        var memories = context.Memory.SearchAsync("LearningSkill.LessonPlans", query: "lesson", limit: 10, minRelevanceScore: 0.0).ToEnumerable().ToList();
+
+        context.Variables.Update(string.Join("\n", memories.Select(m => $"[{m.Metadata.Id}]{m.Metadata.Text}")));
 
         return Task.FromResult(context);
     }
