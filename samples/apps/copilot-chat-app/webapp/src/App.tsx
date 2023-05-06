@@ -98,7 +98,7 @@ const App: FC = () => {
             <UnauthenticatedTemplate>
                 <div className={classes.container}>
                     <div className={classes.header}>
-                        <Subtitle1 as="h1">Copilot Chat</Subtitle1>
+                        <Subtitle1 as="h1">{process.env.REACT_APP_WEBSITE_TITLE as string}</Subtitle1>
                     </div>
                     <Login />
                 </div>
@@ -106,7 +106,7 @@ const App: FC = () => {
             <AuthenticatedTemplate>
                 <div className={classes.container}>
                     <div className={classes.header}>
-                        <Subtitle1 as="h1">Copilot Chat</Subtitle1>
+                        <Subtitle1 as="h1">{process.env.REACT_APP_WEBSITE_TITLE as string}</Subtitle1>
                         <div className={classes.cornerItems}>
                             <PluginGallery />
                             <Avatar
