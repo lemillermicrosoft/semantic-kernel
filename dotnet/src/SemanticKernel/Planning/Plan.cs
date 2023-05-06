@@ -49,13 +49,6 @@ public sealed class Plan : ISKFunction
     public IList<string> Outputs { get; set; } = new List<string>();
 
     /// <summary>
-    /// Named results for the function -- these are used to return results from a plan.
-    /// </summary>
-    [JsonPropertyName("named_results")]
-    [JsonConverter(typeof(ContextVariablesConverter))]
-    public ContextVariables NamedResults { get; set; } = new();
-
-    /// <summary>
     /// Gets whether the plan has a next step.
     /// </summary>
     [JsonIgnore]
@@ -267,18 +260,10 @@ public sealed class Plan : ISKFunction
             this.State.Update(resultValue);
 
             // Update Plan Result in State with matching outputs (if any)
-            bool resultAppended = false;
-            foreach (var item in this.Outputs.Intersect(step.Outputs))
+            if (this.Outputs.Intersect(step.Outputs).Any())
             {
-                if (resultAppended)
-                {
-                    continue;
-                }
-
                 this.State.Get(DefaultResultKey, out var currentPlanResult);
                 this.State.Set(DefaultResultKey, string.Join("\n", currentPlanResult.Trim(), resultValue));
-                resultAppended = true;
-                continue;
             }
 
             // Update state with outputs (if any)

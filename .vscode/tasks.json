@@ -148,6 +148,8 @@
       "type": "process",
       "args": [
         "test",
+        "--results-directory",
+        "${workspaceFolder}/dotnet/TestResults/",
         "--collect",
         "XPlat Code Coverage;Format=lcov",
         "--filter",
@@ -170,6 +172,8 @@
       "type": "process",
       "args": [
         "test",
+        "--results-directory",
+        "${workspaceFolder}/dotnet/TestResults/",
         "--collect",
         "XPlat Code Coverage;Format=lcov",
         "--filter",
@@ -187,11 +191,36 @@
       }
     },
     {
+      "label": "Test - ALL (Code Coverage)",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "test",
+        "--results-directory",
+        "${workspaceFolder}/dotnet/TestResults/",
+        "--collect",
+        "XPlat Code Coverage;Format=lcov",
+        "--filter",
+        "${input:filter}"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "options": {
+        "cwd": "${workspaceFolder}/dotnet/"
+      }
+    },
+    {
       "label": "Test - Semantic-Kernel Integration (Code Coverage)",
       "command": "dotnet",
       "type": "process",
       "args": [
         "test",
+        "--results-directory",
+        "${workspaceFolder}/dotnet/TestResults/",
         "--collect",
         "XPlat Code Coverage;Format=lcov",
         "--filter",
