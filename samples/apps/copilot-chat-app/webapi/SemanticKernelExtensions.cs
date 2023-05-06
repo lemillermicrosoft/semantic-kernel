@@ -53,7 +53,23 @@ internal static class SemanticKernelExtensions
             return new CopilotChatPlanner(plannerKernel, plannerOptions);
         });
 
+        services.AddScoped<ChatBot>(sp =>
+        {
+            IKernel chatKernel = sp.GetRequiredService<IKernel>();
+            IOptions<AIServiceOptions> aiServiceOptions = sp.GetRequiredService<IOptions<AIServiceOptions>>();
+            IKernel chatBotKernel = new Kernel(
+                new SkillCollection(),
+                chatKernel.PromptTemplateEngine,
+                chatKernel.Memory,
+                new KernelConfig().AddCompletionBackend(aiServiceOptions.Value),
+            sp.GetRequiredService<ILogger<ChatBot>>());
+
+            return new ChatBot(chatBotKernel);
+        }
+        );
+
         // Add the Semantic Kernel
+        // How does the kernelConfig get used?
         services.AddSingleton<IPromptTemplateEngine, PromptTemplateEngine>();
         services.AddScoped<ISkillCollection, SkillCollection>();
         services.AddScoped<KernelConfig>(serviceProvider => new KernelConfig()

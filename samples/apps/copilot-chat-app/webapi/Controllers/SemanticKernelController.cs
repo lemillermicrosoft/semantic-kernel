@@ -54,6 +54,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
     /// <param name="documentMemoryOptions">Options for document memory handling.</param>
     /// <param name="planner">Planner to use to create function sequences.</param>
     /// <param name="plannerOptions">Options for the planner.</param>
+    /// <param name="chatBot"></param>
     /// <param name="ask">Prompt along with its parameters</param>
     /// <param name="openApiSkillsAuthHeaders">Authentication headers to connect to OpenAPI Skills</param>
     /// <param name="skillName">Skill in which function to invoke resides</param>
@@ -66,12 +67,13 @@ public class SemanticKernelController : ControllerBase, IDisposable
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<AskResult>> InvokeFunctionAsync(
-        [FromServices] IKernel kernel,
+        [FromServices] IKernel kernel, // where does this come from? How do we enable a *skill* to create their own kernel?
         [FromServices] ChatSessionRepository chatRepository,
         [FromServices] ChatMessageRepository chatMessageRepository,
         [FromServices] IOptions<DocumentMemoryOptions> documentMemoryOptions,
         [FromServices] CopilotChatPlanner planner,
         [FromServices] IOptions<PlannerOptions> plannerOptions,
+        [FromServices] ChatBot chatBot,
         [FromBody] Ask ask,
         [FromHeader] OpenApiSkillsAuthHeaders openApiSkillsAuthHeaders,
         string skillName, string functionName)
@@ -113,10 +115,45 @@ public class SemanticKernelController : ControllerBase, IDisposable
             documentMemoryOptions: documentMemoryOptions.Value,
             logger: this._logger);
 
+
+        var chatSkill = new ChatSkill(
+            kernel: chatBot.Kernel,
+            chatMessageRepository: chatMessageRepository,
+            chatSessionRepository: chatRepository,
+            promptSettings: this._promptSettings,
+            planner: planner,
+            plannerOptions: plannerOptions.Value,
+            logger: this._logger
+        );
+        chatBot.Kernel.ImportSkill(chatSkill, nameof(ChatSkill));
+        // chatBot.Kernel.ImportSemanticSkillFromDirectory("todo", "ChatAgentSkill");
+        chatBot.Kernel.ImportSkill(new LearningSkill(), "LearningSkill"); // todo
+
+        // chatAgent.RegisterMessageHandler(
+
+        //     this.RegisterMessageHandler("ChatAgentSkill");
+        //     // this.RegisterMessageHandler("StudySkill"); // nah, don't want it here.
+        // }
+
+        // public void RegisterMessageHandler(string skillName)
+        // {
+        //     string folder = RepoFiles.SampleSkillsPath();
+        //     this._actionKernel.ImportSemanticSkillFromDirectory(folder, skillName);
+        // }
+
+        // public void RegisterMessageHandler(object instance, string skillName)
+        // {
+        //     this._actionKernel.ImportSkill(instance, skillName);
+        // }
+
+
         // Get the function to invoke
         ISKFunction? function = null;
         try
         {
+            IKernel k = skillName == "ChatSkill" && functionName == "Chat" ? chatBot.Kernel : kernel;
+            // TODO -- if it's chat, use the chat kernel.
+
             function = kernel.Skills.GetFunction(skillName, functionName);
         }
         catch (KernelException)

@@ -339,15 +339,8 @@ public class ChatSkill
         chatContext.Variables.Set("contextTokenLimit", contextTokenLimit.ToString(new NumberFormatInfo()));
         chatContext.Variables.Set("tokenLimit", remainingToken.ToString(new NumberFormatInfo()));
 
-        var completionFunction = this._kernel.CreateSemanticFunction(
-            this._promptSettings.SystemChatPrompt,
-            skillName: nameof(ChatSkill),
-            description: "Complete the prompt.");
-
-        chatContext = await completionFunction.InvokeAsync(
-            context: chatContext,
-            settings: this.CreateChatResponseCompletionSettings()
-        );
+        // CUTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+        var result = this.ActOnMessageAsync(chatContext);
 
         // If the completion function failed, return the context containing the error.
         if (chatContext.ErrorOccurred)
@@ -372,6 +365,77 @@ public class ChatSkill
 
         context.Variables.Update(chatContext.Result);
         context.Variables.Set("userId", "Bot");
+        return context;
+    }
+
+
+
+    // ActOnMessage
+    [SKFunction(description: "DoChat")]
+    [SKFunctionName("DoChat")]
+    // [SKFunctionContextParameter(Name = "message", Description = "Message to send")]
+    // [SKFunctionContextParameter(Name = "chat_history", Description = "Message to send")]
+    public async Task<SKContext> DoChatAsync(SKContext context)
+    {
+        // This is the chatting
+        var completionFunction = this._kernel.CreateSemanticFunction(
+            this._promptSettings.SystemChatPrompt,
+            skillName: nameof(ChatSkill),
+            description: "Complete the prompt.");
+
+        context = await completionFunction.InvokeAsync(
+            context: context,
+            settings: this.CreateChatResponseCompletionSettings()
+        );
+        return context;
+    }
+
+    // ActOnMessage
+    [SKFunction(description: "ActOnMessage")]
+    [SKFunctionName("ActOnMessage")]
+    // [SKFunctionContextParameter(Name = "message", Description = "Message to send")]
+    // [SKFunctionContextParameter(Name = "chat_history", Description = "Message to send")]
+    public async Task<SKContext> ActOnMessageAsync(SKContext context)
+    {
+        // If there is a message, use it. Otherwise, get the chat history and generate completion for next message.
+        // if (context.Variables.Get("chat_history", out var chatHistory))
+        // {
+        // course, chat_history, topic, context
+        if (context.Variables.Get("userIntent", out var userIntent))
+        {
+
+            // TODO Use actionPlanner to either ContinueChat or StartStudyAgent
+            var planner = new ActionPlanner(this._kernel);
+
+            Console.WriteLine("***reading***");
+
+            var plan = await planner.CreatePlanAsync(
+                $"Review the most recent 'User:' message and determine which function to run. If unsure, use 'DoChat'.\n[MESSAGES]\n{userIntent}\n[END MESSAGES]\n");
+
+            if (plan.Steps[0].Name == "DoChat") // todo this is hacky
+            {
+                Console.WriteLine("***typing***");
+            }
+            else
+            {
+                Console.WriteLine("***thinking***");
+            }
+
+            // var completion = await this._semanticSkills["ContinueChat"].InvokeAsync(context);
+            var completion = await plan.InvokeAsync(context);
+
+            context.Variables.Update(completion.Result);
+            // }
+            // else if (context.Variables.Get("message", out var message))
+            // {
+            //     context.Variables.Update(message);
+            // }
+            // else
+            // {
+            //     // TODO: Get the chat history and generate completion for next message.
+            // }
+        }
+
         return context;
     }
 
