@@ -120,8 +120,8 @@ export const useChat = () => {
                 'ChatSkill',
                 'Chat',
                 await AuthHelper.getSKaaSAccessToken(instance),
-                connectors.getEnabledPlugins(),
-            );
+                connectors.getEnabledPlugins(), // todo -- should I add learning skill here?
+            ); // this is the entry point to the semantic kernel
 
             const messageResult = {
                 timestamp: new Date().getTime(),

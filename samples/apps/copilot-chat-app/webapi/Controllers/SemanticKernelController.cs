@@ -1,5 +1,4 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
-// Licensed under the MIT License.
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -85,10 +84,11 @@ public class SemanticKernelController : ControllerBase, IDisposable
         }
 
         // Put ask's variables in the context we will use.
-        var contextVariables = new ContextVariables(ask.Input);
+        var context = kernel.CreateNewContext();
+        context.Variables.Update(ask.Input);
         foreach (var input in ask.Variables)
         {
-            contextVariables.Set(input.Key, input.Value);
+            context.Variables.Set(input.Key, input.Value);
         }
 
         // Not required for Copilot Chat, but this is how to register additional skills for the service to provide.
@@ -100,7 +100,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
         // Register skills with the planner if enabled.
         if (plannerOptions.Value.Enabled)
         {
-            await this.RegisterPlannerSkillsAsync(planner, plannerOptions.Value, openApiSkillsAuthHeaders, contextVariables);
+            await this.RegisterPlannerSkillsAsync(planner, plannerOptions.Value, openApiSkillsAuthHeaders, context.Variables);
         }
 
         // Register native skills with the chat's kernel
@@ -125,18 +125,13 @@ public class SemanticKernelController : ControllerBase, IDisposable
         }
 
         // Run the function.
-        SKContext result = await kernel.RunAsync(contextVariables, function!);
-        if (result.ErrorOccurred)
-        {
-            if (result.LastException is AIException aiException && aiException.Detail is not null)
-            {
-                return this.BadRequest(string.Concat(aiException.Message, " - Detail: " + aiException.Detail));
-            }
+        SKContext result = await function.InvokeAsync(context);
 
-            return this.BadRequest(result.LastErrorDescription);
-        }
-
-        return this.Ok(new AskResult { Value = result.Result, Variables = result.Variables.Select(v => new KeyValuePair<string, string>(v.Key, v.Value)) });
+        return result.ErrorOccurred
+            ? result.LastException is AIException aiException && aiException.Detail is not null
+                ? (ActionResult<AskResult>)this.BadRequest(string.Concat(aiException.Message, " - Detail: " + aiException.Detail))
+                : (ActionResult<AskResult>)this.BadRequest(result.LastErrorDescription)
+            : (global::Microsoft.AspNetCore.Mvc.ActionResult<global::SemanticKernel.Service.Model.AskResult>)this.Ok(new AskResult { Value = result.Result, Variables = result.Variables.Select(v => new KeyValuePair<string, string>(v.Key, v.Value)) });
     }
 
     /// <summary>
@@ -154,7 +149,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
             {
                 InnerHandler = new HttpClientHandler() { CheckCertificateRevocationList = true }
             };
-            using HttpClient importHttpClient = new HttpClient(retryHandler, false);
+            using HttpClient importHttpClient = new(retryHandler, false);
             importHttpClient.DefaultRequestHeaders.Add("User-Agent", "Microsoft.CopilotChat");
             await planner.Kernel.ImportChatGptPluginSkillFromUrlAsync("KlarnaShoppingSkill", new Uri("https://www.klarna.com/.well-known/ai-plugin.json"),
                 importHttpClient);

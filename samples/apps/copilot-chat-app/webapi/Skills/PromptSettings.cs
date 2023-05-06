@@ -122,6 +122,7 @@ public class PromptSettings
     // Chat commands
     internal string SystemChatContinuationPrompt = "SINGLE RESPONSE FROM BOT TO USER:\n[{{TimeSkill.Now}} {{timeSkill.Second}}] bot:";
 
+    // TODO: This be the place.
     internal string[] SystemChatPromptComponents => new string[]
     {
         this.SystemDescriptionPrompt,
