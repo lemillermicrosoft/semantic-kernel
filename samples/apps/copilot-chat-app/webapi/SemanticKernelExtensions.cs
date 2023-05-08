@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.AI.Embeddings;
 using Microsoft.SemanticKernel.Connectors.AI.OpenAI.TextEmbedding;
+using Microsoft.SemanticKernel.Connectors.HuggingFace.TextToImage;
 using Microsoft.SemanticKernel.Connectors.Memory.Qdrant;
 using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.SkillDefinition;
@@ -90,7 +91,8 @@ internal static class SemanticKernelExtensions
             .AddCompletionBackend(serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>()
                 .Get(AIServiceOptions.CompletionPropertyName))
             .AddEmbeddingBackend(serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>()
-                .Get(AIServiceOptions.EmbeddingPropertyName)));
+                .Get(AIServiceOptions.EmbeddingPropertyName))
+            .AddImageGenerationBackend());
         services.AddScoped<IKernel, Kernel>();
 
         return services;
@@ -148,6 +150,16 @@ internal static class SemanticKernelExtensions
             default:
                 throw new ArgumentException($"Invalid {nameof(aiServiceOptions.AIService)} value in '{AIServiceOptions.EmbeddingPropertyName}' settings.");
         }
+
+        return kernelConfig;
+    }
+
+    /// <summary>
+    /// Add the image generation backend to the kernel config
+    /// </summary>
+    internal static KernelConfig AddImageGenerationBackend(this KernelConfig kernelConfig)
+    {
+        kernelConfig.AddImageGenerationService(_ => new HuggingFaceTextToImage("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", model: "stabilityai/stable-diffusion-2-1"));
 
         return kernelConfig;
     }
