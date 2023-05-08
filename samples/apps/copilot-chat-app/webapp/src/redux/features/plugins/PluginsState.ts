@@ -11,12 +11,16 @@ export const enum Plugins {
     MsGraph = 'Microsoft Graph',
     Jira = 'Jira',
     GitHub = 'GitHub',
+    HuggingFace = 'Hugging Face',
+    VisionStudio = 'Azure Cognitive Service for Vision',
 }
 
 export const enum AuthHeaderTags {
     MsGraph = 'graph',
     Jira = 'jira',
     GitHub = 'github',
+    HuggingFace = 'huggingface',
+    VisionStudio = 'visionstudio',
 }
 
 export type PluginAuthRequirements = {
@@ -57,6 +61,8 @@ export interface PluginsState {
     MsGraph: Plugin;
     Jira: Plugin;
     GitHub: Plugin;
+    HuggingFace: Plugin;
+    VisionStudio: Plugin;
 }
 
 export const initialState: PluginsState = {
@@ -114,6 +120,44 @@ export const initialState: PluginsState = {
                 required: false,
                 description: 'name of repository. i.e., "semantic-kernel"',
                 helpLink: 'https://docs.github.com/en/rest/pulls/pulls?apiVersion=2022-11-28#list-pull-requests',
+            },
+        },
+    },
+    HuggingFace: {
+        name: Plugins.HuggingFace,
+        publisher: 'Hugging Face',
+        description: 'Use your Hugging Face account to access your personal models and services.',
+        enabled: false,
+        authRequirements: {
+            username: true,
+            personalAccessToken: true,
+            helpLink: 'https://huggingface.co/docs/hub/security-tokens',
+        },
+        icon: 'https://huggingface.co/front/assets/huggingface_logo.svg',
+        headerTag: AuthHeaderTags.HuggingFace,
+        apiProperties: {
+            'server-url': {
+                required: true,
+                helpLink: '',
+            },
+        },
+    },
+    VisionStudio: {
+        name: Plugins.VisionStudio,
+        publisher: 'Microsoft',
+        description: 'Use your custom vision model from Vision Studio.',
+        enabled: false,
+        authRequirements: {
+            username: true,
+            personalAccessToken: true,
+            helpLink: '',
+        },
+        icon: 'https://portal.vision.cognitive.azure.com/dist/static/media/vision-header.f3f21b26.svg',
+        headerTag: AuthHeaderTags.VisionStudio,
+        apiProperties: {
+            'server-url': {
+                required: true,
+                helpLink: '',
             },
         },
     },
