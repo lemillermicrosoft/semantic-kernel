@@ -34,6 +34,8 @@ public class ChatSkill
     /// </summary>
     private readonly IKernel _kernel;
 
+    private readonly IKernel _actionKernel;
+
     /// <summary>
     /// A repository to save and retrieve chat messages.
     /// </summary>
@@ -64,6 +66,7 @@ public class ChatSkill
     /// </summary>
     public ChatSkill(
         IKernel kernel,
+        IKernel actionKernel,
         ChatMessageRepository chatMessageRepository,
         ChatSessionRepository chatSessionRepository,
         PromptSettings promptSettings,
@@ -73,6 +76,7 @@ public class ChatSkill
     {
         this._logger = logger;
         this._kernel = kernel;
+        this._actionKernel = actionKernel;
         this._chatMessageRepository = chatMessageRepository;
         this._chatSessionRepository = chatSessionRepository;
         this._promptSettings = promptSettings;
@@ -340,7 +344,7 @@ public class ChatSkill
         chatContext.Variables.Set("tokenLimit", remainingToken.ToString(new NumberFormatInfo()));
 
         // CUTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
-        var result = this.ActOnMessageAsync(chatContext);
+        chatContext = await this.ActOnMessageAsync(chatContext);
 
         // If the completion function failed, return the context containing the error.
         if (chatContext.ErrorOccurred)
@@ -409,7 +413,7 @@ public class ChatSkill
         {
             // TODO Use actionPlanner to either ContinueChat or StartStudyAgent
             // var planner = new ActionPlanner(this._kernel);
-            var planner = new ActionPlanner(this._kernel);
+            var planner = new ActionPlanner(this._actionKernel);
 
 
             Console.WriteLine("***reading***");
@@ -423,13 +427,14 @@ public class ChatSkill
             }
             else
             {
-                Console.WriteLine("***thinking***");
+                Console.WriteLine($"***thinking*** {plan.Steps[0].Name} {plan.Steps[0].SkillName}");
             }
 
             // var completion = await this._semanticSkills["ContinueChat"].InvokeAsync(context);
             var completion = await plan.InvokeAsync(context);
 
             context.Variables.Update(completion.Result);
+            return completion;
             // }
             // else if (context.Variables.Get("message", out var message))
             // {

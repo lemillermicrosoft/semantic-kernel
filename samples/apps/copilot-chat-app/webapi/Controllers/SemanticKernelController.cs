@@ -56,6 +56,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
     /// <param name="plannerOptions">Options for the planner.</param>
     /// <param name="chatBot"></param>
     /// <param name="learningSkill"></param>
+    /// <param name="studySkill"></param>
     /// <param name="ask">Prompt along with its parameters</param>
     /// <param name="openApiSkillsAuthHeaders">Authentication headers to connect to OpenAPI Skills</param>
     /// <param name="skillName">Skill in which function to invoke resides</param>
@@ -76,6 +77,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
         [FromServices] IOptions<PlannerOptions> plannerOptions,
         [FromServices] ChatBot chatBot,
         [FromServices] LearningSkill learningSkill,
+        [FromServices] StudySkill studySkill,
         [FromBody] Ask ask,
         [FromHeader] OpenApiSkillsAuthHeaders openApiSkillsAuthHeaders,
         string skillName, string functionName)
@@ -107,8 +109,20 @@ public class SemanticKernelController : ControllerBase, IDisposable
             await this.RegisterPlannerSkillsAsync(planner, plannerOptions.Value, openApiSkillsAuthHeaders, context.Variables);
         }
 
+        // chatBot.Kernel.ImportSkill(chatSkill, nameof(ChatSkill)); // This is bringing in too much -- Move DoChat into it's own skill?
+        // chatBot.Kernel.ImportSemanticSkillFromDirectory("todo", "ChatAgentSkill");
+
+        // chatBot.Kernel.RegisterNamedSemanticSkills(null, null, "StudySkill");
+        kernel.RegisterNamedSemanticSkills(null, null, "StudySkill");
+
+        chatBot.Kernel.ImportSkill(learningSkill, "LearningSkill"); // todo
+
+        kernel.ImportSkill(studySkill, "StudySkill");
+        // kernel.ImportSkill(new StudySkill(), "StudySkill"); // tied to learning skill - concerns
+
         // Register native skills with the chat's kernel
         kernel.RegisterNativeSkills(
+            chatKernel: chatBot.Kernel,
             chatSessionRepository: chatRepository,
             chatMessageRepository: chatMessageRepository,
             promptSettings: this._promptSettings,
@@ -118,18 +132,19 @@ public class SemanticKernelController : ControllerBase, IDisposable
             logger: this._logger);
 
 
-        var chatSkill = new ChatSkill(
-            kernel: chatBot.Kernel,
-            chatMessageRepository: chatMessageRepository,
-            chatSessionRepository: chatRepository,
-            promptSettings: this._promptSettings,
-            planner: planner,
-            plannerOptions: plannerOptions.Value,
-            logger: this._logger
-        );
-        chatBot.Kernel.ImportSkill(chatSkill, nameof(ChatSkill)); // This is bringing in too much -- Move DoChat into it's own skill?
-        // chatBot.Kernel.ImportSemanticSkillFromDirectory("todo", "ChatAgentSkill");
-        chatBot.Kernel.ImportSkill(learningSkill, "LearningSkill"); // todo
+        // var chatSkill = new ChatSkill(
+        //     kernel: chatBot.Kernel,
+        //     chatMessageRepository: chatMessageRepository,
+        //     chatSessionRepository: chatRepository,
+        //     promptSettings: this._promptSettings,
+        //     planner: planner,
+        //     plannerOptions: plannerOptions.Value,
+        //     logger: this._logger
+        // );
+        // chatBot.Kernel.ImportSkill(chatSkill, nameof(ChatSkill)); // This is bringing in too much -- Move DoChat into it's own skill?
+        // // chatBot.Kernel.ImportSemanticSkillFromDirectory("todo", "ChatAgentSkill");
+        // chatBot.Kernel.RegisterNamedSemanticSkills(null, null, "StudySkill");
+        // chatBot.Kernel.ImportSkill(learningSkill, "LearningSkill"); // todo
 
         // chatAgent.RegisterMessageHandler(
 

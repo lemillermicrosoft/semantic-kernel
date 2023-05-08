@@ -38,26 +38,16 @@ internal static class FunctionLoadingExtensions
     /// <summary>
     /// Register local semantic skills with the kernel.
     /// </summary>
-    internal static void RegisterNamedSemanticSkills(
+    internal static IDictionary<string, Microsoft.SemanticKernel.SkillDefinition.ISKFunction> RegisterNamedSemanticSkills(
         this IKernel kernel,
         string? skillsDirectory = null,
         ILogger? logger = null,
         params string[] skillDirectoryNames
         )
     {
-        string[] subDirectories = Directory.GetDirectories(skillsDirectory!);
+        skillsDirectory ??= SampleSkillsPath();
 
-        foreach (string subDir in subDirectories)
-        {
-            try
-            {
-                kernel.ImportSemanticSkillFromDirectory(skillsDirectory!, Path.GetFileName(subDir)!);
-            }
-            catch (TemplateException e)
-            {
-                logger!.LogError("Could not load skill from {Directory}: {Message}", subDir, e.Message);
-            }
-        }
+        return kernel.ImportSemanticSkillFromDirectory(skillsDirectory, skillDirectoryNames);
     }
 
     /// <summary>
@@ -94,6 +84,7 @@ internal static class FunctionLoadingExtensions
     /// </summary>
     internal static void RegisterNativeSkills(
         this IKernel kernel,
+        IKernel chatKernel,
         ChatSessionRepository chatSessionRepository,
         ChatMessageRepository chatMessageRepository,
         PromptSettings promptSettings,
@@ -107,8 +98,10 @@ internal static class FunctionLoadingExtensions
         var timeSkill = new TimeSkill();
         kernel.ImportSkill(timeSkill, nameof(TimeSkill));
 
+        // I was hoping this wouldn't be needed but it is...
         var chatSkill = new ChatSkill(
             kernel: kernel,
+            actionKernel: chatKernel,
             chatMessageRepository: chatMessageRepository,
             chatSessionRepository: chatSessionRepository,
             promptSettings: promptSettings,
@@ -117,6 +110,9 @@ internal static class FunctionLoadingExtensions
             logger: logger
         );
         kernel.ImportSkill(chatSkill, nameof(ChatSkill));
+        chatKernel.ImportSkill(chatSkill, nameof(ChatSkill)); // This is bringing in too much -- Move DoChat into it's own skill?
+
+        // kernel.ImportSkill(new StudySkill(), "StudySkill"); // tied to learning skill - concerns
 
         var documentMemorySkill = new DocumentMemorySkill(promptSettings, documentMemoryOptions);
         kernel.ImportSkill(documentMemorySkill, nameof(DocumentMemorySkill));

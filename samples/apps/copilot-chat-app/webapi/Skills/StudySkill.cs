@@ -28,10 +28,11 @@ public class StudySkill
         // this._semanticSkills = this._studySkillKernel.ImportSemanticSkillFromDirectory(folder,
         //     "StudySkill",
         //     "DoWhileSkill");
+        this._semanticSkills = kernel.RegisterNamedSemanticSkills(null, null, "StudySkill", "DoWhileSkill");
 
-        // this._studySkill = this._studySkillKernel.ImportSkill(this, "StudySkill");
+        this._studySkill = this._studySkillKernel.ImportSkill(this, "StudySkill");
 
-        // this._doWhileSkill = this._studySkillKernel.ImportSkill(new DoWhileSkill(this._semanticSkills["IsTrue"]), "DoWhileSkill");
+        this._doWhileSkill = this._studySkillKernel.ImportSkill(new DoWhileSkill(this._semanticSkills["IsTrue"]), "DoWhileSkill");
 
         // this._chatSkill = this._studySkillKernel.ImportSkill(new ChatSkill((context) =>
         // {

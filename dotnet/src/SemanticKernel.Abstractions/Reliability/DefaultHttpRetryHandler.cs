@@ -179,6 +179,25 @@ public sealed class DefaultHttpRetryHandler : DelegatingHandler
             : (response?.Headers.RetryAfter?.Delta) ?? this._config.MinRetryDelay;
         retryAfter ??= this._config.MinRetryDelay;
 
+        if (response?.Headers.RetryAfter?.Date.HasValue == true)
+        {
+            this._log.LogWarning(
+                "[RETRY] Received RetryAfter header with Date value of {0}ms. Will retry after {1}ms",
+                response.Headers.RetryAfter.Date.Value, retryAfter);
+        }
+        else if (response?.Headers.RetryAfter?.Delta.HasValue == true)
+        {
+            this._log.LogWarning(
+                "[RETRY] Received RetryAfter header with Delta value of {0}ms. Will retry after {1}ms",
+                response.Headers.RetryAfter.Delta.Value.TotalMilliseconds, retryAfter);
+        }
+        else
+        {
+            this._log.LogInformation(
+                "[RETRY] No RetryAfter header received. Will retry after {0}ms",
+                retryAfter);
+        }
+
         // If the retry delay is longer than the max retry delay, use the max retry delay
         var timeToWait = retryAfter > this._config.MaxRetryDelay
             ? this._config.MaxRetryDelay
