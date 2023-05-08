@@ -55,6 +55,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
     /// <param name="planner">Planner to use to create function sequences.</param>
     /// <param name="plannerOptions">Options for the planner.</param>
     /// <param name="chatBot"></param>
+    /// <param name="learningSkill"></param>
     /// <param name="ask">Prompt along with its parameters</param>
     /// <param name="openApiSkillsAuthHeaders">Authentication headers to connect to OpenAPI Skills</param>
     /// <param name="skillName">Skill in which function to invoke resides</param>
@@ -74,6 +75,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
         [FromServices] CopilotChatPlanner planner,
         [FromServices] IOptions<PlannerOptions> plannerOptions,
         [FromServices] ChatBot chatBot,
+        [FromServices] LearningSkill learningSkill,
         [FromBody] Ask ask,
         [FromHeader] OpenApiSkillsAuthHeaders openApiSkillsAuthHeaders,
         string skillName, string functionName)
@@ -125,9 +127,9 @@ public class SemanticKernelController : ControllerBase, IDisposable
             plannerOptions: plannerOptions.Value,
             logger: this._logger
         );
-        chatBot.Kernel.ImportSkill(chatSkill, nameof(ChatSkill));
+        chatBot.Kernel.ImportSkill(chatSkill, nameof(ChatSkill)); // This is bringing in too much -- Move DoChat into it's own skill?
         // chatBot.Kernel.ImportSemanticSkillFromDirectory("todo", "ChatAgentSkill");
-        chatBot.Kernel.ImportSkill(new LearningSkill(), "LearningSkill"); // todo
+        chatBot.Kernel.ImportSkill(learningSkill, "LearningSkill"); // todo
 
         // chatAgent.RegisterMessageHandler(
 
@@ -154,7 +156,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
             IKernel k = skillName == "ChatSkill" && functionName == "Chat" ? chatBot.Kernel : kernel;
             // TODO -- if it's chat, use the chat kernel.
 
-            function = kernel.Skills.GetFunction(skillName, functionName);
+            function = k.Skills.GetFunction(skillName, functionName);
         }
         catch (KernelException)
         {

@@ -56,15 +56,37 @@ internal static class SemanticKernelExtensions
         services.AddScoped<ChatBot>(sp =>
         {
             IKernel chatKernel = sp.GetRequiredService<IKernel>();
-            IOptions<AIServiceOptions> aiServiceOptions = sp.GetRequiredService<IOptions<AIServiceOptions>>();
+            var aiServiceOptions = sp.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>();
             IKernel chatBotKernel = new Kernel(
                 new SkillCollection(),
                 chatKernel.PromptTemplateEngine,
                 chatKernel.Memory,
-                new KernelConfig().AddCompletionBackend(aiServiceOptions.Value),
+                // new KernelConfig().AddCompletionBackend(aiServiceOptions.Value),
+                new KernelConfig()
+            .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
+            .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName)),
             sp.GetRequiredService<ILogger<ChatBot>>());
 
             return new ChatBot(chatBotKernel);
+        }
+        );
+
+        services.AddScoped<LearningSkill>(sp =>
+        {
+            IKernel chatKernel = sp.GetRequiredService<IKernel>();
+            // IOptions<AIServiceOptions> aiServiceOptions = sp.GetRequiredService<IOptions<AIServiceOptions>>();
+            var aiServiceOptions = sp.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>();
+            IKernel learningSkillKernel = new Kernel(
+                new SkillCollection(),
+                chatKernel.PromptTemplateEngine,
+                chatKernel.Memory,
+                // new KernelConfig().AddCompletionBackend(aiServiceOptions.Value).AddEmbeddingBackend(aiServiceOptions.Value),
+                new KernelConfig()
+            .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
+            .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName)),
+            sp.GetRequiredService<ILogger<LearningSkill>>());
+
+            return new LearningSkill(learningSkillKernel);
         }
         );
 
@@ -72,11 +94,14 @@ internal static class SemanticKernelExtensions
         // How does the kernelConfig get used?
         services.AddSingleton<IPromptTemplateEngine, PromptTemplateEngine>();
         services.AddScoped<ISkillCollection, SkillCollection>();
-        services.AddScoped<KernelConfig>(serviceProvider => new KernelConfig()
+        services.AddScoped<KernelConfig>(serviceProvider =>
+        {
+            return new KernelConfig()
             .AddCompletionBackend(serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>()
                 .Get(AIServiceOptions.CompletionPropertyName))
             .AddEmbeddingBackend(serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>()
-                .Get(AIServiceOptions.EmbeddingPropertyName)));
+                .Get(AIServiceOptions.EmbeddingPropertyName));
+        });
         services.AddScoped<IKernel, Kernel>();
 
         return services;

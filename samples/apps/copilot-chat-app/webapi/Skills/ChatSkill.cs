@@ -96,9 +96,9 @@ public class ChatSkill
             this._promptSettings.ResponseTokenLimit -
             Utilities.TokenCount(string.Join("\n", new string[]
                 {
-                    this._promptSettings.SystemDescriptionPrompt,
+                    this._promptSettings.SystemDescriptionPrompt, // knowledgeCutoff, audience, format
                     this._promptSettings.SystemIntentPrompt,
-                    this._promptSettings.SystemIntentContinuationPrompt
+                    this._promptSettings.SystemIntentContinuationPrompt // audience
                 })
             );
 
@@ -361,20 +361,24 @@ public class ChatSkill
         }
 
         // Extract semantic memory
-        await this.ExtractSemanticMemoryAsync(chatId, chatContext);
+        await this.ExtractSemanticMemoryAsync(chatId, chatContext); //memoryName, format
 
         context.Variables.Update(chatContext.Result);
         context.Variables.Set("userId", "Bot");
         return context;
     }
 
-
-
     // ActOnMessage
     [SKFunction(description: "DoChat")]
     [SKFunctionName("DoChat")]
     // [SKFunctionContextParameter(Name = "message", Description = "Message to send")]
     // [SKFunctionContextParameter(Name = "chat_history", Description = "Message to send")]
+    [SKFunctionContextParameter(Name = "userId", Description = "Unique and persistent identifier for the user")]
+    [SKFunctionContextParameter(Name = "userName", Description = "Name of the user")]
+    [SKFunctionContextParameter(Name = "chatId", Description = "Unique and persistent identifier for the chat")]
+    [SKFunctionContextParameter(Name = "tokenLimit", Description = "Maximum number of tokens")]
+    [SKFunctionContextParameter(Name = "contextTokenLimit", Description = "Maximum number of context tokens")]
+    [SKFunctionContextParameter(Name = "userIntent", Description = "The intent of the user.")]
     public async Task<SKContext> DoChatAsync(SKContext context)
     {
         // This is the chatting
@@ -403,9 +407,10 @@ public class ChatSkill
         // course, chat_history, topic, context
         if (context.Variables.Get("userIntent", out var userIntent))
         {
-
             // TODO Use actionPlanner to either ContinueChat or StartStudyAgent
+            // var planner = new ActionPlanner(this._kernel);
             var planner = new ActionPlanner(this._kernel);
+
 
             Console.WriteLine("***reading***");
 

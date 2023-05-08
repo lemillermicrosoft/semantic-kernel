@@ -1,16 +1,11 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.Planning;
 using Microsoft.SemanticKernel.SkillDefinition;
-using RepoUtils;
 
-namespace Skills;
+namespace SemanticKernel.Service.Skills;
 
 // Depends on: ForEachSkill
 // Context requires: StudySkill
@@ -27,19 +22,17 @@ public class LearningSkill
 
     #region create a kernel
 
-    public LearningSkill() // todo callback for OnLessonAdded
+    public LearningSkill(IKernel kernel) // todo callback for OnLessonAdded
     {
         // Create a kernel
-        this._learningSkillKernel = KernelUtils.CreateKernel();
+        this._learningSkillKernel = kernel;//KernelUtils.CreateKernel();
 
         #endregion
 
-        string folder = RepoFiles.SampleSkillsPath();
+        string folder = FunctionLoadingExtensions.SampleSkillsPath();
         this._semanticSkills = this._learningSkillKernel.ImportSemanticSkillFromDirectory(folder,
             // "StudySkill",
             "ForEachSkill");
-
-        this._semanticSkills = chatBot.Kernel.RegisterNamedSemanticSkills(null, null, "ForEachSkill");
 
         // this._studySkill = this._learningSkillKernel.ImportSkill(this, "StudySkill");
 

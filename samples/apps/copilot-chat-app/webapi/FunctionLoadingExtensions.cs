@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System.Reflection;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.CoreSkills;
 using Microsoft.SemanticKernel.TemplateEngine;
@@ -32,6 +33,60 @@ internal static class FunctionLoadingExtensions
                 logger.LogError("Could not load skill from {Directory}: {Message}", subDir, e.Message);
             }
         }
+    }
+
+    /// <summary>
+    /// Register local semantic skills with the kernel.
+    /// </summary>
+    internal static void RegisterNamedSemanticSkills(
+        this IKernel kernel,
+        string? skillsDirectory = null,
+        ILogger? logger = null,
+        params string[] skillDirectoryNames
+        )
+    {
+        string[] subDirectories = Directory.GetDirectories(skillsDirectory!);
+
+        foreach (string subDir in subDirectories)
+        {
+            try
+            {
+                kernel.ImportSemanticSkillFromDirectory(skillsDirectory!, Path.GetFileName(subDir)!);
+            }
+            catch (TemplateException e)
+            {
+                logger!.LogError("Could not load skill from {Directory}: {Message}", subDir, e.Message);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Scan the local folders from the repo, looking for "webapi/skills" folder.
+    /// </summary>
+    /// <returns>The full path to webapi/skills</returns>
+    internal static string SampleSkillsPath()
+    {
+        const string Parent = "webapi";
+        const string Folder = "skills";
+
+        static bool SearchPath(string pathToFind, out string result, int maxAttempts = 10)
+        {
+            var currDir = Path.GetFullPath(Assembly.GetExecutingAssembly().Location);
+            bool found;
+            do
+            {
+                result = Path.Join(currDir, pathToFind);
+                found = Directory.Exists(result);
+                currDir = Path.GetFullPath(Path.Combine(currDir, ".."));
+            } while (maxAttempts-- > 0 && !found);
+
+            return found;
+        }
+
+        return !SearchPath(Parent + Path.DirectorySeparatorChar + Folder, out string path)
+            && !SearchPath(Folder, out path)
+            ? throw new DirectoryNotFoundException("Skills directory not found. The app needs the skills from the repo to work.")
+            : path;
     }
 
     /// <summary>
