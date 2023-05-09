@@ -1,22 +1,6 @@
 {
   "version": "0.2.0",
   "configurations": [
-    //   {
-    // "label": "run (CopilotChatApi)",
-    // "command": "dotnet",
-    // "type": "process",
-    // "args": [
-    //   "run",
-    //   "--project",
-    //   "${workspaceFolder}/samples/apps/copilot-chat-app/webapi/CopilotChatApi.csproj"
-    // ],
-    // "problemMatcher": "$msCompile",
-    // "group": "test",
-    // "presentation": {
-    //   "reveal": "always",
-    //   "panel": "shared",
-    //   "group": "copilot"
-    // }
     {
       "name": ".NET Core Launch (CopilotChatApi)",
       "type": "coreclr",
