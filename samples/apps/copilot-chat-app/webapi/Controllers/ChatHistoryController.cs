@@ -47,7 +47,7 @@ public class ChatHistoryController : ControllerBase
     /// <param name="chatParameters">Object that contains the parameters to create a new chat.</param>
     /// <returns>The HTTP action result.</returns>
     [HttpPost]
-    [Route("chatSession/create")] // TODO Load?
+    [Route("chatSession/create")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -60,6 +60,7 @@ public class ChatHistoryController : ControllerBase
         var newChat = new ChatSession(userId, title);
         await this._chatSessionRepository.CreateAsync(newChat);
 
+        // TODO Load a different message if there is a lesson plan?
         var initialBotMessage = this._promptSettings.InitialBotMessage;
         await this.SaveResponseAsync(initialBotMessage, newChat.Id);
 

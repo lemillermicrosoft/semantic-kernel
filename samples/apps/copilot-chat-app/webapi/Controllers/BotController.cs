@@ -239,7 +239,8 @@ public class BotController : ControllerBase
             .Where(collection => collection.StartsWith(chatIdString, StringComparison.OrdinalIgnoreCase));
 
         foreach (var collection in chatCollections)
-        { // did the naming
+        {
+            // TODO: Final Validation. LessonPlan follows naming pattern so this should work in some fashion.
             await GetMemoryRecordsAndAppendToEmbeddingsAsync(kernel: kernel, collectionName: collection, embeddings: bot.Embeddings);
         }
 

@@ -54,9 +54,9 @@ public class SemanticKernelController : ControllerBase, IDisposable
     /// <param name="documentMemoryOptions">Options for document memory handling.</param>
     /// <param name="planner">Planner to use to create function sequences.</param>
     /// <param name="plannerOptions">Options for the planner.</param>
-    /// <param name="chatBot"></param>
-    /// <param name="learningSkill"></param>
-    /// <param name="studySkill"></param>
+    /// <param name="chatBot">Chat bot to use to generate prompts.</param>
+    /// <param name="learningSkill">Learning skill to use to learn new topics.</param>
+    /// <param name="studySkill">Study skill to use to study new topics.</param>
     /// <param name="ask">Prompt along with its parameters</param>
     /// <param name="openApiSkillsAuthHeaders">Authentication headers to connect to OpenAPI Skills</param>
     /// <param name="skillName">Skill in which function to invoke resides</param>
@@ -69,7 +69,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<AskResult>> InvokeFunctionAsync(
-        [FromServices] IKernel kernel, // where does this come from? How do we enable a *skill* to create their own kernel?
+        [FromServices] IKernel kernel,
         [FromServices] ChatSessionRepository chatRepository,
         [FromServices] ChatMessageRepository chatMessageRepository,
         [FromServices] IOptions<DocumentMemoryOptions> documentMemoryOptions,
@@ -109,19 +109,9 @@ public class SemanticKernelController : ControllerBase, IDisposable
             await this.RegisterPlannerSkillsAsync(planner, plannerOptions.Value, openApiSkillsAuthHeaders, context.Variables);
         }
 
-        // chatBot.Kernel.ImportSkill(chatSkill, nameof(ChatSkill)); // This is bringing in too much -- Move DoChat into it's own skill?
-        // chatBot.Kernel.ImportSemanticSkillFromDirectory("todo", "ChatAgentSkill");
-
-        // chatBot.Kernel.RegisterNamedSemanticSkills(null, null, "StudySkill");
         kernel.RegisterNamedSemanticSkills(null, null, "StudySkill");
 
-        chatBot.Kernel.ImportSkill(learningSkill, "LearningSkill"); // todo
-        kernel.ImportSkill(learningSkill, "LearningSkill"); // todo
-
-        kernel.ImportSkill(studySkill, "StudySkill");
-        // kernel.ImportSkill(new StudySkill(), "StudySkill"); // tied to learning skill - concerns
-
-        // Register native skills with the chat's kernel
+        // Register native skills with the general kernel
         kernel.RegisterNativeSkills(
             chatKernel: chatBot.Kernel,
             chatSessionRepository: chatRepository,
@@ -131,47 +121,17 @@ public class SemanticKernelController : ControllerBase, IDisposable
             plannerOptions: plannerOptions.Value,
             documentMemoryOptions: documentMemoryOptions.Value,
             logger: this._logger);
+        kernel.ImportSkill(learningSkill, "LearningSkill");
+        kernel.ImportSkill(studySkill, "StudySkill");
 
-
-        // var chatSkill = new ChatSkill(
-        //     kernel: chatBot.Kernel,
-        //     chatMessageRepository: chatMessageRepository,
-        //     chatSessionRepository: chatRepository,
-        //     promptSettings: this._promptSettings,
-        //     planner: planner,
-        //     plannerOptions: plannerOptions.Value,
-        //     logger: this._logger
-        // );
-        // chatBot.Kernel.ImportSkill(chatSkill, nameof(ChatSkill)); // This is bringing in too much -- Move DoChat into it's own skill?
-        // // chatBot.Kernel.ImportSemanticSkillFromDirectory("todo", "ChatAgentSkill");
-        // chatBot.Kernel.RegisterNamedSemanticSkills(null, null, "StudySkill");
-        // chatBot.Kernel.ImportSkill(learningSkill, "LearningSkill"); // todo
-
-        // chatAgent.RegisterMessageHandler(
-
-        //     this.RegisterMessageHandler("ChatAgentSkill");
-        //     // this.RegisterMessageHandler("StudySkill"); // nah, don't want it here.
-        // }
-
-        // public void RegisterMessageHandler(string skillName)
-        // {
-        //     string folder = RepoFiles.SampleSkillsPath();
-        //     this._actionKernel.ImportSemanticSkillFromDirectory(folder, skillName);
-        // }
-
-        // public void RegisterMessageHandler(object instance, string skillName)
-        // {
-        //     this._actionKernel.ImportSkill(instance, skillName);
-        // }
-
+        // Register native skills with the chat's kernel
+        chatBot.Kernel.ImportSkill(learningSkill, "LearningSkill");
 
         // Get the function to invoke
         ISKFunction? function = null;
         try
         {
             IKernel k = skillName == "ChatSkill" && functionName == "Chat" ? chatBot.Kernel : kernel;
-            // TODO -- if it's chat, use the chat kernel.
-
             function = k.Skills.GetFunction(skillName, functionName);
         }
         catch (KernelException)
@@ -186,7 +146,8 @@ public class SemanticKernelController : ControllerBase, IDisposable
             ? result.LastException is AIException aiException && aiException.Detail is not null
                 ? (ActionResult<AskResult>)this.BadRequest(string.Concat(aiException.Message, " - Detail: " + aiException.Detail))
                 : (ActionResult<AskResult>)this.BadRequest(result.LastErrorDescription)
-            : (global::Microsoft.AspNetCore.Mvc.ActionResult<global::SemanticKernel.Service.Model.AskResult>)this.Ok(new AskResult { Value = result.Result, Variables = result.Variables.Select(v => new KeyValuePair<string, string>(v.Key, v.Value)) });
+            : (global::Microsoft.AspNetCore.Mvc.ActionResult<global::SemanticKernel.Service.Model.AskResult>)this.Ok(new AskResult
+            { Value = result.Result, Variables = result.Variables.Select(v => new KeyValuePair<string, string>(v.Key, v.Value)) });
     }
 
     /// <summary>
