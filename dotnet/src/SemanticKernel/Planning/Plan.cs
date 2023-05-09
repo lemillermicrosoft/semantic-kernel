@@ -246,7 +246,6 @@ public sealed class Plan : ISKFunction
         {
             if (this.Function is not null)
             {
-                // TODO Better notice of whether it's been executed or not.
                 var result = await this.Function.InvokeAsync(context).ConfigureAwait(false);
                 var resultValue = result.Result.Trim();
 
@@ -256,14 +255,13 @@ public sealed class Plan : ISKFunction
                         $"Error occurred while running plan step: {context.LastErrorDescription}", context.LastException);
                 }
 
-                // TODO other outputs...
+                // TODO - Tests pass, make sure this isn't doing too much. And is needed. (Add test for this if so)
                 // loop through result variables and add to this.State
                 foreach (var item in result.Variables)
                 {
                     this.State.Set(item.Key, item.Value.Trim());
                 }
 
-                // this.State.Update(resultValue);
                 this.NextStepIndex++;
             }
             else if (this.HasNextStep)
@@ -320,18 +318,10 @@ public sealed class Plan : ISKFunction
     /// <inheritdoc/>
     public FunctionView Describe()
     {
-        // TODO - Eventually, we should be able to describe a plan and it's expected inputs/outputs
         if (this.Function is not null)
         {
-            return this.Function.Describe();
+            return this.Function.Describe() ?? new();
         }
-
-        // string name,
-        // string skillName,
-        // string description,
-        // IList< ParameterView > parameters,
-        // bool isSemantic,
-        // bool isAsynchronous = true)
 
         var p = this._steps.AsParallel().SelectMany(step => step.Describe().Parameters).Distinct().ToList();
 
@@ -503,7 +493,8 @@ public sealed class Plan : ISKFunction
         context.Variables.Update(resultString);
 
         // copy previous step's variables to the next step
-        foreach (var item in this._steps[Math.Max(0, this.NextStepIndex - 1)].Outputs) // since NextStepIndex may not tick now, this is duct tape
+        // TODO - since NextStepIndex may not tick now, this is duct tape by using Math.Max -- better solution/tests needed.
+        foreach (var item in this._steps[Math.Max(0, this.NextStepIndex - 1)].Outputs)
         {
             if (this.State.Get(item, out var val))
             {
