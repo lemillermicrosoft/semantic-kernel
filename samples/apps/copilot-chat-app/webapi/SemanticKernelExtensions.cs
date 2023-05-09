@@ -35,6 +35,35 @@ internal static class SemanticKernelExtensions
         services.AddSingleton<PromptSettings>();
 
         // Add the semantic memory with backing memory store.
+        services.AddSingleton<IMemoryStore>(serviceProvider =>
+        {
+            MemoriesStoreOptions config = serviceProvider.GetRequiredService<IOptions<MemoriesStoreOptions>>().Value;
+
+            switch (config.Type)
+            {
+                case MemoriesStoreOptions.MemoriesStoreType.Volatile:
+                    return new VolatileMemoryStore();
+
+                case MemoriesStoreOptions.MemoriesStoreType.Qdrant:
+                    if (config.Qdrant is null)
+                    {
+                        throw new InvalidOperationException(
+                            $"MemoriesStore:Qdrant is required when MemoriesStore:Type is '{MemoriesStoreOptions.MemoriesStoreType.Qdrant}'");
+                    }
+
+                    return new QdrantMemoryStore(
+                        host: config.Qdrant.Host,
+                        port: config.Qdrant.Port,
+                        vectorSize: config.Qdrant.VectorSize,
+                        logger: serviceProvider.GetRequiredService<ILogger<QdrantMemoryStore>>());
+
+                default:
+                    throw new InvalidOperationException($"Invalid 'MemoriesStore' type '{config.Type}'.");
+            }
+        });
+
+
+        // Add the semantic memory with backing memory store.
         services.AddScoped<ISemanticTextMemory>(CreateSemanticTextMemory);
 
         // Add the planner.
@@ -138,19 +167,27 @@ internal static class SemanticKernelExtensions
         switch (config.Type)
         {
             case MemoriesStoreOptions.MemoriesStoreType.Volatile:
+            {
+                var store = serviceProvider.GetRequiredService<IMemoryStore>();
                 return new SemanticTextMemory(
-                    new VolatileMemoryStore(),
-                    serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>().Get(AIServiceOptions.EmbeddingPropertyName)
-                        .ToTextEmbeddingsService(logger: serviceProvider.GetRequiredService<ILogger<AIServiceOptions>>()));
+                    store,
+                        serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>().Get(AIServiceOptions.EmbeddingPropertyName)
+                            .ToTextEmbeddingsService(logger: serviceProvider.GetRequiredService<ILogger<AIServiceOptions>>()));
+            }
 
             case MemoriesStoreOptions.MemoriesStoreType.Qdrant:
+            {
+                var store = serviceProvider.GetRequiredService<IMemoryStore>();
                 return new SemanticTextMemory(
-                    new QdrantMemoryStore(config.Qdrant!.Host, config.Qdrant.Port, config.Qdrant.VectorSize, serviceProvider.GetRequiredService<ILogger<QdrantMemoryStore>>()),
+                    store,
                     serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>().Get(AIServiceOptions.EmbeddingPropertyName)
                         .ToTextEmbeddingsService(logger: serviceProvider.GetRequiredService<ILogger<AIServiceOptions>>()));
+            }
 
             case MemoriesStoreOptions.MemoriesStoreType.AzureCognitiveSearch:
+            {
                 return new AzureCognitiveSearchMemory(config.AzureCognitiveSearch!.Endpoint, config.AzureCognitiveSearch.Key);
+            }
 
             default:
                 throw new InvalidOperationException($"Invalid 'MemoriesStore' type '{config.Type}'.");
