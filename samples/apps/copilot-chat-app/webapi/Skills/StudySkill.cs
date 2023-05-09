@@ -18,37 +18,15 @@ public class StudySkill
         #region create a kernel
 
         // Create a kernel
-        this._studySkillKernel = kernel;//KernelUtils.CreateKernel();
+        this._studySkillKernel = kernel;
 
         #endregion
 
-        // string folder = RepoFiles.SampleSkillsPath();
-        // this._semanticSkills = this._studySkillKernel.ImportSemanticSkillFromDirectory(folder,
-        //     "StudySkill",
-        //     "DoWhileSkill");
         this._semanticSkills = kernel.RegisterNamedSemanticSkills(null, null, "StudySkill", "DoWhileSkill");
 
         this._studySkill = this._studySkillKernel.ImportSkill(this, "StudySkill");
 
         this._doWhileSkill = this._studySkillKernel.ImportSkill(new DoWhileSkill(this._semanticSkills["IsTrue"]), "DoWhileSkill");
-
-        // this._chatSkill = this._studySkillKernel.ImportSkill(new ChatSkill((context) =>
-        // {
-        //     var line = $"Study Agent: {context.Variables.Input.Trim()}";
-        //     Console.WriteLine(line);
-        //     context.Variables.Update(line);
-        //     context.Variables.Get("chat_history", out var chatHistory);
-        //     context.Variables.Set("chat_history", $"{chatHistory}\n{line}");
-        //     Console.Write("User: ");
-        //     return Task.FromResult(context);
-        // }, (context) =>
-        // {
-        //     var line = Console.ReadLine();
-        //     context.Variables.Update($"User: {line}");
-        //     context.Variables.Get("chat_history", out var chatHistory);
-        //     context.Variables.Set("chat_history", $"{chatHistory}\nUser: {line}");
-        //     return Task.FromResult(context);
-        // }), "ChatSkill");
     }
 
     // StudySession
@@ -81,6 +59,8 @@ public class StudySkill
         if (context.Variables.Get("chat_history", out var chatHistory))
         {
             await this._studySkill["PrepareMessage"].InvokeAsync(context);
+
+            // TODO - When are we done now?
         }
         else
         {
@@ -93,36 +73,9 @@ public class StudySkill
 
             var lessonStart = await lessonFunction.InvokeAsync(createLessonContext);
 
-            //
-            // Chat with the user about the lesson until they say goodbye
-            //
-            // var plan = new Plan("Prepare a message and send it.");
-            // plan.Outputs.Add("course");
-            // plan.Outputs.Add("topic");
-            // plan.Outputs.Add("context");
-            // var prepareStep = new Plan(this._studySkill["PrepareMessage"]);
-            // prepareStep.Outputs.Add("chat_history");
-            // var sendStep = new Plan(this._chatSkill["SendMessage"]); // TODO Fix this.
-            // sendStep.Outputs.Add("chat_history");
-            // plan.AddSteps(prepareStep, sendStep);
-
-            // var doWhileContext = new ContextVariables(lessonStart.Result);
-            // doWhileContext.Set("message", lessonStart.Result);
-            // doWhileContext.Set("topic", topic);
-            // if (context.Variables.Get("course", out var course))
-            // {
-            //     doWhileContext.Set("course", course);
-            // }
-
-            // doWhileContext.Set("action", plan.ToJson());
-            // doWhileContext.Set("condition", "User does not say 'goodbye'"); // todo advanced condition like amount of time, etc.
-
-            // return await this._studySkillKernel.RunAsync(doWhileContext, this._doWhileSkill["DoWhile"]);
-
-            // this._semanticSkills["IsTrue"]
-
             context.Variables.Update(lessonStart.Result);
         }
+
         return context;
     }
 

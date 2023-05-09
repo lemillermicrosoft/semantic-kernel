@@ -343,16 +343,13 @@ public class ChatSkill
         chatContext.Variables.Set("contextTokenLimit", contextTokenLimit.ToString(new NumberFormatInfo()));
         chatContext.Variables.Set("tokenLimit", remainingToken.ToString(new NumberFormatInfo()));
 
-        // CUTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
-        var options = new JsonSerializerOptions();
-        options.Converters.Add(new ContextVariablesConverter());
-        Console.WriteLine($"about to call act on message async chatContext: ${JsonSerializer.Serialize(chatContext.Variables, options)}");
-        Console.WriteLine($"about to call act on message async context: ${JsonSerializer.Serialize(context.Variables, options)}");
+        // Chat (now refactored into ActionPlanner in ActOnMessageAsync)
         chatContext = await this.ActOnMessageAsync(chatContext);
         if (chatContext.Variables.Get("action", out var nextAction))
         {
             context.Variables.Set("action", nextAction);
         }
+        // TODO I think this can be cut.
         if (chatContext.Variables.Get("continuePlan", out var continuePlanString))
         {
             context.Variables.Set("continuePlan", continuePlanString);
@@ -384,11 +381,8 @@ public class ChatSkill
         return context;
     }
 
-    // ActOnMessage
     [SKFunction(description: "DoChat")]
     [SKFunctionName("DoChat")]
-    // [SKFunctionContextParameter(Name = "message", Description = "Message to send")]
-    // [SKFunctionContextParameter(Name = "chat_history", Description = "Message to send")]
     [SKFunctionContextParameter(Name = "userId", Description = "Unique and persistent identifier for the user")]
     [SKFunctionContextParameter(Name = "userName", Description = "Name of the user")]
     [SKFunctionContextParameter(Name = "chatId", Description = "Unique and persistent identifier for the chat")]
@@ -413,9 +407,7 @@ public class ChatSkill
     // ActOnMessage
     [SKFunction(description: "ActOnMessage")]
     [SKFunctionName("ActOnMessage")]
-    // [SKFunctionContextParameter(Name = "message", Description = "Message to send")]
-    // [SKFunctionContextParameter(Name = "chat_history", Description = "Message to send")]
-    [SKFunctionContextParameter(Name = "action", Description = "Action to handle the message next time")] // (hmm how does client pass this?)
+    [SKFunctionContextParameter(Name = "action", Description = "Action to handle the message next time")]
     [SKFunctionContextParameter(Name = "userId", Description = "Unique and persistent identifier for the user")]
     [SKFunctionContextParameter(Name = "userName", Description = "Name of the user")]
     [SKFunctionContextParameter(Name = "chatId", Description = "Unique and persistent identifier for the chat")]
@@ -431,7 +423,8 @@ public class ChatSkill
                 var sortedMessages = messages.OrderByDescending(m => m.Timestamp);
 
                 var tokenLimit = this._promptSettings.CompletionTokenLimit;
-                var remainingToken = tokenLimit - 500; // 500 buffer for most prompts -- todo should be tied to action somehow
+                // TODO - should be tied to action. For now, 500 buffer for most prompts.
+                var remainingToken = tokenLimit - 500;
                 foreach (var chatMessage in sortedMessages)
                 {
                     var formattedMessage = chatMessage.ToFormattedString();
@@ -457,12 +450,15 @@ public class ChatSkill
                     this._actionKernel.Skills,
                     this._actionKernel.Log
                 );
-                functionOrPlan = Plan.FromJson(action, context); // TODO Should throw if context can't load functions
+                // TODO - Kernel should throw if context can't load functions
+                functionOrPlan = Plan.FromJson(action, context);
             }
+#pragma warning disable CA1031
             catch (Exception e)
             {
                 context.Log.LogError("DoWhile: action {0} is not a valid plan: {1}", action, e.Message);
             }
+#pragma warning restore CA1031
 
             if (functionOrPlan == null)
             {
@@ -488,14 +484,11 @@ public class ChatSkill
 
             var completion = await functionOrPlan.InvokeAsync(ctx);
 
-
             if (completion.Variables.Get("continuePlan", out var continuePlan) && bool.TryParse(continuePlan, out var continuePlanBool) && continuePlanBool)
             {
                 if (continuePlan is not null)
                 {
-                    completion.Variables.Set("action", action); // this feels hacky -- should be able to just pass the plan
-
-                    // leave as-is... this is the plan to continue, not the actionplaner plan
+                    completion.Variables.Set("action", action);
                 }
                 else
                 {
@@ -506,22 +499,24 @@ public class ChatSkill
             {
                 completion.Variables.Set("action", null);
             }
+
             return completion;
         }
         else if (context.Variables.Get("userIntent", out var userIntent))
         {
             // TODO Use actionPlanner to either ContinueChat or StartStudyAgent
-            // So right now, ActionPlanner will route down either DoChat or CreateLesson (and others? undesired?)
-            // Next, ExecuteLesson will run an agent for that lesson and replace the chat handler here (how? state? context?)
-            // P3 - MonitorLesson will run an agent for the lesson that is not chat based (skip those steps) (also, how?)
-            var planner = new ActionPlanner(this._actionKernel); // AcquireExternalInformation ChatSkill was called, filter would be so nice.
+            // So right now, ActionPlanner will route down either DoChat or CreateLesson (and others [Yes]? undesired [Yes]?)
+            // Next, ExecuteLesson will run an agent for that lesson and replace the chat handler here (how[action]? state[another option]? context[yeah, action is in context]?)
+            // P3 - MonitorLesson will run an agent for the lesson that is not chat based (skip those steps) (also, how?) (also, very P3)
+            // Notes: AcquireExternalInformation ChatSkill was called, filter would be so nice. As said above, probably need to separate things
+            var planner = new ActionPlanner(this._actionKernel);
 
             Console.WriteLine("***reading***");
 
             var plan = await planner.CreatePlanAsync(
                 $"Review the most recent 'User:' message and determine which function to run. If unsure, use 'DoChat'.\n[MESSAGES]\n{userIntent}\n[END MESSAGES]\n");
 
-            if (plan.Steps[0].Name == "DoChat") // todo this is hacky
+            if (plan.Steps[0].Name == "DoChat")
             {
                 Console.WriteLine("***typing***");
             }
@@ -530,36 +525,20 @@ public class ChatSkill
                 Console.WriteLine($"***thinking*** {plan.Steps[0].Name} {plan.Steps[0].SkillName}");
             }
 
-            // HACK
-            plan.Steps[0].Outputs.Add("action"); // need to do this to ensure action is passed to ActOnMessageAsync\
+            // TODO - Can this hack be removed now with Plan changes?
+            // Previously, need to do this to ensure action is passed to ActOnMessageAsync
+            plan.Steps[0].Outputs.Add("action");
             // today though this will put the step output in action even if not in the variables, so lets parse as plan and remove if not
             plan.Steps[0].Outputs.Add("continuePlan");
 
-            // var completion = await this._semanticSkills["ContinueChat"].InvokeAsync(context);
             var originalPlanJson = plan.ToJson();
             var completion = await plan.InvokeAsync(context);
-
-            // if (completion.Variables.Get("action", out var nextAction))
-            // {
-            //     try
-            //     {
-            //         Plan.FromJson(nextAction);
-            //     }
-            //     catch (Exception e)
-            //     {
-            //         context.Log.LogWarning("action {0} is not a valid plan: {1}", nextAction, e.Message);
-            //         completion.Variables.Set("action", null);
-            //     }
-
-            // }
 
             if (completion.Variables.Get("continuePlan", out var continuePlan) && bool.TryParse(continuePlan, out var continuePlanBool) && continuePlanBool)
             {
                 if (continuePlan is not null)
                 {
-                    completion.Variables.Set("action", originalPlanJson); // this feels hacky -- should be able to just pass the plan // maybe the plan.steps[0]
-
-                    // leave as-is... this is the plan to continue, not the actionplaner plan
+                    completion.Variables.Set("action", originalPlanJson);
                 }
                 else
                 {
@@ -571,18 +550,8 @@ public class ChatSkill
                 completion.Variables.Set("action", null);
             }
 
-            // context.Variables.Update(completion.Result);
             return completion;
         }
-        // }
-        // else if (context.Variables.Get("message", out var message))
-        // {
-        //     context.Variables.Update(message);
-        // }
-        // else
-        // {
-        //     // TODO: Get the chat history and generate completion for next message.
-        // }
 
         return context;
     }

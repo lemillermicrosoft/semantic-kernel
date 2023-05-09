@@ -69,44 +69,36 @@ public partial class ForEachSkill
         }
 
         var result = await this._toListFunction.InvokeAsync(context);
-        var list = JsonSerializer.Deserialize<List<string>>(result.Result) ?? new List<string>(); // todo error handling
+        // TODO: Error handling
+        var list = JsonSerializer.Deserialize<List<string>>(result.Result) ?? new List<string>();
 
-        Plan plan = new(goalLabel); // todo maybe a param for the goal?
+        Plan plan = new(goalLabel);
 
         foreach (var item in list)
         {
             if (functionOrPlan is Plan planStep)
             {
-                planStep.State.Update(context.Variables); // todo is this doing too much?
+                // TODO Is this doing too much?
+                planStep.State.Update(context.Variables);
                 planStep.Description = $"{stepLabel}: {item}";
                 if (parameters is not null)
                 {
                     planStep.Parameters.Set(parameters, item);
                 }
+
                 plan.AddSteps(planStep);
-                functionOrPlan = Plan.FromJson(action, context); // reload the plan object
+                // reload the plan object
+                functionOrPlan = Plan.FromJson(action, context);
             }
             else
             {
-                // anything?
+                // TODO - anything else to do?
                 plan.AddSteps(functionOrPlan);
             }
-            // context.Variables.Update(item);
-            // var contextResponse = await functionOrPlan.InvokeAsync(context); // or the action? or maybe other actions after certain conditions?
         }
 
-        // foreach (var item in list)
-        // {
-        //     context.Variables.Update(item);
-        //     var contextResponse = await functionOrPlan.InvokeAsync(context); // or the action? or maybe other actions after certain conditions?
-
-        //     if (functionOrPlan is Plan)
-        //     {
-        //         // Reload the plan so it can be executed again
-        //         functionOrPlan = Plan.FromJson(action, context);
-        //     }
-        // }
-        context.Variables.Set("FOREACH_RESULT", plan.ToJson()); // todo parameter for the key?
+        // TODO: parameter for the key?
+        context.Variables.Set("FOREACH_RESULT", plan.ToJson());
 
         context.Variables.Update($"Exiting. ForEach {list.Count} items.");
         return context;

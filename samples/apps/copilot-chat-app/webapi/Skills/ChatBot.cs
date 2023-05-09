@@ -10,18 +10,16 @@ namespace SemanticKernel.Service.Skills;
 public class ChatBot
 {
     /// <summary>
-    /// The bot's kernel.
+    /// The bots kernel.
     /// </summary>
     public IKernel Kernel { get; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ChatBot"/> class.
     /// </summary>
-    /// <param name="plannerKernel">The planner's kernel.</param>
-    /// <param name="options">The planner's options.</param>
+    /// <param name="plannerKernel">The chatbots kernel.</param>
     public ChatBot(IKernel plannerKernel)
     {
         this.Kernel = plannerKernel;
     }
-
 }
