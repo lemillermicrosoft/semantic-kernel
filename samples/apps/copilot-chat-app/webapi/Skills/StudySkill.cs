@@ -56,6 +56,7 @@ public class StudySkill
     [SKFunctionName("StudySession")]
     [SKFunctionContextParameter(Name = "topic", Description = "Topic to study e.g. 'Equations and inequalities'")]
     [SKFunctionContextParameter(Name = "course", Description = "The course of study e.g. 'Algebra 1'")]
+    [SKFunctionContextParameter(Name = "chat_history", Description = "Chat message history")]
     public async Task<SKContext> StudySessionAsync(SKContext context)
     {
         //
@@ -77,47 +78,52 @@ public class StudySkill
         context.Variables.Get("course", out var course);
         course ??= "Unknown";
 
-        Console.WriteLine($"Starting study session on {topic} for {course}.");
-
-        var createLessonContext = this._studySkillKernel.CreateNewContext();
-        foreach (KeyValuePair<string, string> x in studySessionContext)
+        if (context.Variables.Get("chat_history", out var chatHistory))
         {
-            createLessonContext.Variables[x.Key] = x.Value;
+            await this._studySkill["PrepareMessage"].InvokeAsync(context);
         }
+        else
+        {
+            Console.WriteLine($"Starting study session on {topic} for {course}.");
+            var createLessonContext = this._studySkillKernel.CreateNewContext();
+            foreach (KeyValuePair<string, string> x in studySessionContext)
+            {
+                createLessonContext.Variables[x.Key] = x.Value;
+            }
 
-        var lessonStart = await lessonFunction.InvokeAsync(createLessonContext);
+            var lessonStart = await lessonFunction.InvokeAsync(createLessonContext);
 
-        //
-        // Chat with the user about the lesson until they say goodbye
-        //
-        // var plan = new Plan("Prepare a message and send it.");
-        // plan.Outputs.Add("course");
-        // plan.Outputs.Add("topic");
-        // plan.Outputs.Add("context");
-        // var prepareStep = new Plan(this._studySkill["PrepareMessage"]);
-        // prepareStep.Outputs.Add("chat_history");
-        // var sendStep = new Plan(this._chatSkill["SendMessage"]); // TODO Fix this.
-        // sendStep.Outputs.Add("chat_history");
-        // plan.AddSteps(prepareStep, sendStep);
+            //
+            // Chat with the user about the lesson until they say goodbye
+            //
+            // var plan = new Plan("Prepare a message and send it.");
+            // plan.Outputs.Add("course");
+            // plan.Outputs.Add("topic");
+            // plan.Outputs.Add("context");
+            // var prepareStep = new Plan(this._studySkill["PrepareMessage"]);
+            // prepareStep.Outputs.Add("chat_history");
+            // var sendStep = new Plan(this._chatSkill["SendMessage"]); // TODO Fix this.
+            // sendStep.Outputs.Add("chat_history");
+            // plan.AddSteps(prepareStep, sendStep);
 
-        // var doWhileContext = new ContextVariables(lessonStart.Result);
-        // doWhileContext.Set("message", lessonStart.Result);
-        // doWhileContext.Set("topic", topic);
-        // if (context.Variables.Get("course", out var course))
-        // {
-        //     doWhileContext.Set("course", course);
-        // }
+            // var doWhileContext = new ContextVariables(lessonStart.Result);
+            // doWhileContext.Set("message", lessonStart.Result);
+            // doWhileContext.Set("topic", topic);
+            // if (context.Variables.Get("course", out var course))
+            // {
+            //     doWhileContext.Set("course", course);
+            // }
 
-        // doWhileContext.Set("action", plan.ToJson());
-        // doWhileContext.Set("condition", "User does not say 'goodbye'"); // todo advanced condition like amount of time, etc.
+            // doWhileContext.Set("action", plan.ToJson());
+            // doWhileContext.Set("condition", "User does not say 'goodbye'"); // todo advanced condition like amount of time, etc.
 
-        // return await this._studySkillKernel.RunAsync(doWhileContext, this._doWhileSkill["DoWhile"]);
+            // return await this._studySkillKernel.RunAsync(doWhileContext, this._doWhileSkill["DoWhile"]);
 
-        // this._semanticSkills["IsTrue"]
+            // this._semanticSkills["IsTrue"]
 
-        context.Variables.Update(lessonStart.Result);
+            context.Variables.Update(lessonStart.Result);
+        }
         return context;
-
     }
 
     // PrepareMessage

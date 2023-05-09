@@ -2,6 +2,7 @@
 
 export interface IAsk {
     input: string;
+    nextAction: string;
     variables?: IAskVariables[];
 }
 

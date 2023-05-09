@@ -256,7 +256,14 @@ public sealed class Plan : ISKFunction
                         $"Error occurred while running plan step: {context.LastErrorDescription}", context.LastException);
                 }
 
-                this.State.Update(resultValue);
+                // TODO other outputs...
+                // loop through result variables and add to this.State
+                foreach (var item in result.Variables)
+                {
+                    this.State.Set(item.Key, item.Value.Trim());
+                }
+
+                // this.State.Update(resultValue);
                 this.NextStepIndex++;
             }
             else if (this.HasNextStep)
@@ -314,7 +321,24 @@ public sealed class Plan : ISKFunction
     public FunctionView Describe()
     {
         // TODO - Eventually, we should be able to describe a plan and it's expected inputs/outputs
-        return this.Function?.Describe() ?? new();
+        if (this.Function is not null)
+        {
+            return this.Function.Describe();
+        }
+
+        // string name,
+        // string skillName,
+        // string description,
+        // IList< ParameterView > parameters,
+        // bool isSemantic,
+        // bool isAsynchronous = true)
+        return new FunctionView(
+            name: this.Name,
+            skillName: this.SkillName,
+            description: this.Description,
+            Inputs = this.Inputs,
+            this.Outputs = this.Outputs,
+        );
     }
 
     /// <inheritdoc/>

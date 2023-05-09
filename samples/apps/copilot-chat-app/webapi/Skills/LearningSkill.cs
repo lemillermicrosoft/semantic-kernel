@@ -174,6 +174,7 @@ public class LearningSkill
     [SKFunctionName("InstructLesson")]
     [SKFunction("Instruct a lesson plan")]
     [SKFunctionContextParameter(Name = "chatId", Description = "Unique and persistent identifier for the chat", DefaultValue = "")]
+    [SKFunctionContextParameter(Name = "chat_history", Description = "Chat message history")]
     // todo maybe userIntent instead of "lesson" query
     public async Task<SKContext> InstructSessionAsync(SKContext context)
     {
@@ -212,11 +213,15 @@ public class LearningSkill
 
                 if (plan.HasNextStep)
                 {
+                    Console.WriteLine("Writing action to context");
                     context.Variables.Set("action", plan.ToJson()); // do this anyways? even at the end?
+                    context.Variables.Set("continuePlan", "true");
                 }
                 else
                 {
+                    Console.WriteLine("Clearing action from context");
                     context.Variables.Set("action", null);
+                    context.Variables.Set("continuePlan", null);
                 }
 
                 Console.WriteLine($"Lesson state: {result}");
@@ -224,7 +229,9 @@ public class LearningSkill
             }
             else
             {
+                Console.WriteLine("Clearing action from context 2");
                 context.Variables.Set("action", null);
+                context.Variables.Set("continuePlan", null);
             }
         }
         else
@@ -232,6 +239,7 @@ public class LearningSkill
             context.Variables.Update("You don't have a chatId. Please set one with `set chatId`");
         }
 
+        Console.WriteLine("Done with instruction step");
         return context;
     }
 
