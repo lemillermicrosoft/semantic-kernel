@@ -44,7 +44,7 @@ internal static class FunctionLoadingExtensions
         string? skillsDirectory = null,
         ILogger? logger = null,
         params string[] skillDirectoryNames
-        )
+    )
     {
         skillsDirectory ??= SampleSkillsPath();
 
@@ -75,7 +75,7 @@ internal static class FunctionLoadingExtensions
         }
 
         return !SearchPath(Parent + Path.DirectorySeparatorChar + Folder, out string path)
-            && !SearchPath(Folder, out path)
+               && !SearchPath(Folder, out path)
             ? throw new DirectoryNotFoundException("Skills directory not found. The app needs the skills from the repo to work.")
             : path;
     }
