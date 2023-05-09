@@ -86,7 +86,7 @@ public class PromptSettings
 
     internal string[] LongTermMemoryPromptComponents => new string[]
     {
-        this.SystemCognitivePrompt,
+        this.SystemCognitivePrompt, // memoryName, format
         $"{this.LongTermMemoryName} Description:\n{this.LongTermMemoryExtractionPrompt}",
         this.MemoryAntiHallucination,
         $"Chat Description:\n{this.SystemDescriptionPrompt}",
@@ -115,13 +115,14 @@ public class PromptSettings
     // Memory map
     internal IDictionary<string, string> MemoryMap => new Dictionary<string, string>()
     {
-        { this.LongTermMemoryName, this.LongTermMemoryPrompt },
+        { this.LongTermMemoryName, this.LongTermMemoryPrompt }, //memoryName, format
         { this.WorkingMemoryName, this.WorkingMemoryPrompt }
     };
 
     // Chat commands
     internal string SystemChatContinuationPrompt = "SINGLE RESPONSE FROM BOT TO USER:\n[{{TimeSkill.Now}} {{timeSkill.Second}}] bot:";
 
+    // TODO: This be the place.
     internal string[] SystemChatPromptComponents => new string[]
     {
         this.SystemDescriptionPrompt,

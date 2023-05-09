@@ -8,6 +8,7 @@ export interface ChatState {
     title: string;
     audience: ChatUser[];
     messages: IChatMessage[];
+    nextAction: string;
     botTypingTimestamp: number;
     botProfilePicture: string;
 }

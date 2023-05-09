@@ -42,6 +42,7 @@ export const ChatRoom: React.FC = () => {
     const { conversations, selectedId } = useAppSelector((state: RootState) => state.conversations);
     const { audience } = conversations[selectedId];
     const messages = conversations[selectedId].messages;
+    const nextAction = conversations[selectedId].nextAction;
     const classes = useClasses();
 
     const { accounts } = useMsal();
@@ -96,7 +97,7 @@ export const ChatRoom: React.FC = () => {
         setIsBotTyping(true);
         dispatch(updateConversation({ message: chatInput }));
         try {
-            await chat.getResponse(value, selectedId);
+            await chat.getResponse(value, selectedId, nextAction);
         } finally {
             setIsBotTyping(false);
         }

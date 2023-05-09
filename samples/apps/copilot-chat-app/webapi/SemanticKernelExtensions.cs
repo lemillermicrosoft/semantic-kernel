@@ -35,6 +35,35 @@ internal static class SemanticKernelExtensions
         services.AddSingleton<PromptSettings>();
 
         // Add the semantic memory with backing memory store.
+        services.AddSingleton<IMemoryStore>(serviceProvider =>
+        {
+            MemoriesStoreOptions config = serviceProvider.GetRequiredService<IOptions<MemoriesStoreOptions>>().Value;
+
+            switch (config.Type)
+            {
+                case MemoriesStoreOptions.MemoriesStoreType.Volatile:
+                    return new VolatileMemoryStore();
+
+                case MemoriesStoreOptions.MemoriesStoreType.Qdrant:
+                    if (config.Qdrant is null)
+                    {
+                        throw new InvalidOperationException(
+                            $"MemoriesStore:Qdrant is required when MemoriesStore:Type is '{MemoriesStoreOptions.MemoriesStoreType.Qdrant}'");
+                    }
+
+                    return new QdrantMemoryStore(
+                        host: config.Qdrant.Host,
+                        port: config.Qdrant.Port,
+                        vectorSize: config.Qdrant.VectorSize,
+                        logger: serviceProvider.GetRequiredService<ILogger<QdrantMemoryStore>>());
+
+                default:
+                    throw new InvalidOperationException($"Invalid 'MemoriesStore' type '{config.Type}'.");
+            }
+        });
+
+
+        // Add the semantic memory with backing memory store.
         services.AddScoped<ISemanticTextMemory>(CreateSemanticTextMemory);
 
         // Add the planner.
@@ -48,19 +77,82 @@ internal static class SemanticKernelExtensions
                 new SkillCollection(),
                 chatKernel.PromptTemplateEngine,
                 chatKernel.Memory,
-                new KernelConfig().AddCompletionBackend(plannerOptions.Value.AIService!),
+                new KernelConfig().AddCompletionBackend(plannerOptions.Value.AIService!)
+                    .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig() { MaxRetryCount = 5, UseExponentialBackoff = true }),
                 sp.GetRequiredService<ILogger<CopilotChatPlanner>>());
             return new CopilotChatPlanner(plannerKernel, plannerOptions);
         });
 
+        services.AddScoped<ChatBot>(sp =>
+            {
+                IKernel chatKernel = sp.GetRequiredService<IKernel>();
+                var aiServiceOptions = sp.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>();
+                IKernel chatBotKernel = new Kernel(
+                    new SkillCollection(),
+                    chatKernel.PromptTemplateEngine,
+                    chatKernel.Memory,
+                    new KernelConfig()
+                        .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
+                        .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
+                        .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig()
+                        { MaxRetryCount = 5, UseExponentialBackoff = true }),
+                    sp.GetRequiredService<ILogger<ChatBot>>());
+
+                return new ChatBot(chatBotKernel);
+            }
+        );
+
+        services.AddScoped<LearningSkill>(sp =>
+            {
+                IKernel chatKernel = sp.GetRequiredService<IKernel>();
+                var aiServiceOptions = sp.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>();
+                IKernel learningSkillKernel = new Kernel(
+                    new SkillCollection(),
+                    chatKernel.PromptTemplateEngine,
+                    chatKernel.Memory,
+                    new KernelConfig()
+                        .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
+                        .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
+                        .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig()
+                        { MaxRetryCount = 5, UseExponentialBackoff = true }),
+                    sp.GetRequiredService<ILogger<LearningSkill>>());
+
+                return new LearningSkill(learningSkillKernel);
+            }
+        );
+
+        services.AddScoped<StudySkill>(sp =>
+            {
+                IKernel chatKernel = sp.GetRequiredService<IKernel>();
+                var aiServiceOptions = sp.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>();
+                IKernel k = new Kernel(
+                    new SkillCollection(),
+                    chatKernel.PromptTemplateEngine,
+                    chatKernel.Memory,
+                    new KernelConfig()
+                        .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
+                        .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
+                        .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig()
+                        { MaxRetryCount = 5, UseExponentialBackoff = true }),
+                    sp.GetRequiredService<ILogger<StudySkill>>());
+
+                return new StudySkill(k);
+            }
+        );
+
         // Add the Semantic Kernel
+        // TODO - How does the kernelConfig get used?
         services.AddSingleton<IPromptTemplateEngine, PromptTemplateEngine>();
         services.AddScoped<ISkillCollection, SkillCollection>();
-        services.AddScoped<KernelConfig>(serviceProvider => new KernelConfig()
-            .AddCompletionBackend(serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>()
-                .Get(AIServiceOptions.CompletionPropertyName))
-            .AddEmbeddingBackend(serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>()
-                .Get(AIServiceOptions.EmbeddingPropertyName)));
+        services.AddScoped<KernelConfig>(serviceProvider =>
+        {
+            return new KernelConfig()
+                .AddCompletionBackend(serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>()
+                    .Get(AIServiceOptions.CompletionPropertyName))
+                .AddEmbeddingBackend(serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>()
+                    .Get(AIServiceOptions.EmbeddingPropertyName))
+                .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig() { MaxRetryCount = 5, UseExponentialBackoff = true });
+        });
         services.AddScoped<IKernel, Kernel>();
 
         return services;
@@ -75,19 +167,27 @@ internal static class SemanticKernelExtensions
         switch (config.Type)
         {
             case MemoriesStoreOptions.MemoriesStoreType.Volatile:
+            {
+                var store = serviceProvider.GetRequiredService<IMemoryStore>();
                 return new SemanticTextMemory(
-                    new VolatileMemoryStore(),
-                    serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>().Get(AIServiceOptions.EmbeddingPropertyName)
-                        .ToTextEmbeddingsService(logger: serviceProvider.GetRequiredService<ILogger<AIServiceOptions>>()));
+                    store,
+                        serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>().Get(AIServiceOptions.EmbeddingPropertyName)
+                            .ToTextEmbeddingsService(logger: serviceProvider.GetRequiredService<ILogger<AIServiceOptions>>()));
+            }
 
             case MemoriesStoreOptions.MemoriesStoreType.Qdrant:
+            {
+                var store = serviceProvider.GetRequiredService<IMemoryStore>();
                 return new SemanticTextMemory(
-                    new QdrantMemoryStore(config.Qdrant!.Host, config.Qdrant.Port, config.Qdrant.VectorSize, serviceProvider.GetRequiredService<ILogger<QdrantMemoryStore>>()),
+                    store,
                     serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>().Get(AIServiceOptions.EmbeddingPropertyName)
                         .ToTextEmbeddingsService(logger: serviceProvider.GetRequiredService<ILogger<AIServiceOptions>>()));
+            }
 
             case MemoriesStoreOptions.MemoriesStoreType.AzureCognitiveSearch:
+            {
                 return new AzureCognitiveSearchMemory(config.AzureCognitiveSearch!.Endpoint, config.AzureCognitiveSearch.Key);
+            }
 
             default:
                 throw new InvalidOperationException($"Invalid 'MemoriesStore' type '{config.Type}'.");
