@@ -99,7 +99,6 @@ export const useChat = () => {
     const getResponse = async (value: string, chatId: string, nextAction: string) => {
         const ask = {
             input: value,
-            nextAction: nextAction,
             variables: [
                 {
                     key: 'userId',
@@ -126,7 +125,7 @@ export const useChat = () => {
                 'ChatSkill',
                 'Chat',
                 await AuthHelper.getSKaaSAccessToken(instance),
-                connectors.getEnabledPlugins(), // todo -- should I add learning skill here?
+                connectors.getEnabledPlugins(),
             ); // this is the entry point to the semantic kernel
 
             const messageResult = {
@@ -137,13 +136,9 @@ export const useChat = () => {
                 authorRole: AuthorRoles.Bot,
             };
 
-            // export type Variables = { [key: string]: string }[];
-            // get the variables named 'action'
+            // get the variable named 'action'
             const nextAction = result.variables.find((v) => v.key === 'action')?.value;
 
-            console.log('nextAction', nextAction);
-
-            // ictMode. findDOMNode was passed an instance of Ref which is inside StrictMode. Instead, add a ref directly to the element you want to reference. Learn more about using refs safely here: https://reactjs.org/link/stric
             dispatch(updateConversation({ message: messageResult, chatId: chatId, nextAction }));
         } catch (e: any) {
             const errorMessage = `Unable to generate bot response. Details: ${e.message ?? e}`;
