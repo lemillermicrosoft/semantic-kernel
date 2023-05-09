@@ -49,82 +49,80 @@ internal static class SemanticKernelExtensions
                 chatKernel.PromptTemplateEngine,
                 chatKernel.Memory,
                 new KernelConfig().AddCompletionBackend(plannerOptions.Value.AIService!)
-            .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig() { MaxRetryCount = 5, UseExponentialBackoff = true }),
+                    .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig() { MaxRetryCount = 5, UseExponentialBackoff = true }),
                 sp.GetRequiredService<ILogger<CopilotChatPlanner>>());
             return new CopilotChatPlanner(plannerKernel, plannerOptions);
         });
 
         services.AddScoped<ChatBot>(sp =>
-        {
-            IKernel chatKernel = sp.GetRequiredService<IKernel>();
-            var aiServiceOptions = sp.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>();
-            IKernel chatBotKernel = new Kernel(
-                new SkillCollection(),
-                chatKernel.PromptTemplateEngine,
-                chatKernel.Memory,
-                // new KernelConfig().AddCompletionBackend(aiServiceOptions.Value),
-                new KernelConfig()
-            .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
-            .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
-            .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig() { MaxRetryCount = 5, UseExponentialBackoff = true }),
-            sp.GetRequiredService<ILogger<ChatBot>>());
+            {
+                IKernel chatKernel = sp.GetRequiredService<IKernel>();
+                var aiServiceOptions = sp.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>();
+                IKernel chatBotKernel = new Kernel(
+                    new SkillCollection(),
+                    chatKernel.PromptTemplateEngine,
+                    chatKernel.Memory,
+                    new KernelConfig()
+                        .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
+                        .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
+                        .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig()
+                        { MaxRetryCount = 5, UseExponentialBackoff = true }),
+                    sp.GetRequiredService<ILogger<ChatBot>>());
 
-            return new ChatBot(chatBotKernel);
-        }
+                return new ChatBot(chatBotKernel);
+            }
         );
 
         services.AddScoped<LearningSkill>(sp =>
-        {
-            IKernel chatKernel = sp.GetRequiredService<IKernel>();
-            // IOptions<AIServiceOptions> aiServiceOptions = sp.GetRequiredService<IOptions<AIServiceOptions>>();
-            var aiServiceOptions = sp.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>();
-            IKernel learningSkillKernel = new Kernel(
-                new SkillCollection(),
-                chatKernel.PromptTemplateEngine,
-                chatKernel.Memory,
-                // new KernelConfig().AddCompletionBackend(aiServiceOptions.Value).AddEmbeddingBackend(aiServiceOptions.Value),
-                new KernelConfig()
-            .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
-            .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
-            .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig() { MaxRetryCount = 5, UseExponentialBackoff = true }),
-            sp.GetRequiredService<ILogger<LearningSkill>>());
+            {
+                IKernel chatKernel = sp.GetRequiredService<IKernel>();
+                var aiServiceOptions = sp.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>();
+                IKernel learningSkillKernel = new Kernel(
+                    new SkillCollection(),
+                    chatKernel.PromptTemplateEngine,
+                    chatKernel.Memory,
+                    new KernelConfig()
+                        .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
+                        .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
+                        .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig()
+                        { MaxRetryCount = 5, UseExponentialBackoff = true }),
+                    sp.GetRequiredService<ILogger<LearningSkill>>());
 
-            return new LearningSkill(learningSkillKernel);
-        }
+                return new LearningSkill(learningSkillKernel);
+            }
         );
 
         services.AddScoped<StudySkill>(sp =>
-        {
-            IKernel chatKernel = sp.GetRequiredService<IKernel>();
-            // IOptions<AIServiceOptions> aiServiceOptions = sp.GetRequiredService<IOptions<AIServiceOptions>>();
-            var aiServiceOptions = sp.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>();
-            IKernel k = new Kernel(
-                new SkillCollection(),
-                chatKernel.PromptTemplateEngine,
-                chatKernel.Memory,
-                // new KernelConfig().AddCompletionBackend(aiServiceOptions.Value).AddEmbeddingBackend(aiServiceOptions.Value),
-                new KernelConfig()
-            .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
-            .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
-            .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig() { MaxRetryCount = 5, UseExponentialBackoff = true }),
-            sp.GetRequiredService<ILogger<StudySkill>>());
+            {
+                IKernel chatKernel = sp.GetRequiredService<IKernel>();
+                var aiServiceOptions = sp.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>();
+                IKernel k = new Kernel(
+                    new SkillCollection(),
+                    chatKernel.PromptTemplateEngine,
+                    chatKernel.Memory,
+                    new KernelConfig()
+                        .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
+                        .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
+                        .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig()
+                        { MaxRetryCount = 5, UseExponentialBackoff = true }),
+                    sp.GetRequiredService<ILogger<StudySkill>>());
 
-            return new StudySkill(k);
-        }
+                return new StudySkill(k);
+            }
         );
 
         // Add the Semantic Kernel
-        // How does the kernelConfig get used?
+        // TODO - How does the kernelConfig get used?
         services.AddSingleton<IPromptTemplateEngine, PromptTemplateEngine>();
         services.AddScoped<ISkillCollection, SkillCollection>();
         services.AddScoped<KernelConfig>(serviceProvider =>
         {
             return new KernelConfig()
-            .AddCompletionBackend(serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>()
-                .Get(AIServiceOptions.CompletionPropertyName))
-            .AddEmbeddingBackend(serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>()
-                .Get(AIServiceOptions.EmbeddingPropertyName))
-            .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig() { MaxRetryCount = 5, UseExponentialBackoff = true });
+                .AddCompletionBackend(serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>()
+                    .Get(AIServiceOptions.CompletionPropertyName))
+                .AddEmbeddingBackend(serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>()
+                    .Get(AIServiceOptions.EmbeddingPropertyName))
+                .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig() { MaxRetryCount = 5, UseExponentialBackoff = true });
         });
         services.AddScoped<IKernel, Kernel>();
 
