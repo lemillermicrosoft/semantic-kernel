@@ -438,6 +438,8 @@ public class ChatSkill
     [SKFunctionContextParameter(Name = "userId", Description = "Unique and persistent identifier for the user")]
     [SKFunctionContextParameter(Name = "userName", Description = "Name of the user")]
     [SKFunctionContextParameter(Name = "chatId", Description = "Unique and persistent identifier for the chat")]
+    [SKFunctionContextParameter(Name = "tokenLimit", Description = "Maximum number of tokens")]
+    [SKFunctionContextParameter(Name = "contextTokenLimit", Description = "Maximum number of context tokens")]
     public async Task<SKContext> ActOnMessageAsync(SKContext context)
     {
         if (context.Variables.Get("action", out var action) && !string.IsNullOrEmpty(action))

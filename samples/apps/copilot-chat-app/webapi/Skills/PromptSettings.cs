@@ -132,7 +132,7 @@ public class PromptSettings
         "{{DocumentMemorySkill.QueryDocuments $INPUT}}",
         "{{ChatSkill.AcquireExternalInformation}}",
         "{{ChatSkill.ExtractChatHistory}}",
-        this.SystemChatContinuationPrompt
+        this.SystemChatContinuationPrompt // TODO -- should the lesson just be overwriting this?
     };
 
     internal string SystemChatPrompt => string.Join("\n", this.SystemChatPromptComponents);
