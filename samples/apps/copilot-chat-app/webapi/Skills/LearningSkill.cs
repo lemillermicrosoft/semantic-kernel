@@ -69,6 +69,7 @@ public class LearningSkill
     [SKFunctionName("CreateLesson")]
     [SKFunctionContextParameter(Name = "lessonName", Description = "Name of the lesson")]
     [SKFunctionContextParameter(Name = "lessonDescription", Description = "Description of the lesson")]
+    [SKFunctionContextParameter(Name = "chatId", Description = "Unique and persistent identifier for the chat")]
     // [SKFunctionContextParameter(Name = "lessonType", Description = "Type of the lesson")]
     // [SKFunctionContextParameter(Name = "lessonLevel", Description = "Level of the lesson")]
     // [SKFunctionContextParameter(Name = "lessonSubject", Description = "Subject of the lesson")]
@@ -108,9 +109,11 @@ public class LearningSkill
         {
             context.Variables.Update(lessonName);
             context.Variables.Set("context", lessonDescription); // todo make this better
+            var course = context.Variables.Input;
             context = await createLessonTopics.InvokeAsync(context);
 
             var studyPlan = new Plan(lessonDescription); // todo maybe use the output of createLessonTopics too
+            studyPlan.State.Set("course", course);
             // plan.State.Set("course", lessonName);
             // plan.State.Set("context", lessonDescription); // TODO: get context from memory
             if (context.Skills is not null &&
@@ -120,6 +123,7 @@ public class LearningSkill
             {
                 // plan.AddSteps(semanticSkills["CreateLessonTopics"], semanticSkills["SelectLessonTopic"], studySKill["StudySession"]);
                 // plan.AddSteps(createLessonTopics!, selectLessonTopic!, studySession!);
+
                 studyPlan.AddSteps(studySession!);
             }
 
@@ -135,6 +139,8 @@ public class LearningSkill
             forEachContext.Set("stepLabel", "Complete Lesson");
             forEachContext.Set("action", studyPlan.ToJson());
             forEachContext.Set("content", context.Result.ToString()); // todo advanced condition like amount of time, etc.
+            // set the name of the Parameters key to give each `item` in the foreach a name
+            forEachContext.Set("Parameters", "topic"); // This is skill specific
             var result = await this._learningSkillKernel.RunAsync(forEachContext, this._forEachSkill["ForEach"]);
             if (result.Variables.Get("FOREACH_RESULT", out var forEachResultPlan))
             {
@@ -147,8 +153,11 @@ public class LearningSkill
         context.Variables.Update(lessonPlanString);
         context.Variables.Set("lessonPlanJson", lessonPlanJson);
 
+        // chat/bot support
+        context.Variables.Get("chatId", out var chatId);
+
         await context.Memory.SaveInformationAsync(
-            collection: "LearningSkill.LessonPlans",
+            collection: $"{chatId}-LearningSkill.LessonPlans",
             text: lessonPlanString,
             // text: lessonPlanJson,
             id: Guid.NewGuid().ToString(),
@@ -158,12 +167,72 @@ public class LearningSkill
         return context;
     }
 
-    // InstructSession
-    [SKFunctionName("InstructSession")]
-    [SKFunction("Instruct a session")]
-    public Task<SKContext>? InstructSessionAsync(SKContext context)
+    // Instruct a lesson
+    // - Select steps that require action, sequentially run them with the user.
+    // - Returns ActOnMessage results (set the action to this which will run the next step and return message to user, or unset when the steps are done)
+    // - [Stretch] If no steps are in need of user input, then generate status message (You need to do something like upload results, etc.)
+    [SKFunctionName("InstructLesson")]
+    [SKFunction("Instruct a lesson plan")]
+    [SKFunctionContextParameter(Name = "chatId", Description = "Unique and persistent identifier for the chat", DefaultValue = "")]
+    // todo maybe userIntent instead of "lesson" query
+    public async Task<SKContext> InstructSessionAsync(SKContext context)
     {
-        return null;
+        // get chatId and search memory for lesson plans
+        // if there are no lesson plans, then return a message saying that there are no lesson plans
+        // if there are lesson plans, then return a message with the lesson plans
+        // Ask them to choose for action
+        // if there is a lesson plan, then run it ( will need user message as input likely )
+        if (context.Variables.Get("chatId", out var chatId))
+        {
+            // TODO - For now just pick 1
+            var memories = context.Memory.SearchAsync($"{chatId}-LearningSkill.LessonPlans", query: "lesson", limit: 1, minRelevanceScore: 0.0).ToEnumerable().ToList();
+            if (memories.Count == 0)
+            {
+                context.Variables.Update("You don't have any lesson plans. Create one with `create lesson`");
+                return context;
+            }
+
+            var lessonPlanJson = memories[0].Metadata.AdditionalMetadata;
+            var lessonPlan = Plan.FromJson(lessonPlanJson, context);
+            var lessonStepIndex = lessonPlan.NextStepIndex;
+
+            var plan = await lessonPlan.InvokeNextStepAsync(context);
+            if (plan is not null)
+            {
+                var result = plan.State.ToString();
+                // Requirement: Steps "LESSON_STATE" must be set to "IN_PROGRESS"|empty or "DONE"
+                if (!plan.Steps[lessonStepIndex].State.Get("LESSON_STATE", out var lessonState) || lessonState == "IN_PROGRESS")
+                {
+                    plan = Plan.FromJson(lessonPlanJson, context); // keep plan the same to continue execution.
+                }
+                else// if (lessonState == "DONE")
+                {
+                    // continue with next step in plan.
+                }
+
+                if (plan.HasNextStep)
+                {
+                    context.Variables.Set("action", plan.ToJson()); // do this anyways? even at the end?
+                }
+                else
+                {
+                    context.Variables.Set("action", null);
+                }
+
+                Console.WriteLine($"Lesson state: {result}");
+                context.Variables.Update(result);
+            }
+            else
+            {
+                context.Variables.Set("action", null);
+            }
+        }
+        else
+        {
+            context.Variables.Update("You don't have a chatId. Please set one with `set chatId`");
+        }
+
+        return context;
     }
 
     // EvaluateSession

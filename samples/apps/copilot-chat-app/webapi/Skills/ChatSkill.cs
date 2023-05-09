@@ -403,18 +403,52 @@ public class ChatSkill
     [SKFunctionName("ActOnMessage")]
     // [SKFunctionContextParameter(Name = "message", Description = "Message to send")]
     // [SKFunctionContextParameter(Name = "chat_history", Description = "Message to send")]
+    [SKFunctionContextParameter(Name = "action", Description = "Action to handle the message next time")] // (hmm how does client pass this?)
+    [SKFunctionContextParameter(Name = "userId", Description = "Unique and persistent identifier for the user")]
+    [SKFunctionContextParameter(Name = "userName", Description = "Name of the user")]
+    [SKFunctionContextParameter(Name = "chatId", Description = "Unique and persistent identifier for the chat")]
     public async Task<SKContext> ActOnMessageAsync(SKContext context)
     {
-        // If there is a message, use it. Otherwise, get the chat history and generate completion for next message.
-        // if (context.Variables.Get("chat_history", out var chatHistory))
-        // {
-        // course, chat_history, topic, context
-        if (context.Variables.Get("userIntent", out var userIntent))
+        if (context.Variables.Get("action", out var action))
+        {
+            ISKFunction? functionOrPlan = null;
+            try
+            {
+                functionOrPlan = Plan.FromJson(action, context);
+            }
+            catch (Exception e)
+            {
+                context.Log.LogError("DoWhile: action {0} is not a valid plan: {1}", action, e.Message);
+            }
+
+            if (functionOrPlan == null)
+            {
+                if (action.Contains('.', StringComparison.Ordinal))
+                {
+                    var parts = action.Split('.');
+                    functionOrPlan = context.Skills!.GetFunction(parts[0], parts[1]);
+                }
+                else
+                {
+                    functionOrPlan = context.Skills!.GetFunction(action);
+                }
+            }
+
+            if (functionOrPlan == null)
+            {
+                context.Log.LogError("ActOnMessageAsync: action {0} not found yet was specified", action);
+                return context;
+            }
+
+            return await functionOrPlan.InvokeAsync(context);
+        }
+        else if (context.Variables.Get("userIntent", out var userIntent))
         {
             // TODO Use actionPlanner to either ContinueChat or StartStudyAgent
-            // var planner = new ActionPlanner(this._kernel);
+            // So right now, ActionPlanner will route down either DoChat or CreateLesson (and others? undesired?)
+            // Next, ExecuteLesson will run an agent for that lesson and replace the chat handler here (how? state? context?)
+            // P3 - MonitorLesson will run an agent for the lesson that is not chat based (skip those steps) (also, how?)
             var planner = new ActionPlanner(this._actionKernel);
-
 
             Console.WriteLine("***reading***");
 
@@ -435,16 +469,16 @@ public class ChatSkill
 
             context.Variables.Update(completion.Result);
             return completion;
-            // }
-            // else if (context.Variables.Get("message", out var message))
-            // {
-            //     context.Variables.Update(message);
-            // }
-            // else
-            // {
-            //     // TODO: Get the chat history and generate completion for next message.
-            // }
         }
+        // }
+        // else if (context.Variables.Get("message", out var message))
+        // {
+        //     context.Variables.Update(message);
+        // }
+        // else
+        // {
+        //     // TODO: Get the chat history and generate completion for next message.
+        // }
 
         return context;
     }

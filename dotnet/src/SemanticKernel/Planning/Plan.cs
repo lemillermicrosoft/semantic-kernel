@@ -54,6 +54,9 @@ public sealed class Plan : ISKFunction
     [JsonIgnore]
     public bool HasNextStep => this.NextStepIndex < this.Steps.Count;
 
+    [JsonIgnore]
+    public bool IsComplete => this.NextStepIndex >= 0 && this.NextStepIndex >= this.Steps.Count;
+
     /// <summary>
     /// Gets the next step index.
     /// </summary>
@@ -241,50 +244,65 @@ public sealed class Plan : ISKFunction
     {
         if (this.HasNextStep)
         {
-            var step = this.Steps[this.NextStepIndex];
-
-            // Merge the state with the current context variables for step execution
-            var functionVariables = this.GetNextStepVariables(context.Variables, step);
-
-            // Execute the step
-            var functionContext = new SKContext(functionVariables, context.Memory, context.Skills, context.Log, context.CancellationToken);
-            var result = await step.InvokeAsync(functionContext).ConfigureAwait(false);
-            var resultValue = result.Result.Trim();
-
-            if (result.ErrorOccurred)
+            if (this.Function is not null)
             {
-                throw new KernelException(KernelException.ErrorCodes.FunctionInvokeError,
-                    $"Error occurred while running plan step: {context.LastErrorDescription}", context.LastException);
-            }
+                // TODO Better notice of whether it's been executed or not.
+                var result = await this.Function.InvokeAsync(context).ConfigureAwait(false);
+                var resultValue = result.Result.Trim();
 
-            #region Update State
-
-            // Update state with result
-            this.State.Update(resultValue);
-
-            // Update Plan Result in State with matching outputs (if any)
-            if (this.Outputs.Intersect(step.Outputs).Any())
-            {
-                this.State.Get(DefaultResultKey, out var currentPlanResult);
-                this.State.Set(DefaultResultKey, string.Join("\n", currentPlanResult.Trim(), resultValue));
-            }
-
-            // Update state with outputs (if any)
-            foreach (var item in step.Outputs)
-            {
-                if (result.Variables.Get(item, out var val))
+                if (result.ErrorOccurred)
                 {
-                    this.State.Set(item, val);
+                    throw new KernelException(KernelException.ErrorCodes.FunctionInvokeError,
+                        $"Error occurred while running plan step: {context.LastErrorDescription}", context.LastException);
                 }
-                else
+
+                this.State.Update(resultValue);
+                this.NextStepIndex++;
+            }
+            else if (this.HasNextStep)
+            {
+                var step = this.Steps[this.NextStepIndex];
+
+                // Merge the state with the current context variables for step execution
+                var functionVariables = this.GetNextStepVariables(context.Variables, step);
+
+                // Execute the step
+                var functionContext = new SKContext(functionVariables, context.Memory, context.Skills, context.Log, context.CancellationToken);
+                await step.InvokeNextStepAsync(functionContext).ConfigureAwait(false);
+                var resultValue = step.State.ToString().Trim();
+
+                #region Update State
+
+                // Update state with result
+                this.State.Update(resultValue);
+
+                // Update Plan Result in State with matching outputs (if any)
+                if (this.Outputs.Intersect(step.Outputs).Any())
                 {
-                    this.State.Set(item, resultValue);
+                    this.State.Get(DefaultResultKey, out var currentPlanResult);
+                    this.State.Set(DefaultResultKey, string.Join("\n", currentPlanResult.Trim(), resultValue));
+                }
+
+                // Update state with outputs (if any)
+                foreach (var item in step.Outputs)
+                {
+                    if (step.State.Get(item, out var val))
+                    {
+                        this.State.Set(item, val);
+                    }
+                    else
+                    {
+                        this.State.Set(item, resultValue);
+                    }
+                }
+
+                #endregion Update State
+
+                if (!step.HasNextStep)
+                {
+                    this.NextStepIndex++;
                 }
             }
-
-            #endregion Update State
-
-            this.NextStepIndex++;
         }
 
         return this;
@@ -570,6 +588,7 @@ public sealed class Plan : ISKFunction
         this.Description = function.Description;
         this.IsSemantic = function.IsSemantic;
         this.RequestSettings = function.RequestSettings;
+        this.NextStepIndex = -1;
     }
 
     private ISKFunction? Function { get; set; } = null;

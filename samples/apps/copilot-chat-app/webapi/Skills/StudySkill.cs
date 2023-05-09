@@ -2,7 +2,6 @@
 
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Orchestration;
-using Microsoft.SemanticKernel.Planning;
 using Microsoft.SemanticKernel.SkillDefinition;
 
 namespace SemanticKernel.Service.Skills;
@@ -12,7 +11,6 @@ public class StudySkill
     private readonly IKernel _studySkillKernel;
     private readonly IDictionary<string, ISKFunction> _semanticSkills;
     private readonly IDictionary<string, ISKFunction> _doWhileSkill;
-    private readonly IDictionary<string, ISKFunction> _chatSkill;
     private readonly IDictionary<string, ISKFunction> _studySkill;
 
     public StudySkill(IKernel kernel)
@@ -76,6 +74,11 @@ public class StudySkill
             studySessionContext.Update(topic);
         }
 
+        context.Variables.Get("course", out var course);
+        course ??= "Unknown";
+
+        Console.WriteLine($"Starting study session on {topic} for {course}.");
+
         var createLessonContext = this._studySkillKernel.CreateNewContext();
         foreach (KeyValuePair<string, string> x in studySessionContext)
         {
@@ -87,28 +90,34 @@ public class StudySkill
         //
         // Chat with the user about the lesson until they say goodbye
         //
-        var plan = new Plan("Prepare a message and send it.");
-        plan.Outputs.Add("course");
-        plan.Outputs.Add("topic");
-        plan.Outputs.Add("context");
-        var prepareStep = new Plan(this._studySkill["PrepareMessage"]);
-        prepareStep.Outputs.Add("chat_history");
-        var sendStep = new Plan(this._chatSkill["SendMessage"]);
-        sendStep.Outputs.Add("chat_history");
-        plan.AddSteps(prepareStep, sendStep);
+        // var plan = new Plan("Prepare a message and send it.");
+        // plan.Outputs.Add("course");
+        // plan.Outputs.Add("topic");
+        // plan.Outputs.Add("context");
+        // var prepareStep = new Plan(this._studySkill["PrepareMessage"]);
+        // prepareStep.Outputs.Add("chat_history");
+        // var sendStep = new Plan(this._chatSkill["SendMessage"]); // TODO Fix this.
+        // sendStep.Outputs.Add("chat_history");
+        // plan.AddSteps(prepareStep, sendStep);
 
-        var doWhileContext = new ContextVariables(lessonStart.Result);
-        doWhileContext.Set("message", lessonStart.Result);
-        doWhileContext.Set("topic", topic);
-        if (context.Variables.Get("course", out var course))
-        {
-            doWhileContext.Set("course", course);
-        }
+        // var doWhileContext = new ContextVariables(lessonStart.Result);
+        // doWhileContext.Set("message", lessonStart.Result);
+        // doWhileContext.Set("topic", topic);
+        // if (context.Variables.Get("course", out var course))
+        // {
+        //     doWhileContext.Set("course", course);
+        // }
 
-        doWhileContext.Set("action", plan.ToJson());
-        doWhileContext.Set("condition", "User does not say 'goodbye'"); // todo advanced condition like amount of time, etc.
+        // doWhileContext.Set("action", plan.ToJson());
+        // doWhileContext.Set("condition", "User does not say 'goodbye'"); // todo advanced condition like amount of time, etc.
 
-        return await this._studySkillKernel.RunAsync(doWhileContext, this._doWhileSkill["DoWhile"]);
+        // return await this._studySkillKernel.RunAsync(doWhileContext, this._doWhileSkill["DoWhile"]);
+
+        // this._semanticSkills["IsTrue"]
+
+        context.Variables.Update(lessonStart.Result);
+        return context;
+
     }
 
     // PrepareMessage

@@ -47,7 +47,7 @@ public class ChatHistoryController : ControllerBase
     /// <param name="chatParameters">Object that contains the parameters to create a new chat.</param>
     /// <returns>The HTTP action result.</returns>
     [HttpPost]
-    [Route("chatSession/create")]
+    [Route("chatSession/create")] // TODO Load?
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -80,12 +80,7 @@ public class ChatHistoryController : ControllerBase
     public async Task<IActionResult> GetChatSessionByIdAsync(Guid chatId)
     {
         var chat = await this._chatSessionRepository.FindByIdAsync(chatId.ToString());
-        if (chat == null)
-        {
-            return this.NotFound($"Chat of id {chatId} not found.");
-        }
-
-        return this.Ok(chat);
+        return chat == null ? this.NotFound($"Chat of id {chatId} not found.") : this.Ok(chat);
     }
 
     /// <summary>

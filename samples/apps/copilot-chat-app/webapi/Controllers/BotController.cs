@@ -239,7 +239,7 @@ public class BotController : ControllerBase
             .Where(collection => collection.StartsWith(chatIdString, StringComparison.OrdinalIgnoreCase));
 
         foreach (var collection in chatCollections)
-        {
+        { // did the naming
             await GetMemoryRecordsAndAppendToEmbeddingsAsync(kernel: kernel, collectionName: collection, embeddings: bot.Embeddings);
         }
 
@@ -296,7 +296,7 @@ public class BotController : ControllerBase
                         embedding: record.Embedding.Value,
                         description: null, additionalMetadata: null);
 
-                    if (!(await this._memoryStore.DoesCollectionExistAsync(newCollectionName, default)))
+                    if (!await this._memoryStore.DoesCollectionExistAsync(newCollectionName, default))
                     {
                         await this._memoryStore.CreateCollectionAsync(newCollectionName, default);
                     }
