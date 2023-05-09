@@ -3,6 +3,7 @@
 using System.Reflection;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.CoreSkills;
+using Microsoft.SemanticKernel.SkillDefinition;
 using Microsoft.SemanticKernel.TemplateEngine;
 using SemanticKernel.Service.Config;
 using SemanticKernel.Service.Skills;
@@ -38,7 +39,7 @@ internal static class FunctionLoadingExtensions
     /// <summary>
     /// Register local semantic skills with the kernel.
     /// </summary>
-    internal static IDictionary<string, Microsoft.SemanticKernel.SkillDefinition.ISKFunction> RegisterNamedSemanticSkills(
+    internal static IDictionary<string, ISKFunction> RegisterNamedSemanticSkills(
         this IKernel kernel,
         string? skillsDirectory = null,
         ILogger? logger = null,
@@ -110,9 +111,9 @@ internal static class FunctionLoadingExtensions
             logger: logger
         );
         kernel.ImportSkill(chatSkill, nameof(ChatSkill));
-        chatKernel.ImportSkill(chatSkill, nameof(ChatSkill)); // This is bringing in too much -- Move DoChat into it's own skill?
 
-        // kernel.ImportSkill(new StudySkill(), "StudySkill"); // tied to learning skill - concerns
+        // TODO - This is bringing in too much -- Move DoChat into it's own skill?
+        chatKernel.ImportSkill(chatSkill, nameof(ChatSkill));
 
         var documentMemorySkill = new DocumentMemorySkill(promptSettings, documentMemoryOptions);
         kernel.ImportSkill(documentMemorySkill, nameof(DocumentMemorySkill));
