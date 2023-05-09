@@ -3,7 +3,7 @@ import { Constants } from '../Constants';
 import { useAppDispatch, useAppSelector } from '../redux/app/hooks';
 import { RootState } from '../redux/app/store';
 import { addAlert } from '../redux/features/app/appSlice';
-import { ChatState } from '../redux/features/conversations/ChatState';
+import { ChatBadge, ChatState } from '../redux/features/conversations/ChatState';
 import { Conversations } from '../redux/features/conversations/ConversationsState';
 import {
     addConversation,
@@ -80,7 +80,7 @@ export const useChat = () => {
                         messages: chatMessages,
                         audience: [loggedInUser],
                         botTypingTimestamp: 0,
-                        botProfilePicture: botProfilePictures.at(botProfilePictureIndex) ?? '/assets/bot-icon-1.png',
+                        botProfilePicture: botProfilePictures.at(botProfilePictureIndex) ?? botIcon1,
                     };
 
                     dispatch(incrementBotProfilePictureIndex());
@@ -166,7 +166,14 @@ export const useChat = () => {
                         audience: [loggedInUser],
                         messages: orderedMessages,
                         botTypingTimestamp: 0,
-                        botProfilePicture: botProfilePictures[botProfilePictureIndex],
+                        botProfilePicture: botProfilePictures[Object.keys(conversations).length % 5],
+                        // HACK
+                        botBadge:
+                            Object.keys(conversations).length === 0
+                                ? ChatBadge.External
+                                : Object.keys(conversations).length === 1
+                                ? ChatBadge.Warning
+                                : undefined,
                     };
 
                     dispatch(incrementBotProfilePictureIndex());

@@ -10,4 +10,10 @@ export interface ChatState {
     messages: IChatMessage[];
     botTypingTimestamp: number;
     botProfilePicture: string;
+    botBadge?: ChatBadge;
+}
+
+export enum ChatBadge {
+    Warning = 1, // requires human attention.
+    External, // the source of the bot is external.
 }
