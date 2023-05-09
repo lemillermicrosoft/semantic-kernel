@@ -116,6 +116,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
         kernel.RegisterNamedSemanticSkills(null, null, "StudySkill");
 
         chatBot.Kernel.ImportSkill(learningSkill, "LearningSkill"); // todo
+        kernel.ImportSkill(learningSkill, "LearningSkill"); // todo
 
         kernel.ImportSkill(studySkill, "StudySkill");
         // kernel.ImportSkill(new StudySkill(), "StudySkill"); // tied to learning skill - concerns

@@ -197,6 +197,7 @@ public class LearningSkill
             var lessonPlan = Plan.FromJson(lessonPlanJson, context);
             var lessonStepIndex = lessonPlan.NextStepIndex;
 
+            // PROBLEM It's doing all of the lessons. It should only do the next one.
             var plan = await lessonPlan.InvokeNextStepAsync(context);
             if (plan is not null)
             {
@@ -204,25 +205,29 @@ public class LearningSkill
                 // Requirement: Steps "LESSON_STATE" must be set to "IN_PROGRESS"|empty or "DONE"
                 if (!plan.Steps[lessonStepIndex].State.Get("LESSON_STATE", out var lessonState) || lessonState == "IN_PROGRESS")
                 {
-                    plan = Plan.FromJson(lessonPlanJson, context); // keep plan the same to continue execution.
+                    // todo clone context?
+                    //plan = Plan.FromJson(lessonPlanJson, context); // keep plan the same to continue execution. // BUt I kdin fo want it to come into this method... so not the learnign plan, but the agent learning plan
+
+                    context.Variables.Set("continuePlan", "true");
                 }
                 else// if (lessonState == "DONE")
                 {
                     // continue with next step in plan.
-                }
-
-                if (plan.HasNextStep)
-                {
-                    Console.WriteLine("Writing action to context");
-                    context.Variables.Set("action", plan.ToJson()); // do this anyways? even at the end?
-                    context.Variables.Set("continuePlan", "true");
-                }
-                else
-                {
-                    Console.WriteLine("Clearing action from context");
-                    context.Variables.Set("action", null);
                     context.Variables.Set("continuePlan", null);
                 }
+
+                // if (plan.HasNextStep)
+                // {
+                //     Console.WriteLine("Writing action to context");
+                //     // context.Variables.Set("action", plan.ToJson()); // do this anyways? even at the end?
+                //     context.Variables.Set("continuePlan", "true");
+                // }
+                // else
+                // {
+                //     Console.WriteLine("Clearing action from context");
+                //     // context.Variables.Set("action", null);
+                //     context.Variables.Set("continuePlan", null);
+                // }
 
                 Console.WriteLine($"Lesson state: {result}");
                 context.Variables.Update(result);
@@ -230,7 +235,7 @@ public class LearningSkill
             else
             {
                 Console.WriteLine("Clearing action from context 2");
-                context.Variables.Set("action", null);
+                // context.Variables.Set("action", null);
                 context.Variables.Set("continuePlan", null);
             }
         }

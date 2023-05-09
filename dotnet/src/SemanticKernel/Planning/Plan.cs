@@ -332,12 +332,16 @@ public sealed class Plan : ISKFunction
         // IList< ParameterView > parameters,
         // bool isSemantic,
         // bool isAsynchronous = true)
+
+        var p = this._steps.AsParallel().SelectMany(step => step.Describe().Parameters).Distinct().ToList();
+
         return new FunctionView(
             name: this.Name,
             skillName: this.SkillName,
             description: this.Description,
-            Inputs = this.Inputs,
-            this.Outputs = this.Outputs,
+            parameters: p ?? new List<ParameterView>(),
+            isSemantic: false,
+            isAsynchronous: true
         );
     }
 
@@ -499,7 +503,7 @@ public sealed class Plan : ISKFunction
         context.Variables.Update(resultString);
 
         // copy previous step's variables to the next step
-        foreach (var item in this._steps[this.NextStepIndex - 1].Outputs)
+        foreach (var item in this._steps[Math.Max(0, this.NextStepIndex - 1)].Outputs) // since NextStepIndex may not tick now, this is duct tape
         {
             if (this.State.Get(item, out var val))
             {

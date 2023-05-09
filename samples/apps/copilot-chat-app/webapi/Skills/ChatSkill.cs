@@ -451,7 +451,13 @@ public class ChatSkill
             ISKFunction? functionOrPlan = null;
             try
             {
-                functionOrPlan = Plan.FromJson(action, context);
+                var planContext = new SKContext(
+                    context.Variables,
+                    this._actionKernel.Memory,
+                    this._actionKernel.Skills,
+                    this._actionKernel.Log
+                );
+                functionOrPlan = Plan.FromJson(action, context); // TODO Should throw if context can't load functions
             }
             catch (Exception e)
             {
@@ -480,7 +486,27 @@ public class ChatSkill
             var ctx = Utilities.CopyContextWithVariablesClone(context);
             ctx.Variables.Set("chat_history", historyText);
 
-            return await functionOrPlan.InvokeAsync(ctx);
+            var completion = await functionOrPlan.InvokeAsync(ctx);
+
+
+            if (completion.Variables.Get("continuePlan", out var continuePlan) && bool.TryParse(continuePlan, out var continuePlanBool) && continuePlanBool)
+            {
+                if (continuePlan is not null)
+                {
+                    completion.Variables.Set("action", action); // this feels hacky -- should be able to just pass the plan
+
+                    // leave as-is... this is the plan to continue, not the actionplaner plan
+                }
+                else
+                {
+                    completion.Variables.Set("action", null);
+                }
+            }
+            else
+            {
+                completion.Variables.Set("action", null);
+            }
+            return completion;
         }
         else if (context.Variables.Get("userIntent", out var userIntent))
         {
@@ -510,6 +536,7 @@ public class ChatSkill
             plan.Steps[0].Outputs.Add("continuePlan");
 
             // var completion = await this._semanticSkills["ContinueChat"].InvokeAsync(context);
+            var originalPlanJson = plan.ToJson();
             var completion = await plan.InvokeAsync(context);
 
             // if (completion.Variables.Get("action", out var nextAction))
@@ -530,7 +557,8 @@ public class ChatSkill
             {
                 if (continuePlan is not null)
                 {
-                    // completion.Variables.Set("action", plan.ToJson());
+                    completion.Variables.Set("action", originalPlanJson); // this feels hacky -- should be able to just pass the plan // maybe the plan.steps[0]
+
                     // leave as-is... this is the plan to continue, not the actionplaner plan
                 }
                 else
