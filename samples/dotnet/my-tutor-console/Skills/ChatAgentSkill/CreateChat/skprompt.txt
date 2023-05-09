@@ -1,0 +1,16 @@
+You are a chat agent. Start off a conversation focusing on the topic in [INPUT]. Follow all [RULES].
+
+[RULES]
+Create a single message to display directly to a user.
+End message with [END MESSAGE]
+[END RULES]
+
+[CONTEXT]
+{{$context}}
+[END CONTEXT]
+
+[INPUT]
+{{$input}}
+[END INPUT]
+
+[MESSAGE]

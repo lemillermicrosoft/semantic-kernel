@@ -7,6 +7,7 @@ using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.AI.Embeddings;
 using Microsoft.SemanticKernel.Connectors.AI.OpenAI.TextEmbedding;
 using Microsoft.SemanticKernel.Connectors.HuggingFace.TextToImage;
+using Microsoft.SemanticKernel.Connectors.Memory.AzureCognitiveSearch;
 using Microsoft.SemanticKernel.Connectors.Memory.Qdrant;
 using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.SkillDefinition;
@@ -23,7 +24,7 @@ internal static class SemanticKernelExtensions
     /// </summary>
     internal static IServiceCollection AddSemanticKernelServices(this IServiceCollection services)
     {
-        // The chat skill's prompts are stored in a separate file.
+        // Load the chat skill's prompts from the prompt configuration file.
         services.AddSingleton<PromptsConfig>(sp =>
         {
             string promptsConfigPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!, "prompts.json");
@@ -62,11 +63,9 @@ internal static class SemanticKernelExtensions
             }
         });
 
-        services.AddScoped<ISemanticTextMemory>(serviceProvider
-            => new SemanticTextMemory(
-                serviceProvider.GetRequiredService<IMemoryStore>(),
-                serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>().Get(AIServiceOptions.EmbeddingPropertyName)
-                    .ToTextEmbeddingsService(logger: serviceProvider.GetRequiredService<ILogger<AIServiceOptions>>())));
+
+        // Add the semantic memory with backing memory store.
+        services.AddScoped<ISemanticTextMemory>(CreateSemanticTextMemory);
 
         // Add the planner.
         services.AddScoped<CopilotChatPlanner>(sp =>
@@ -79,29 +78,128 @@ internal static class SemanticKernelExtensions
                 new SkillCollection(),
                 chatKernel.PromptTemplateEngine,
                 chatKernel.Memory,
-                new KernelConfig().AddCompletionBackend(plannerOptions.Value.AIService!),
+                new KernelConfig().AddCompletionBackend(plannerOptions.Value.AIService!)
+                    .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig() { MaxRetryCount = 5, UseExponentialBackoff = true }),
                 sp.GetRequiredService<ILogger<CopilotChatPlanner>>());
             return new CopilotChatPlanner(plannerKernel, plannerOptions);
         });
 
+        services.AddScoped<ChatBot>(sp =>
+            {
+                IKernel chatKernel = sp.GetRequiredService<IKernel>();
+                var aiServiceOptions = sp.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>();
+                IKernel chatBotKernel = new Kernel(
+                    new SkillCollection(),
+                    chatKernel.PromptTemplateEngine,
+                    chatKernel.Memory,
+                    new KernelConfig()
+                        .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
+                        .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
+                        .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig()
+                        { MaxRetryCount = 5, UseExponentialBackoff = true }),
+                    sp.GetRequiredService<ILogger<ChatBot>>());
+
+                return new ChatBot(chatBotKernel);
+            }
+        );
+
+        services.AddScoped<LearningSkill>(sp =>
+            {
+                IKernel chatKernel = sp.GetRequiredService<IKernel>();
+                var aiServiceOptions = sp.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>();
+                IKernel learningSkillKernel = new Kernel(
+                    new SkillCollection(),
+                    chatKernel.PromptTemplateEngine,
+                    chatKernel.Memory,
+                    new KernelConfig()
+                        .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
+                        .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
+                        .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig()
+                        { MaxRetryCount = 5, UseExponentialBackoff = true }),
+                    sp.GetRequiredService<ILogger<LearningSkill>>());
+
+                return new LearningSkill(learningSkillKernel);
+            }
+        );
+
+        services.AddScoped<StudySkill>(sp =>
+            {
+                IKernel chatKernel = sp.GetRequiredService<IKernel>();
+                var aiServiceOptions = sp.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>();
+                IKernel k = new Kernel(
+                    new SkillCollection(),
+                    chatKernel.PromptTemplateEngine,
+                    chatKernel.Memory,
+                    new KernelConfig()
+                        .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
+                        .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
+                        .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig()
+                        { MaxRetryCount = 5, UseExponentialBackoff = true }),
+                    sp.GetRequiredService<ILogger<StudySkill>>());
+
+                return new StudySkill(k);
+            }
+        );
+
         // Add the Semantic Kernel
+        // TODO - How does the kernelConfig get used?
         services.AddSingleton<IPromptTemplateEngine, PromptTemplateEngine>();
         services.AddScoped<ISkillCollection, SkillCollection>();
-        services.AddScoped<KernelConfig>(serviceProvider => new KernelConfig()
-            .AddCompletionBackend(serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>()
-                .Get(AIServiceOptions.CompletionPropertyName))
-            .AddEmbeddingBackend(serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>()
-                .Get(AIServiceOptions.EmbeddingPropertyName))
-            .AddImageGenerationBackend());
+        services.AddScoped<KernelConfig>(serviceProvider =>
+        {
+            return new KernelConfig()
+                .AddCompletionBackend(serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>()
+                    .Get(AIServiceOptions.CompletionPropertyName))
+                .AddEmbeddingBackend(serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>()
+                    .Get(AIServiceOptions.EmbeddingPropertyName))
+                .AddImageGenerationBackend()
+                .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig() { MaxRetryCount = 5, UseExponentialBackoff = true });
+        });
         services.AddScoped<IKernel, Kernel>();
 
         return services;
     }
 
     /// <summary>
+    /// Create the semantic memory with backing memory store.
+    /// </summary>
+    private static ISemanticTextMemory CreateSemanticTextMemory(this IServiceProvider serviceProvider)
+    {
+        MemoriesStoreOptions config = serviceProvider.GetRequiredService<IOptions<MemoriesStoreOptions>>().Value;
+        switch (config.Type)
+        {
+            case MemoriesStoreOptions.MemoriesStoreType.Volatile:
+            {
+                var store = serviceProvider.GetRequiredService<IMemoryStore>();
+                return new SemanticTextMemory(
+                    store,
+                        serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>().Get(AIServiceOptions.EmbeddingPropertyName)
+                            .ToTextEmbeddingsService(logger: serviceProvider.GetRequiredService<ILogger<AIServiceOptions>>()));
+            }
+
+            case MemoriesStoreOptions.MemoriesStoreType.Qdrant:
+            {
+                var store = serviceProvider.GetRequiredService<IMemoryStore>();
+                return new SemanticTextMemory(
+                    store,
+                    serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>().Get(AIServiceOptions.EmbeddingPropertyName)
+                        .ToTextEmbeddingsService(logger: serviceProvider.GetRequiredService<ILogger<AIServiceOptions>>()));
+            }
+
+            case MemoriesStoreOptions.MemoriesStoreType.AzureCognitiveSearch:
+            {
+                return new AzureCognitiveSearchMemory(config.AzureCognitiveSearch!.Endpoint, config.AzureCognitiveSearch.Key);
+            }
+
+            default:
+                throw new InvalidOperationException($"Invalid 'MemoriesStore' type '{config.Type}'.");
+        }
+    }
+
+    /// <summary>
     /// Add the completion backend to the kernel config
     /// </summary>
-    internal static KernelConfig AddCompletionBackend(this KernelConfig kernelConfig, AIServiceOptions aiServiceOptions)
+    private static KernelConfig AddCompletionBackend(this KernelConfig kernelConfig, AIServiceOptions aiServiceOptions)
     {
         switch (aiServiceOptions.AIService)
         {
@@ -128,7 +226,7 @@ internal static class SemanticKernelExtensions
     /// <summary>
     /// Add the embedding backend to the kernel config
     /// </summary>
-    internal static KernelConfig AddEmbeddingBackend(this KernelConfig kernelConfig, AIServiceOptions aiServiceOptions)
+    private static KernelConfig AddEmbeddingBackend(this KernelConfig kernelConfig, AIServiceOptions aiServiceOptions)
     {
         switch (aiServiceOptions.AIService)
         {
@@ -170,7 +268,7 @@ internal static class SemanticKernelExtensions
     /// <param name="serviceConfig">The service configuration</param>
     /// <param name="httpClient">Custom <see cref="HttpClient"/> for HTTP requests.</param>
     /// <param name="logger">Application logger</param>
-    internal static IEmbeddingGeneration<string, float> ToTextEmbeddingsService(this AIServiceOptions serviceConfig,
+    private static IEmbeddingGeneration<string, float> ToTextEmbeddingsService(this AIServiceOptions serviceConfig,
         HttpClient? httpClient = null,
         ILogger? logger = null)
     {
