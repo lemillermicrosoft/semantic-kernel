@@ -62,11 +62,13 @@ internal sealed class RequiredOnPropertyValueAttribute : ValidationAttribute
         {
             if (value == null)
             {
-                return new ValidationResult($"Property '{validationContext.DisplayName}' is required when '{this.OtherPropertyName}' is {this.OtherPropertyValue}.");
+                return new ValidationResult(
+                    $"Property '{validationContext.DisplayName}' is required when '{this.OtherPropertyName}' is {this.OtherPropertyValue}.");
             }
             else if (this.NotEmptyOrWhitespace && string.IsNullOrWhiteSpace(value.ToString()))
             {
-                return new ValidationResult($"Property '{validationContext.DisplayName}' cannot be empty or whitespace when '{this.OtherPropertyName}' is {this.OtherPropertyValue}.");
+                return new ValidationResult(
+                    $"Property '{validationContext.DisplayName}' cannot be empty or whitespace when '{this.OtherPropertyName}' is {this.OtherPropertyValue}.");
             }
             else
             {
