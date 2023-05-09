@@ -39,8 +39,6 @@ public class LearningSkill
             // "StudySkill",
             "ForEachSkill");
 
-        this._semanticSkills = chatBot.Kernel.RegisterNamedSemanticSkills(null, null, "ForEachSkill");
-
         // this._studySkill = this._learningSkillKernel.ImportSkill(this, "StudySkill");
 
         this._forEachSkill = this._learningSkillKernel.ImportSkill(new ForEachSkill(this._semanticSkills["ToList"]), "ForEachSkill");
@@ -195,6 +193,7 @@ public class LearningSkill
     }
 
     internal static readonly List<string> lessonMarkers = new() { "Lesson:", "Objective:", "Topic:", "Course:" };
+
     internal static string ToPlanString(Plan originalPlan, string indent = " ", int lessonMarkerIndex = 0)
     {
         var next = lessonMarkerIndex + 1;
