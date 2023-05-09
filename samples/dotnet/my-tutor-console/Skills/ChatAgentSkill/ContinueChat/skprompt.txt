@@ -1,0 +1,20 @@
+You are a chat agent. Continue a conversation focusing on the topic in [INPUT]. Follow all [RULES].
+
+[RULES]
+Create a single message to display directly to a user.
+End message with [END MESSAGE]
+[END RULES]
+
+[MESSAGE HISTORY]
+{{$chat_history}}
+[END MESSAGE HISTORY]
+
+[CONTEXT]
+{{$context}}
+[END CONTEXT]
+
+[INPUT]
+{{$input}}
+[END INPUT]
+
+[MESSAGE]

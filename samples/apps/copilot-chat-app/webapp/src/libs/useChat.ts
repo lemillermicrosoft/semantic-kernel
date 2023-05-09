@@ -77,6 +77,7 @@ export const useChat = () => {
                     const newChat: ChatState = {
                         id: result.id,
                         title: result.title,
+                        nextAction: '',
                         messages: chatMessages,
                         audience: [loggedInUser],
                         botTypingTimestamp: 0,
@@ -95,7 +96,7 @@ export const useChat = () => {
         }
     };
 
-    const getResponse = async (value: string, chatId: string) => {
+    const getResponse = async (value: string, chatId: string, nextAction: string) => {
         const ask = {
             input: value,
             variables: [
@@ -111,6 +112,10 @@ export const useChat = () => {
                     key: 'chatId',
                     value: chatId,
                 },
+                {
+                    key: 'action',
+                    value: nextAction,
+                },
             ],
         };
 
@@ -121,7 +126,7 @@ export const useChat = () => {
                 'Chat',
                 await AuthHelper.getSKaaSAccessToken(instance),
                 connectors.getEnabledPlugins(),
-            );
+            ); // this is the entry point to the semantic kernel
 
             const messageResult = {
                 timestamp: new Date().getTime(),
@@ -131,7 +136,10 @@ export const useChat = () => {
                 authorRole: AuthorRoles.Bot,
             };
 
-            dispatch(updateConversation({ message: messageResult, chatId: chatId }));
+            // get the variable named 'action'
+            const nextAction = result.variables.find((v) => v.key === 'action')?.value;
+
+            dispatch(updateConversation({ message: messageResult, chatId: chatId, nextAction }));
         } catch (e: any) {
             const errorMessage = `Unable to generate bot response. Details: ${e.message ?? e}`;
             dispatch(addAlert({ message: errorMessage, type: AlertType.Error }));
@@ -163,6 +171,7 @@ export const useChat = () => {
                     conversations[chatSession.id] = {
                         id: chatSession.id,
                         title: chatSession.title,
+                        nextAction: '', // TODO Get from somewhere?
                         audience: [loggedInUser],
                         messages: orderedMessages,
                         botTypingTimestamp: 0,

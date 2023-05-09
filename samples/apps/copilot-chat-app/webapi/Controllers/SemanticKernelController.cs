@@ -1,5 +1,4 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
-// Licensed under the MIT License.
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -55,6 +54,9 @@ public class SemanticKernelController : ControllerBase, IDisposable
     /// <param name="documentMemoryOptions">Options for document memory handling.</param>
     /// <param name="planner">Planner to use to create function sequences.</param>
     /// <param name="plannerOptions">Options for the planner.</param>
+    /// <param name="chatBot">Chat bot to use to generate prompts.</param>
+    /// <param name="learningSkill">Learning skill to use to learn new topics.</param>
+    /// <param name="studySkill">Study skill to use to study new topics.</param>
     /// <param name="ask">Prompt along with its parameters</param>
     /// <param name="openApiSkillsAuthHeaders">Authentication headers to connect to OpenAPI Skills</param>
     /// <param name="skillName">Skill in which function to invoke resides</param>
@@ -73,6 +75,9 @@ public class SemanticKernelController : ControllerBase, IDisposable
         [FromServices] IOptions<DocumentMemoryOptions> documentMemoryOptions,
         [FromServices] CopilotChatPlanner planner,
         [FromServices] IOptions<PlannerOptions> plannerOptions,
+        [FromServices] ChatBot chatBot,
+        [FromServices] LearningSkill learningSkill,
+        [FromServices] StudySkill studySkill,
         [FromBody] Ask ask,
         [FromHeader] OpenApiSkillsAuthHeaders openApiSkillsAuthHeaders,
         string skillName, string functionName)
@@ -84,6 +89,14 @@ public class SemanticKernelController : ControllerBase, IDisposable
             return this.BadRequest("Input is required.");
         }
 
+        // Put ask's variables in the context we will use.
+        var context = kernel.CreateNewContext();
+        context.Variables.Update(ask.Input);
+        foreach (var input in ask.Variables)
+        {
+            context.Variables.Set(input.Key, input.Value);
+        }
+
         // Not required for Copilot Chat, but this is how to register additional skills for the service to provide.
         if (!string.IsNullOrWhiteSpace(this._options.SemanticSkillsDirectory))
         {
@@ -93,11 +106,14 @@ public class SemanticKernelController : ControllerBase, IDisposable
         // Register skills with the planner if enabled.
         if (plannerOptions.Value.Enabled)
         {
-            await this.RegisterPlannerSkillsAsync(planner, plannerOptions.Value, openApiSkillsAuthHeaders);
+            await this.RegisterPlannerSkillsAsync(planner, plannerOptions.Value, openApiSkillsAuthHeaders, context.Variables);
         }
 
-        // Register native skills with the chat's kernel
+        kernel.RegisterNamedSemanticSkills(null, null, "StudySkill");
+
+        // Register native skills with the general kernel
         kernel.RegisterNativeSkills(
+            chatKernel: chatBot.Kernel,
             chatSessionRepository: chatRepository,
             chatMessageRepository: chatMessageRepository,
             promptSettings: this._promptSettings,
@@ -105,58 +121,55 @@ public class SemanticKernelController : ControllerBase, IDisposable
             plannerOptions: plannerOptions.Value,
             documentMemoryOptions: documentMemoryOptions.Value,
             logger: this._logger);
+        kernel.ImportSkill(learningSkill, "LearningSkill");
+        kernel.ImportSkill(studySkill, "StudySkill");
+
+        // Register native skills with the chat's kernel
+        chatBot.Kernel.ImportSkill(learningSkill, "LearningSkill");
 
         // Get the function to invoke
         ISKFunction? function = null;
         try
         {
-            function = kernel.Skills.GetFunction(skillName, functionName);
+            IKernel k = skillName == "ChatSkill" && functionName == "Chat" ? chatBot.Kernel : kernel;
+            function = k.Skills.GetFunction(skillName, functionName);
         }
         catch (KernelException)
         {
             return this.NotFound($"Failed to find {skillName}/{functionName} on server");
         }
 
-        // Put ask's variables in the context we will use.
-        var contextVariables = new ContextVariables(ask.Input);
-        foreach (var input in ask.Variables)
-        {
-            contextVariables.Set(input.Key, input.Value);
-        }
-
         // Run the function.
-        SKContext result = await kernel.RunAsync(contextVariables, function!);
-        if (result.ErrorOccurred)
-        {
-            if (result.LastException is AIException aiException && aiException.Detail is not null)
-            {
-                return this.BadRequest(string.Concat(aiException.Message, " - Detail: " + aiException.Detail));
-            }
+        SKContext result = await function.InvokeAsync(context);
 
-            return this.BadRequest(result.LastErrorDescription);
-        }
-
-        return this.Ok(new AskResult { Value = result.Result, Variables = result.Variables.Select(v => new KeyValuePair<string, string>(v.Key, v.Value)) });
+        return result.ErrorOccurred
+            ? result.LastException is AIException aiException && aiException.Detail is not null
+                ? (ActionResult<AskResult>)this.BadRequest(string.Concat(aiException.Message, " - Detail: " + aiException.Detail))
+                : (ActionResult<AskResult>)this.BadRequest(result.LastErrorDescription)
+            : (global::Microsoft.AspNetCore.Mvc.ActionResult<global::SemanticKernel.Service.Model.AskResult>)this.Ok(new AskResult
+            { Value = result.Result, Variables = result.Variables.Select(v => new KeyValuePair<string, string>(v.Key, v.Value)) });
     }
 
     /// <summary>
     /// Register skills with the planner's kernel.
     /// </summary>
-    private async Task RegisterPlannerSkillsAsync(CopilotChatPlanner planner, PlannerOptions options, OpenApiSkillsAuthHeaders openApiSkillsAuthHeaders)
+    private async Task RegisterPlannerSkillsAsync(CopilotChatPlanner planner, PlannerOptions options, OpenApiSkillsAuthHeaders openApiSkillsAuthHeaders, ContextVariables variables)
     {
-        // Register the Klarna shopping ChatGPT plugin with the planner's kernel.
-        using DefaultHttpRetryHandler retryHandler = new(new HttpRetryConfig(), this._logger)
-        {
-            InnerHandler = new HttpClientHandler() { CheckCertificateRevocationList = true }
-        };
-        using HttpClient importHttpClient = new HttpClient(retryHandler, false);
-        importHttpClient.DefaultRequestHeaders.Add("User-Agent", "Microsoft.CopilotChat");
-        await planner.Kernel.ImportChatGptPluginSkillFromUrlAsync("KlarnaShoppingSkill", new Uri("https://www.klarna.com/.well-known/ai-plugin.json"),
-            importHttpClient);
-
-        //
         // Register authenticated skills with the planner's kernel only if the request includes an auth header for the skill.
-        //
+
+        // Klarna Shopping
+        if (openApiSkillsAuthHeaders.KlarnaAuthentication != null)
+        {
+            // Register the Klarna shopping ChatGPT plugin with the planner's kernel.
+            using DefaultHttpRetryHandler retryHandler = new(new HttpRetryConfig(), this._logger)
+            {
+                InnerHandler = new HttpClientHandler() { CheckCertificateRevocationList = true }
+            };
+            using HttpClient importHttpClient = new(retryHandler, false);
+            importHttpClient.DefaultRequestHeaders.Add("User-Agent", "Microsoft.CopilotChat");
+            await planner.Kernel.ImportChatGptPluginSkillFromUrlAsync("KlarnaShoppingSkill", new Uri("https://www.klarna.com/.well-known/ai-plugin.json"),
+                importHttpClient);
+        }
 
         // GitHub
         if (!string.IsNullOrWhiteSpace(openApiSkillsAuthHeaders.GithubAuthentication))
@@ -169,14 +182,26 @@ public class SemanticKernelController : ControllerBase, IDisposable
                 authCallback: authenticationProvider.AuthenticateRequestAsync);
         }
 
+        // Jira
+        if (openApiSkillsAuthHeaders.JiraAuthentication != null)
+        {
+            this._logger.LogInformation("Registering Jira Skill");
+            var authenticationProvider = new BasicAuthenticationProvider(() => { return Task.FromResult(openApiSkillsAuthHeaders.JiraAuthentication); });
+            var hasServerUrlOverride = variables.Get("jira-server-url", out string serverUrlOverride);
+
+            // TODO: Import Jira OpenAPI Skill
+        }
+
         // Microsoft Graph
         if (!string.IsNullOrWhiteSpace(openApiSkillsAuthHeaders.GraphAuthentication))
         {
             this._logger.LogInformation("Enabling Microsoft Graph skill(s).");
             BearerAuthenticationProvider authenticationProvider = new(() => Task.FromResult(openApiSkillsAuthHeaders.GraphAuthentication));
             GraphServiceClient graphServiceClient = this.CreateGraphServiceClient(authenticationProvider.AuthenticateRequestAsync);
-            TaskListSkill todoSkill = new(new MicrosoftToDoConnector(graphServiceClient));
-            planner.Kernel.ImportSkill(todoSkill, "todo");
+
+            planner.Kernel.ImportSkill(new TaskListSkill(new MicrosoftToDoConnector(graphServiceClient)), "todo");
+            planner.Kernel.ImportSkill(new CalendarSkill(new OutlookCalendarConnector(graphServiceClient)), "calendar");
+            planner.Kernel.ImportSkill(new EmailSkill(new OutlookMailConnector(graphServiceClient)), "email");
         }
     }
 
