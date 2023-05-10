@@ -1,0 +1,7 @@
+Given an [INPUT] company name, generate a 1 page company policy document for use in a HR Training Lesson. End response with [END OUTPUT].
+
+[INPUT]
+{{$input}}
+[END INPUT]
+
+[OUTPUT]

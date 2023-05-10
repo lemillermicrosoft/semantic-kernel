@@ -13,6 +13,8 @@ export const enum Plugins {
     Jira = 'Jira',
     GitHub = 'GitHub',
     Klarna = 'Klarna Shopping',
+    HuggingFace = 'Hugging Face',
+    VisionStudio = 'Azure Cognitive Service for Vision',
 }
 
 export const enum AuthHeaderTags {
@@ -20,6 +22,8 @@ export const enum AuthHeaderTags {
     Jira = 'jira',
     GitHub = 'github',
     Klarna = 'klarna',
+    HuggingFace = 'huggingface',
+    VisionStudio = 'visionstudio',
 }
 
 export type PluginAuthRequirements = {
@@ -61,6 +65,8 @@ export interface PluginsState {
     Jira: Plugin;
     GitHub: Plugin;
     Klarna: Plugin;
+    HuggingFace: Plugin;
+    VisionStudio: Plugin;
 }
 
 export const initialState: PluginsState = {
@@ -125,12 +131,49 @@ export const initialState: PluginsState = {
     Klarna: {
         name: Plugins.Klarna,
         publisher: 'Klarna',
-        description:
-            'Search and compare prices from thousands of online shops.',
+        description: 'Search and compare prices from thousands of online shops.',
         enabled: false,
-        authRequirements: { },
+        authRequirements: {},
         icon: KlarnaIcon,
         headerTag: AuthHeaderTags.Klarna,
+    },
+    HuggingFace: {
+        name: Plugins.HuggingFace,
+        publisher: 'Hugging Face',
+        description: 'Use your Hugging Face account to access your personal models and services.',
+        enabled: false,
+        authRequirements: {
+            username: true,
+            personalAccessToken: true,
+            helpLink: 'https://huggingface.co/docs/hub/security-tokens',
+        },
+        icon: 'https://huggingface.co/front/assets/huggingface_logo.svg',
+        headerTag: AuthHeaderTags.HuggingFace,
+        apiProperties: {
+            'server-url': {
+                required: true,
+                helpLink: '',
+            },
+        },
+    },
+    VisionStudio: {
+        name: Plugins.VisionStudio,
+        publisher: 'Microsoft',
+        description: 'Use your custom vision model from Vision Studio.',
+        enabled: false,
+        authRequirements: {
+            username: true,
+            personalAccessToken: true,
+            helpLink: '',
+        },
+        icon: 'https://portal.vision.cognitive.azure.com/dist/static/media/vision-header.f3f21b26.svg',
+        headerTag: AuthHeaderTags.VisionStudio,
+        apiProperties: {
+            'server-url': {
+                required: true,
+                helpLink: '',
+            },
+        },
     },
 };
 
