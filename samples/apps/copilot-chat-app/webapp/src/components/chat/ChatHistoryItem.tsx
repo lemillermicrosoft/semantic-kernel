@@ -4,15 +4,18 @@ import { Label, makeStyles, mergeClasses, Persona, shorthands, tokens } from '@f
 import React from 'react';
 import { AuthorRoles, IChatMessage } from '../../libs/models/ChatMessage';
 import { SKBotAudienceMember } from '../../libs/semantic-kernel/bot-agent/models/SKBotAudienceMember';
+import { parsePlan } from '../../libs/semantic-kernel/sk-utilities';
 import { useChat } from '../../libs/useChat';
 import { useAppSelector } from '../../redux/app/hooks';
 import { RootState } from '../../redux/app/store';
+import { PlanViewer } from './plan-viewer/PlanViewer';
 
 const useClasses = makeStyles({
     root: {
         display: 'flex',
         flexDirection: 'row',
         maxWidth: '75%',
+        ...shorthands.borderRadius(tokens.borderRadiusMedium),
     },
     debug: {
         position: 'absolute',
@@ -57,6 +60,12 @@ const useClasses = makeStyles({
 interface ChatHistoryItemProps {
     audience: SKBotAudienceMember[];
     message: IChatMessage;
+    getResponse: (
+        value: string,
+        approvedPlanJson?: string,
+        planUserIntent?: string,
+        userCancelledPlan?: boolean,
+    ) => Promise<void>;
 }
 
 const createCommandLink = (command: string) => {
@@ -64,21 +73,38 @@ const createCommandLink = (command: string) => {
     return `<span style="text-decoration: underline; cursor: pointer" data-command="${escapedCommand}" onclick="(function(){ let chatInput = document.getElementById('chat-input'); chatInput.value = decodeURIComponent('${escapedCommand}'); chatInput.focus(); return false; })();return false;">${command}</span>`;
 };
 
-export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = (props) => {
-    const { message } = props;
+export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = ({ message, getResponse }) => {
     const chat = useChat();
     const classes = useClasses();
     const { conversations, selectedId } = useAppSelector((state: RootState) => state.conversations);
 
-    const content = message.content
-        .trim()
-        .replace(/[\u00A0-\u9999<>&]/g, function (i: string) {
-            return `&#${i.charCodeAt(0)};`;
-        })
-        .replace(/^sk:\/\/.*$/gm, (match: string) => createCommandLink(match))
-        .replace(/^!sk:.*$/gm, (match: string) => createCommandLink(match))
-        .replace(/\n/g, '<br />')
-        .replace(/ {2}/g, '&nbsp;&nbsp;');
+    const plan = parsePlan(message.content);
+    const isPlan = plan !== null;
+
+    // Initializing Plan Action Handlers here so we don't have to drill down data components won't use otherwise
+    const onPlanApproval = async () => {
+        // Invoke plan
+        // Extract plan from bot response
+        const proposedPlan = JSON.parse(message.content).proposedPlan;
+        await getResponse('Yes, proceed', JSON.stringify(proposedPlan), plan?.userIntent);
+    };
+
+    const onPlanCancel = async () => {
+        // Bail out of plan
+        await getResponse('No, cancel', undefined, undefined, true);
+    };
+
+    const content = !isPlan
+        ? (message.content as string)
+              .trim()
+              .replace(/[\u00A0-\u9999<>&]/g, function (i: string) {
+                  return `&#${i.charCodeAt(0)};`;
+              })
+              .replace(/^sk:\/\/.*$/gm, (match: string) => createCommandLink(match))
+              .replace(/^!sk:.*$/gm, (match: string) => createCommandLink(match))
+              .replace(/\n/g, '<br />')
+              .replace(/ {2}/g, '&nbsp;&nbsp;')
+        : '';
 
     const date = new Date(message.timestamp);
     let time = date.toLocaleTimeString([], {
@@ -117,13 +143,23 @@ export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = (props) => {
                             {time}
                         </Label>
                     </div>
-                    <div className={classes.content}>
-                        {content.startsWith('data:image') ? (
-                            <img className={classes.image} src={content} alt="TBA" />
-                        ) : (
-                            <span>{content}</span>
-                        )}
-                    </div>
+                    {!isPlan && (
+                        <div className={classes.content}>
+                            {content.startsWith('data:image') ? (
+                                <img className={classes.image} src={content} alt="TBA" />
+                            ) : (
+                                <span>{content}</span>
+                            )}
+                        </div>
+                    )}
+                    {isPlan && (
+                        <PlanViewer
+                            plan={plan}
+                            actionRequired={message.planApprovalRequired}
+                            onSubmit={onPlanApproval}
+                            onCancel={onPlanCancel}
+                        />
+                    )}
                 </div>
             </div>
         </>
