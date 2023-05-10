@@ -1,49 +1,6 @@
 {
   "version": "2.0.0",
   "tasks": [
-    //semantic-kernel/samples/apps/copilot-chat-app/webapi
-    // build
-    {
-      "label": "build (CopilotChatApi)",
-      "command": "dotnet",
-      "type": "process",
-      "args": [
-        "build",
-        "${workspaceFolder}/samples/apps/copilot-chat-app/webapi/CopilotChatApi.csproj",
-        "/property:GenerateFullPaths=true",
-        "/consoleloggerparameters:NoSummary",
-        "/property:DebugType=portable"
-      ],
-      "problemMatcher": "$msCompile",
-      "group": "build"
-    },
-    // run
-    {
-      "label": "run (CopilotChatApi)",
-      "command": "dotnet",
-      "type": "process",
-      "args": [
-        "run",
-        "--project",
-        "${workspaceFolder}/samples/apps/copilot-chat-app/webapi/CopilotChatApi.csproj"
-      ],
-      "problemMatcher": "$msCompile",
-      "group": "test"
-    },
-    // watch
-    {
-      "label": "watch (CopilotChatApi)",
-      "command": "dotnet",
-      "type": "process",
-      "args": [
-        "watch",
-        "run",
-        "--project",
-        "${workspaceFolder}/samples/apps/copilot-chat-app/webapi/CopilotChatApi.csproj"
-      ],
-      "problemMatcher": "$msCompile",
-      "group": "test"
-    },
     {
       "label": "install (CopilotChatApp)",
       "type": "shell",
