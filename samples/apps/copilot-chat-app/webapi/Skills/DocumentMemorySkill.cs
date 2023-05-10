@@ -64,10 +64,10 @@ public class DocumentMemorySkill
         foreach (var documentCollection in documentCollections)
         {
             var results = context.Memory.SearchAsync(
-                documentCollection,
-                query,
-                limit: 100,
-                minRelevanceScore: 0.5).ToEnumerable()
+                    documentCollection,
+                    query,
+                    limit: 100,
+                    minRelevanceScore: 0.5).ToEnumerable()
                 .ToList(); //this._promptSettings.DocumentMemoryMinRelevance);
             foreach (var memory in results)
             {

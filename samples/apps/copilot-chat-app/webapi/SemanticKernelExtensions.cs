@@ -56,12 +56,11 @@ internal static class SemanticKernelExtensions
                         port: config.Qdrant.Port,
                         vectorSize: config.Qdrant.VectorSize,
                         logger: serviceProvider.GetRequiredService<ILogger<QdrantMemoryStore>>());
-
+                case MemoriesStoreOptions.MemoriesStoreType.AzureCognitiveSearch:
                 default:
                     throw new InvalidOperationException($"Invalid 'MemoriesStore' type '{config.Type}'.");
             }
         });
-
 
         // Add the semantic memory with backing memory store.
         services.AddScoped<ISemanticTextMemory>(CreateSemanticTextMemory);
@@ -95,7 +94,10 @@ internal static class SemanticKernelExtensions
                         .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
                         .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
                         .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig()
-                        { MaxRetryCount = 5, UseExponentialBackoff = true }),
+                        {
+                            MaxRetryCount = 5,
+                            UseExponentialBackoff = true
+                        }),
                     sp.GetRequiredService<ILogger<ChatBot>>());
 
                 return new ChatBot(chatBotKernel);
@@ -114,7 +116,10 @@ internal static class SemanticKernelExtensions
                         .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
                         .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
                         .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig()
-                        { MaxRetryCount = 5, UseExponentialBackoff = true }),
+                        {
+                            MaxRetryCount = 5,
+                            UseExponentialBackoff = true
+                        }),
                     sp.GetRequiredService<ILogger<LearningSkill>>());
 
                 return new LearningSkill(learningSkillKernel);
@@ -133,7 +138,9 @@ internal static class SemanticKernelExtensions
                         .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
                         .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
                         .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig()
-                        { MaxRetryCount = 5, UseExponentialBackoff = true }),
+                        {
+                            MaxRetryCount = 5, UseExponentialBackoff = true
+                        }),
                     sp.GetRequiredService<ILogger<StudySkill>>());
 
                 return new StudySkill(k);
@@ -171,8 +178,8 @@ internal static class SemanticKernelExtensions
                 var store = serviceProvider.GetRequiredService<IMemoryStore>();
                 return new SemanticTextMemory(
                     store,
-                        serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>().Get(AIServiceOptions.EmbeddingPropertyName)
-                            .ToTextEmbeddingsService(logger: serviceProvider.GetRequiredService<ILogger<AIServiceOptions>>()));
+                    serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>().Get(AIServiceOptions.EmbeddingPropertyName)
+                        .ToTextEmbeddingsService(logger: serviceProvider.GetRequiredService<ILogger<AIServiceOptions>>()));
             }
 
             case MemoriesStoreOptions.MemoriesStoreType.Qdrant:

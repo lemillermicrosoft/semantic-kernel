@@ -147,13 +147,17 @@ public class SemanticKernelController : ControllerBase, IDisposable
                 ? (ActionResult<AskResult>)this.BadRequest(string.Concat(aiException.Message, " - Detail: " + aiException.Detail))
                 : (ActionResult<AskResult>)this.BadRequest(result.LastErrorDescription)
             : (global::Microsoft.AspNetCore.Mvc.ActionResult<global::SemanticKernel.Service.Model.AskResult>)this.Ok(new AskResult
-            { Value = result.Result, Variables = result.Variables.Select(v => new KeyValuePair<string, string>(v.Key, v.Value)) });
+            {
+                Value = result.Result,
+                Variables = result.Variables.Select(v => new KeyValuePair<string, string>(v.Key, v.Value))
+            });
     }
 
     /// <summary>
     /// Register skills with the planner's kernel.
     /// </summary>
-    private async Task RegisterPlannerSkillsAsync(CopilotChatPlanner planner, PlannerOptions options, OpenApiSkillsAuthHeaders openApiSkillsAuthHeaders, ContextVariables variables)
+    private async Task RegisterPlannerSkillsAsync(CopilotChatPlanner planner, PlannerOptions options, OpenApiSkillsAuthHeaders openApiSkillsAuthHeaders,
+        ContextVariables variables)
     {
         // Register authenticated skills with the planner's kernel only if the request includes an auth header for the skill.
 
