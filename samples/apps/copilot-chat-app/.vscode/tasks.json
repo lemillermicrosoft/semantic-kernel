@@ -1,0 +1,100 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "install (CopilotChatApp)",
+            "type": "shell",
+            "group": "build",
+            "command": "yarn",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "showReuseMessage": false,
+                "panel": "shared",
+                "group": "buildTasks"
+            },
+            "options": {
+                "cwd": "${workspaceFolder}/webapp"
+            },
+            "problemMatcher": []
+        },
+        {
+            // build using yarn
+            "label": "build (CopilotChatApp)",
+            "type": "shell",
+            "group": "build",
+            "command": "yarn build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "panel": "new",
+                "group": "buildTasks"
+            },
+            "options": {
+                "cwd": "${workspaceFolder}/webapp"
+            },
+            "problemMatcher": []
+        },
+        {
+            // yarn start
+            "label": "start (CopilotChatApp)",
+            "type": "shell",
+            "group": "test",
+            "command": "yarn start",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new",
+                "group": "copilot"
+            },
+            "options": {
+                "cwd": "${workspaceFolder}/webapp"
+            }
+        },
+        //semantic-kernel/webapi
+        // build
+        {
+            "label": "build (CopilotChatApi)",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/webapi/CopilotChatApi.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary",
+                "/property:DebugType=portable"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": "build"
+        },
+        // run
+        {
+            "label": "run (CopilotChatApi)",
+            "command": "dotnet",
+            "type": "process",
+            "args": ["run", "--project", "${workspaceFolder}/webapi/CopilotChatApi.csproj"],
+            "problemMatcher": "$msCompile",
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "group": "copilot"
+            }
+        },
+        // watch
+        {
+            "label": "watch (CopilotChatApi)",
+            "command": "dotnet",
+            "type": "process",
+            "args": ["watch", "run", "--project", "${workspaceFolder}/webapi/CopilotChatApi.csproj"],
+            "problemMatcher": "$msCompile",
+            "group": "test"
+        },
+        {
+            "label": "Run - Copilot Chat",
+            "detail": "Run all copilot chat components",
+            "group": "test",
+            "dependsOn": ["run (CopilotChatApi)", "start (CopilotChatApp)"],
+            "dependsOrder": "parallel"
+        }
+    ]
+}

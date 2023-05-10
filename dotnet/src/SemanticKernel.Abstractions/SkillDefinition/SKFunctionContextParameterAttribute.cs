@@ -16,6 +16,7 @@ namespace Microsoft.SemanticKernel.SkillDefinition;
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
 public sealed class SKFunctionContextParameterAttribute : Attribute
 {
+    // TODO - Consructor like SKFunctioNAttribute? Or update the syntax above.
     private string _name = "";
 
     /// <summary>
@@ -23,7 +24,7 @@ public sealed class SKFunctionContextParameterAttribute : Attribute
     /// </summary>
     public string Name
     {
-        get { return this._name; }
+        get => this._name;
         set
         {
             Verify.ValidFunctionParamName(value);
@@ -47,16 +48,13 @@ public sealed class SKFunctionContextParameterAttribute : Attribute
     /// <returns>Parameter view.</returns>
     public ParameterView ToParameterView()
     {
-        if (string.IsNullOrWhiteSpace(this.Name))
-        {
-            throw new InvalidOperationException($"The {nameof(SKFunctionContextParameterAttribute)}'s Name must be non-null and not composed entirely of whitespace.");
-        }
-
-        return new ParameterView
-        {
-            Name = this.Name,
-            Description = this.Description,
-            DefaultValue = this.DefaultValue
-        };
+        return string.IsNullOrWhiteSpace(this.Name)
+            ? throw new InvalidOperationException($"The {nameof(SKFunctionContextParameterAttribute)}'s Name must be non-null and not composed entirely of whitespace.")
+            : new ParameterView
+            {
+                Name = this.Name,
+                Description = this.Description,
+                DefaultValue = this.DefaultValue
+            };
     }
 }

@@ -1,0 +1,7 @@
+Create a quiz with questions on the topic(s) in [INPUT].
+
+[INPUT]
+{{$input}}
+[END INPUT]
+
+Quiz:

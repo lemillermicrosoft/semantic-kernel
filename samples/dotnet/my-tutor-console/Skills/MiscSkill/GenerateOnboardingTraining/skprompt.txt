@@ -1,0 +1,11 @@
+Given an [INPUT] company and [TEAM NAME] generate an onboarding document to use in a training lesson. End response with [END OUTPUT].
+
+[INPUT]
+{{$input}}
+[END INPUT]
+
+[TEAM NAME]
+{{$team_name}}
+[END TEAM NAME]
+
+[OUTPUT]

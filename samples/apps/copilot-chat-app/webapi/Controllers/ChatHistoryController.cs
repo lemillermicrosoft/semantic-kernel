@@ -60,6 +60,7 @@ public class ChatHistoryController : ControllerBase
         var newChat = new ChatSession(userId, title);
         await this._chatSessionRepository.CreateAsync(newChat);
 
+        // TODO Load a different message if there is a lesson plan?
         var initialBotMessage = this._promptSettings.InitialBotMessage;
         await this.SaveResponseAsync(initialBotMessage, newChat.Id);
 
@@ -80,12 +81,7 @@ public class ChatHistoryController : ControllerBase
     public async Task<IActionResult> GetChatSessionByIdAsync(Guid chatId)
     {
         var chat = await this._chatSessionRepository.FindByIdAsync(chatId.ToString());
-        if (chat == null)
-        {
-            return this.NotFound($"Chat of id {chatId} not found.");
-        }
-
-        return this.Ok(chat);
+        return chat == null ? this.NotFound($"Chat of id {chatId} not found.") : this.Ok(chat);
     }
 
     /// <summary>
