@@ -12,12 +12,14 @@ export const parsePlan = (response: string): IPlan | null => {
         const parsedResponse = JSON.parse(response);
         const plan = parsedResponse;
 
+        const levelDepth = 1; // min is 0
+
         return {
             description: plan.description.trim(),
             stepInputs: extractPlanInputs(plan),
             skill: plan.skill_name.replace('Microsoft.SemanticKernel.Planning.Plan', ''),
             function: plan.name.replace('Microsoft.SemanticKernel.Planning.Plan', ''),
-            steps: extractPlanSteps(plan),
+            steps: extractPlanSteps(plan, levelDepth),
         };
     }
     return null;
@@ -54,7 +56,7 @@ const extractPlanInputs = (plan: any) => {
     return planInputs;
 };
 
-const extractPlanSteps = (plan: any) => {
+const extractPlanSteps = (plan: any, levelDepth: number) => {
     const planSteps = plan.steps;
     console.log(`Extracting n=${planSteps.length} steps from plan`);
     return planSteps.map((step: any) => {
@@ -63,7 +65,7 @@ const extractPlanSteps = (plan: any) => {
             function: step['name'].replace('Microsoft.SemanticKernel.Planning.Plan', ''),
             description: step['description'],
             stepInputs: extractPlanInputs(step),
-            steps: extractPlanSteps(step),
+            steps: levelDepth > 0 ? extractPlanSteps(step, levelDepth - 1) : [],
         };
     });
 };
