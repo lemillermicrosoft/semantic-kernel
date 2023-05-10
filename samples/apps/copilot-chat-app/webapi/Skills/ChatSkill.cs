@@ -376,6 +376,7 @@ public class ChatSkill
         {
             context.Variables.Set("action", nextAction);
         }
+
         // TODO I think this can be cut.
         if (chatContext.Variables.Get("continuePlan", out var continuePlanString))
         {

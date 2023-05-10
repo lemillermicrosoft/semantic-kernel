@@ -71,7 +71,14 @@ public class LearningSkill
 
                 var queryDocumentsResult = await queryDocuments.InvokeAsync(queryDocumentsContext);
                 lessonContext = queryDocumentsResult.Result.ToString();
-                Console.WriteLine($"*understands* I found {lessonContext}");
+                if (string.IsNullOrEmpty(lessonContext))
+                {
+                    Console.WriteLine($"*understands* I didn't find any documents about {lessonName}");
+                }
+                else
+                {
+                    Console.WriteLine($"*understands* I found {lessonContext}");
+                }
             }
             else
             {
@@ -170,6 +177,7 @@ public class LearningSkill
                     // continue with next step in plan.
                     context.Variables.Set("continuePlan", null);
                 }
+
                 Console.WriteLine($"Lesson state: {result}");
                 context.Variables.Update(result);
             }
