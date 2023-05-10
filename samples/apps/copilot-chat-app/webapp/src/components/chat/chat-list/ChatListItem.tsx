@@ -4,6 +4,7 @@ import { FC } from 'react';
 import { useAppDispatch } from '../../../redux/app/hooks';
 import { setSelectedConversation } from '../../../redux/features/conversations/conversationsSlice';
 import { ChatBadge } from '../../../redux/features/conversations/ChatState';
+import { ChatSessionMenu } from './ChatSessionMenu';
 
 const useClasses = makeStyles({
     root: {
@@ -119,6 +120,7 @@ export const ChatListItem: FC<IChatListItemProps> = ({
                     </div>
                 )}
             </div>
+            <ChatSessionMenu chatId={id} chatTitle={header} />
         </div>
     );
 };
