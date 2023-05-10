@@ -1,6 +1,8 @@
 import { Avatar, makeStyles, shorthands, Text } from '@fluentui/react-components';
+import { ChatWarning16Regular, CommentLink16Regular } from '@fluentui/react-icons';
 import { FC } from 'react';
 import { useAppDispatch } from '../../../redux/app/hooks';
+import { ChatBadge } from '../../../redux/features/conversations/ChatState';
 import { setSelectedConversation } from '../../../redux/features/conversations/conversationsSlice';
 
 const useClasses = makeStyles({
@@ -14,7 +16,7 @@ const useClasses = makeStyles({
     },
     avatar: {
         flexShrink: '0',
-        minWidth: '3.2rem'
+        minWidth: '3.2rem',
     },
     body: {
         display: 'flex',
@@ -38,13 +40,13 @@ const useClasses = makeStyles({
         maxWidth: '6rem',
         marginTop: '0',
         marginBottom: 'auto',
-        marginLeft: '0.8rem'
+        marginLeft: '0.8rem',
     },
     title: {
         ...shorthands.overflow('hidden'),
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
-        minWidth: '4rem'
+        minWidth: '4rem',
     },
     preview: {
         ...shorthands.overflow('hidden'),
@@ -52,8 +54,8 @@ const useClasses = makeStyles({
         lineHeight: '16px',
         display: '-webkit-box',
         WebkitLineClamp: 2,
-        WebkitBoxOrient: 'vertical'
-    }
+        WebkitBoxOrient: 'vertical',
+    },
 });
 
 interface IChatListItemProps {
@@ -62,10 +64,27 @@ interface IChatListItemProps {
     timestamp: string;
     preview: string;
     botProfilePicture: string;
+    botBadge?: ChatBadge;
 }
 
+export const getChatBadgeComponent = (badge: ChatBadge) => {
+    switch (badge) {
+        case ChatBadge.Warning:
+            return <ChatWarning16Regular />;
+        case ChatBadge.External:
+            return <CommentLink16Regular />;
+    }
+};
+
 // TODO: populate Avatar
-export const ChatListItem: FC<IChatListItemProps> = ({ id, header, timestamp, preview, botProfilePicture }) => {
+export const ChatListItem: FC<IChatListItemProps> = ({
+    id,
+    header,
+    timestamp,
+    preview,
+    botProfilePicture,
+    botBadge,
+}) => {
     const classes = useClasses();
     const dispatch = useAppDispatch();
 
@@ -75,7 +94,10 @@ export const ChatListItem: FC<IChatListItemProps> = ({ id, header, timestamp, pr
 
     return (
         <div className={classes.root} onClick={onClick}>
-            <Avatar image={{ src: botProfilePicture }}/>
+            <Avatar
+                image={{ src: botProfilePicture }}
+                {...(botBadge ? { badge: { icon: getChatBadgeComponent(botBadge!) } } : {})}
+            />
             <div className={classes.body}>
                 <div className={classes.header}>
                     <Text className={classes.title} style={{ color: 'var(--colorNeutralForeground1)' }}>

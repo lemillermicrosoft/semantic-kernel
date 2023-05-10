@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "type": "completion",
+  "description": "Create a list of topics for tutoring an individual a given course, goal, or skill.",
+  "completion": {
+    "max_tokens": 256,
+    "temperature": 0,
+    "top_p": 0,
+    "presence_penalty": 0,
+    "frequency_penalty": 0
+  },
+  "input": {
+    "parameters": [
+      {
+        "name": "input",
+        "description": "The course to create lesson topics for.",
+        "defaultValue": ""
+      },
+      {
+        "name": "context",
+        "description": "Context about the tutee to create lesson topics for.",
+        "defaultValue": ""
+      }
+    ]
+  },
+  "default_backends": []
+}

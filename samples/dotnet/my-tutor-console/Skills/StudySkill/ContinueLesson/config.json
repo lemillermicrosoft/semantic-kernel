@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "type": "completion",
+  "description": "A function for continuing a lesson or essay on a given topic.",
+  "completion": {
+    "max_tokens": 512,
+    "temperature": 0,
+    "top_p": 0,
+    "presence_penalty": 0,
+    "frequency_penalty": 0,
+    "stop_sequences": ["[END MESSAGE]"]
+  },
+  "input": {
+    "parameters": [
+      {
+        "name": "topic",
+        "description": "The topic of the tutoring conversation.",
+        "defaultValue": ""
+      },
+      {
+        "name": "context",
+        "description": "Context about the tutee.",
+        "defaultValue": ""
+      },
+      {
+        "name": "course",
+        "description": "The course that the topic is for.",
+        "defaultValue": ""
+      },
+      {
+        "name": "chat_history",
+        "description": "The tutoring conversation so far.",
+        "defaultValue": ""
+      }
+    ]
+  },
+  "default_backends": []
+}
