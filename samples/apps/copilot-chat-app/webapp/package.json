@@ -23,6 +23,7 @@
     "@fluentui/react-icons": "^2.0.193",
     "@fluentui/react-northstar": "^0.66.4",
     "@reduxjs/toolkit": "^1.9.1",
+    "adaptivecards-react": "^1.1.1",
     "buffer": "^6.0.3",
     "debug": "^4.3.4",
     "microsoft-cognitiveservices-speech-sdk": "^1.27.0",
@@ -30,7 +31,8 @@
     "react-dom": "^18.2.0",
     "react-redux": "^8.0.5",
     "react-scripts": "^5.0.1",
-    "strict-event-emitter-types": "^2.0.0"
+    "strict-event-emitter-types": "^2.0.0",
+    "swiper": "^9.3.0"
   },
   "devDependencies": {
     "@types/debug": "^4.1.7",

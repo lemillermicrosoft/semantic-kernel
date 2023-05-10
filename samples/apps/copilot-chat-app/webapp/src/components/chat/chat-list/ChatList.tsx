@@ -75,6 +75,7 @@ export const ChatList: FC = () => {
                                         messages.length > 0 ? messages[lastMessage].content : 'Click to start the chat'
                                     }
                                     botProfilePicture={convo.botProfilePicture}
+                                    botBadge={convo.botBadge}
                                 />
                             </TreeItem>
                         );

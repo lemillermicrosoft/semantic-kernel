@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.AI.ImageGeneration;
 using Microsoft.SemanticKernel.AI.TextCompletion;
 using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.Orchestration;
@@ -338,6 +339,30 @@ public class ChatSkill
         }
 
         chatContext.Variables.Set("userIntent", userIntent);
+
+        // HACK. maybe we should use planner...
+        if (!string.IsNullOrEmpty(userIntent) && userIntent.Contains("image", StringComparison.OrdinalIgnoreCase))
+        {
+            IImageGeneration stableDiffusion = this._kernel.GetService<IImageGeneration>();
+            var base64Image = await stableDiffusion.GenerateImageAsync(userIntent, 256, 256);
+            chatContext.Variables.Update(base64Image);
+
+            // Save this response to chat history repository
+            try
+            {
+                await this.SaveNewResponseAsync(base64Image, chatId);
+            }
+            catch (Exception ex) when (!ex.IsCriticalException())
+            {
+                context.Log.LogError("Unable to save new response: {0}", ex.Message);
+                context.Fail($"Unable to save new response: {ex.Message}", ex);
+                return context;
+            }
+
+            // skip text completion, memory update, ... etc when the ask is to generate image.
+            return chatContext;
+        }
+
         // Update remaining token count
         remainingToken -= Utilities.TokenCount(userIntent);
         chatContext.Variables.Set("contextTokenLimit", contextTokenLimit.ToString(new NumberFormatInfo()));

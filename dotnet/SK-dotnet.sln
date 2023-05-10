@@ -86,6 +86,7 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Connectors.Memory.AzureCognitiveSearch", "src\Connectors\Connectors.Memory.AzureCognitiveSearch\Connectors.Memory.AzureCognitiveSearch.csproj", "{EC3BB6D1-2FB2-4702-84C6-F791DE533ED4}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Skills.Grpc", "src\Skills\Skills.Grpc\Skills.Grpc.csproj", "{E52F805C-794A-4CA9-B684-DFF358B18820}"
+EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "my-tutor-console", "..\samples\dotnet\my-tutor-console\my-tutor-console.csproj", "{73AB3CF4-ECB5-4393-81BC-6821F9B58BF9}"
 EndProject
 Global

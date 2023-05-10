@@ -3,7 +3,7 @@ import { Constants } from '../Constants';
 import { useAppDispatch, useAppSelector } from '../redux/app/hooks';
 import { RootState } from '../redux/app/store';
 import { addAlert } from '../redux/features/app/appSlice';
-import { ChatState } from '../redux/features/conversations/ChatState';
+import { ChatBadge, ChatState } from '../redux/features/conversations/ChatState';
 import { Conversations } from '../redux/features/conversations/ConversationsState';
 import {
     addConversation,
@@ -23,6 +23,12 @@ import { useSemanticKernel } from './semantic-kernel/useSemanticKernel';
 import { BotService } from './services/BotService';
 import { ChatService } from './services/ChatService';
 
+import botIcon1 from '../assets/bot-icons/bot-icon-1.png';
+import botIcon2 from '../assets/bot-icons/bot-icon-2.png';
+import botIcon3 from '../assets/bot-icons/bot-icon-3.png';
+import botIcon4 from '../assets/bot-icons/bot-icon-4.png';
+import botIcon5 from '../assets/bot-icons/bot-icon-5.png';
+
 export const useChat = () => {
     const dispatch = useAppDispatch();
     const { instance, accounts } = useMsal();
@@ -34,13 +40,7 @@ export const useChat = () => {
     const botService = new BotService(process.env.REACT_APP_BACKEND_URI as string);
     const chatService = new ChatService(process.env.REACT_APP_BACKEND_URI as string);
 
-    const botProfilePictures: string[] = [
-        '/assets/bot-icon-1.png',
-        '/assets/bot-icon-2.png',
-        '/assets/bot-icon-3.png',
-        '/assets/bot-icon-4.png',
-        '/assets/bot-icon-5.png',
-    ];
+    const botProfilePictures: string[] = [botIcon1, botIcon2, botIcon3, botIcon4, botIcon5];
 
     const loggedInUser: ChatUser = {
         id: account?.homeAccountId || '',
@@ -81,7 +81,7 @@ export const useChat = () => {
                         messages: chatMessages,
                         audience: [loggedInUser],
                         botTypingTimestamp: 0,
-                        botProfilePicture: botProfilePictures.at(botProfilePictureIndex) ?? '/assets/bot-icon-1.png',
+                        botProfilePicture: botProfilePictures.at(botProfilePictureIndex) ?? botIcon1,
                     };
 
                     dispatch(incrementBotProfilePictureIndex());
@@ -175,7 +175,14 @@ export const useChat = () => {
                         audience: [loggedInUser],
                         messages: orderedMessages,
                         botTypingTimestamp: 0,
-                        botProfilePicture: botProfilePictures[botProfilePictureIndex],
+                        botProfilePicture: botProfilePictures[Object.keys(conversations).length % 5],
+                        // HACK
+                        botBadge:
+                            Object.keys(conversations).length === 0
+                                ? ChatBadge.External
+                                : Object.keys(conversations).length === 1
+                                ? ChatBadge.Warning
+                                : undefined,
                     };
 
                     dispatch(incrementBotProfilePictureIndex());
