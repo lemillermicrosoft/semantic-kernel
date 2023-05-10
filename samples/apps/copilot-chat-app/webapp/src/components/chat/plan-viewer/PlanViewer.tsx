@@ -1,6 +1,6 @@
 import { Button, Text, makeStyles, shorthands } from '@fluentui/react-components';
 import { useState } from 'react';
-import { IPlan, IPlanStep } from '../../../libs/models/Plan';
+import { IPlan } from '../../../libs/models/Plan';
 import { PlanStepCard } from './PlanStepCard';
 
 const useClasses = makeStyles({
@@ -46,9 +46,7 @@ export const PlanViewer: React.FC<PlanViewerProps> = ({ plan, actionRequired, on
         <div className={classes.container}>
             <Text>Based on the request, Copilot Chat will run the following steps:</Text>
             <Text weight="bold">{`Goal: ${plan.description}`}</Text>
-            {plan.steps.map((step: IPlanStep) => (
-                <PlanStepCard index={stepCount++} step={step} />
-            ))}
+            {plan.steps && plan.steps.map((step: IPlan) => <PlanStepCard index={stepCount++} step={step} />)}
             {showButtons && (
                 <>
                     Would you like to proceed with the plan?

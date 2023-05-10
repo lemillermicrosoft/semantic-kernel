@@ -1,5 +1,5 @@
 import { Badge, Body1, Card, CardHeader, makeStyles, shorthands, Text, tokens } from '@fluentui/react-components';
-import { IPlanInput, IPlanStep } from '../../../libs/models/Plan';
+import { IPlan, IPlanInput } from '../../../libs/models/Plan';
 import { CopilotChatTokens } from '../../../styles';
 
 const useClasses = makeStyles({
@@ -45,11 +45,12 @@ const useClasses = makeStyles({
 
 interface PlanStepCardProps {
     index: number;
-    step: IPlanStep;
+    step: IPlan;
 }
 
 export const PlanStepCard: React.FC<PlanStepCardProps> = ({ index, step }) => {
     const classes = useClasses();
+    var stepCount = 1;
 
     const numbersAsStrings = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
     const stepNumber = numbersAsStrings[index];
@@ -62,7 +63,11 @@ export const PlanStepCard: React.FC<PlanStepCardProps> = ({ index, step }) => {
                     <CardHeader
                         header={
                             <Body1>
-                                <b className={classes.header}>Step {stepNumber} •</b> {step.skill}.{step.function}
+                                <b className={classes.header}>
+                                    Step {stepNumber}
+                                    {(step.skill || step.function) && ' •'}
+                                </b>
+                                {step.skill || step.function ? ` ${step.skill}.${step.function}` : ''}
                                 <br />
                             </Body1>
                         }
@@ -73,7 +78,7 @@ export const PlanStepCard: React.FC<PlanStepCardProps> = ({ index, step }) => {
                         </div>
                     )}
                     <div className={classes.inputs}>
-                        <Text weight="semibold">Inputs: </Text>
+                        {step.stepInputs.length > 0 && <Text weight="semibold">Inputs: </Text>}
                         {step.stepInputs.map((input: IPlanInput) => {
                             return (
                                 <Badge color="informative" shape="rounded" appearance="tint">
@@ -82,6 +87,7 @@ export const PlanStepCard: React.FC<PlanStepCardProps> = ({ index, step }) => {
                             );
                         })}
                     </div>
+                    {step.steps && step.steps.map((s: IPlan) => <PlanStepCard index={stepCount++} step={s} />)}
                 </div>
             </div>
         </Card>

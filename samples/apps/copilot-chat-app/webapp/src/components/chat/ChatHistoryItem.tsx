@@ -86,7 +86,7 @@ export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = ({ message, getRe
         // Invoke plan
         // Extract plan from bot response
         const proposedPlan = JSON.parse(message.content).proposedPlan;
-        await getResponse('Yes, proceed', JSON.stringify(proposedPlan), plan?.userIntent);
+        await getResponse('Yes, proceed', JSON.stringify(proposedPlan), plan?.description);
     };
 
     const onPlanCancel = async () => {
