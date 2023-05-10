@@ -730,12 +730,9 @@ public class ChatSkill
 
     private Type GetJiraSkillResponseType(ref JsonDocument document, ref string lastSkillFunctionInvoked)
     {
-        if (lastSkillFunctionInvoked == "GetIssue")
-        {
-            return document.RootElement.ValueKind == JsonValueKind.Array ? typeof(IssueResponse[]) : typeof(IssueResponse);
-        }
-
-        return typeof(IssueResponse);
+        return lastSkillFunctionInvoked == "GetIssue"
+            ? document.RootElement.ValueKind == JsonValueKind.Array ? typeof(IssueResponse[]) : typeof(IssueResponse)
+            : typeof(IssueResponse);
     }
 
     /// <summary>

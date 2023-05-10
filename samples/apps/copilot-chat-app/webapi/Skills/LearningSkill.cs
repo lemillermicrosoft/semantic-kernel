@@ -119,7 +119,8 @@ public class LearningSkill
         } // else say that we can't
 
         var lessonPlanJson = plan.ToJson();
-        var lessonPlanString = LearningSkill.ToPlanString(plan);
+        var lessonPlanString = lessonPlanJson;//LearningSkill.ToPlanString(plan);
+        // TODO - let's get rid of some state like 'action' and stuff before serializing. How?
         context.Variables.Update(lessonPlanString);
         context.Variables.Set("lessonPlanJson", lessonPlanJson);
 
