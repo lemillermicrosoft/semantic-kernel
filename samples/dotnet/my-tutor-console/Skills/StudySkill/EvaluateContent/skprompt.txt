@@ -1,0 +1,5 @@
+Analyze the test/homework assignments for the topic(s) in [INPUT] and generate a list of topics to create lessons/quizzes for.
+
+[INPUT]
+{{$input}}
+[END INPUT]

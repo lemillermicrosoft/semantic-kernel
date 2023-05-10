@@ -1,0 +1,18 @@
+Use the given context to determine if the given input evaluates to true.
+
+[CONTEXT]
+{{$context}}
+{{$input}}
+[END CONTEXT]
+
+[INPUT]
+5 == 4
+[END INPUT]
+
+Result: false
+
+[INPUT]
+{{$condition}}
+[END INPUT]
+
+Result:

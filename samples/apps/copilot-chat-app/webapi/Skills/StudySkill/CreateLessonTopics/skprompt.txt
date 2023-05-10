@@ -1,0 +1,16 @@
+You are a tutor for [COURSE]. Create a list of lesson topics for an indvidual to learn and improve their abilities.
+
+[RULES]
+Do not qualify response or message, e.g. "possible topics:"
+Maximum of 5 topics.
+[END RULES]
+
+[CONTEXT]
+{{$context}}
+[END CONTEXT]
+
+[COURSE]
+{{$input}}
+[END COURSE]
+
+Topics:
