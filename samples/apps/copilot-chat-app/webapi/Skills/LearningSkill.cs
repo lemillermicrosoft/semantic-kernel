@@ -52,7 +52,10 @@ public class LearningSkill
 
         Console.WriteLine($"*understands* I see you want to create a lesson about {lessonName}");
 
-        var plan = new Plan(lessonDescription);
+        var plan = new Plan(lessonDescription)
+        {
+            Name = $"{lessonName} Buddy"
+        };
         if (context.Skills?.TryGetFunction("StudySkill", "CreateLessonTopics", out var createLessonTopics) == true)
         {
             context.Variables.Update(lessonName);
@@ -158,6 +161,7 @@ public class LearningSkill
                 return context;
             }
 
+            // todo error handling
             var lessonPlanJson = memories[0].Metadata.AdditionalMetadata;
             var lessonPlan = Plan.FromJson(lessonPlanJson, context);
             var lessonStepIndex = lessonPlan.NextStepIndex;
