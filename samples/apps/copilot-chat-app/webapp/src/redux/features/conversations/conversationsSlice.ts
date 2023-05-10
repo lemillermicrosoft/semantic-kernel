@@ -30,11 +30,12 @@ export const conversationsSlice = createSlice({
         },
         updateConversation: (
             state: ConversationsState,
-            action: PayloadAction<{ message: IChatMessage; chatId?: string }>,
+            action: PayloadAction<{ message: IChatMessage; chatId?: string; nextAction?: string }>,
         ) => {
-            const { message, chatId } = action.payload;
+            const { message, chatId, nextAction } = action.payload;
             const id = chatId ?? state.selectedId;
             state.conversations[id].messages.push(message);
+            state.conversations[id].nextAction = nextAction ?? '';
             frontLoadChat(state, id);
         },
     },

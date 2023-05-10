@@ -38,10 +38,7 @@ public sealed class SKFunction : ISKFunction, IDisposable
     public bool IsSemantic { get; }
 
     /// <inheritdoc/>
-    public CompleteRequestSettings RequestSettings
-    {
-        get { return this._aiRequestSettings; }
-    }
+    public CompleteRequestSettings RequestSettings => this._aiRequestSettings;
 
     /// <summary>
     /// List of function parameters
@@ -67,12 +64,9 @@ public sealed class SKFunction : ISKFunction, IDisposable
         MethodDetails methodDetails = GetMethodDetails(methodSignature, methodContainerInstance, true, log);
 
         // If the given method is not a valid SK function
-        if (!methodDetails.HasSkFunctionAttribute)
-        {
-            return null;
-        }
-
-        return new SKFunction(
+        return !methodDetails.HasSkFunctionAttribute
+            ? null
+            : (ISKFunction)new SKFunction(
             delegateType: methodDetails.Type,
             delegateFunction: methodDetails.Function,
             parameters: methodDetails.Parameters,
@@ -371,6 +365,7 @@ public sealed class SKFunction : ISKFunction, IDisposable
         settings ??= this._aiRequestSettings;
 
         var callable = (Func<ITextCompletion?, CompleteRequestSettings?, SKContext, Task<SKContext>>)this._function;
+        // Instead of overwriting the Variables which is akin to HttpRequest
         context.Variables.Update((await callable(this._aiService, settings, context).ConfigureAwait(false)).Variables);
         return context;
     }

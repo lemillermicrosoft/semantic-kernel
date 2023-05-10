@@ -58,7 +58,7 @@ internal static class SequentialPlanParser
             }
             catch (XmlException e)
             {
-                throw new PlanningException(PlanningException.ErrorCodes.InvalidPlan, "Failed to parse plan xml.", e);
+                throw new PlanningException(PlanningException.ErrorCodes.InvalidPlan, $"Failed to parse plan xml.\n{xmlString}", e);
             }
 
             // Get the Solution

@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "type": "completion",
+  "description": "Given an input company and team name generate an onboarding document to use in a training lesson.",
+  "completion": {
+    "max_tokens": 256,
+    "temperature": 0,
+    "top_p": 0,
+    "presence_penalty": 0,
+    "frequency_penalty": 0,
+    "stop_sequences": ["[END OUTPUT]"]
+  },
+  "input": {
+    "parameters": [
+      {
+        "name": "input",
+        "description": "The company name to use in the onboarding document.",
+        "defaultValue": ""
+      },
+      {
+        "name": "team_name",
+        "description": "The team name to use in the onboarding document.",
+        "defaultValue": ""
+      }
+    ]
+  },
+  "default_backends": []
+}

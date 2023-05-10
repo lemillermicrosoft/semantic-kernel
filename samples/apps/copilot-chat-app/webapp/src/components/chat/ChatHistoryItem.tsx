@@ -49,6 +49,9 @@ const useClasses = makeStyles({
         width: '100%',
         textAlign: 'center',
     },
+    image: {
+        maxWidth: '250px',
+    },
 });
 
 interface ChatHistoryItemProps {
@@ -114,7 +117,13 @@ export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = (props) => {
                             {time}
                         </Label>
                     </div>
-                    <div className={classes.content} dangerouslySetInnerHTML={{ __html: content }} />
+                    <div className={classes.content}>
+                        {content.startsWith('data:image') ? (
+                            <img className={classes.image} src={content} alt="TBA" />
+                        ) : (
+                            <span>{content}</span>
+                        )}
+                    </div>
                 </div>
             </div>
         </>
