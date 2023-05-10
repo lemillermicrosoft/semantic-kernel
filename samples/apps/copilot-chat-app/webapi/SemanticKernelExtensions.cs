@@ -149,13 +149,12 @@ internal static class SemanticKernelExtensions
         switch (config.Type)
         {
             case MemoriesStoreOptions.MemoriesStoreType.Volatile:
-            {
-                var store = serviceProvider.GetRequiredService<IMemoryStore>();
-                return new SemanticTextMemory(
-                    store,
-                    serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>().Get(AIServiceOptions.EmbeddingPropertyName)
-                        .ToTextEmbeddingsService(logger: serviceProvider.GetRequiredService<ILogger<AIServiceOptions>>()));
-            }
+                services.AddSingleton<IMemoryStore, VolatileMemoryStore>();
+                services.AddScoped<ISemanticTextMemory>(sp => new SemanticTextMemory(
+                    sp.GetRequiredService<IMemoryStore>(),
+                    sp.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>().Get(AIServiceOptions.EmbeddingPropertyName)
+                        .ToTextEmbeddingsService(logger: sp.GetRequiredService<ILogger<AIServiceOptions>>())));
+                break;
 
             case MemoriesStoreOptions.MemoriesStoreType.Qdrant:
                 if (config.Qdrant == null)
