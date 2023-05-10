@@ -3,6 +3,7 @@
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.SkillDefinition;
+using Newtonsoft.Json.Linq;
 
 namespace SemanticKernel.Service.Skills;
 
@@ -94,7 +95,16 @@ public class StudySkill
         {
             // course, chat_history, topic, context
             var completion = await this._semanticSkills["ContinueLesson"].InvokeAsync(context);
-            context.Variables.Update(completion.Result);
+
+            Console.WriteLine($"Completion: {completion.Result}");
+
+            // completion is now a JSON object e.g. {"message": "What is the answer to 2+2?", "evaluationScore": 0.2}
+            // parse completion
+            var completionObject = JObject.Parse(completion.Result);
+
+            context.Variables.Update(completionObject!["message"].ToString());
+            context.Variables.Set("evaluationScore", completionObject!["evaluationScore"].ToString());
+            // context.Variables.Update(completion.Result);
         }
         else if (context.Variables.Get("message", out var message))
         {

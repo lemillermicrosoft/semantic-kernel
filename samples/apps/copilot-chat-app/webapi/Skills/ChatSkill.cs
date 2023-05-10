@@ -472,11 +472,26 @@ public class ChatSkill
                 var remainingToken = tokenLimit - 500;
                 foreach (var chatMessage in sortedMessages)
                 {
+                    bool isPlan = false;
+                    try
+                    {
+                        Plan.FromJson(chatMessage.Content);
+                        isPlan = true;
+                    }
+                    catch (Exception)
+                    {
+
+                    }
+                    if (isPlan)
+                    {
+                        break;
+                    }
+
                     var formattedMessage = chatMessage.ToFormattedString();
                     var tokenCount = Utilities.TokenCount(formattedMessage);
                     if (remainingToken - tokenCount > 0)
                     {
-                        historyText = $"{formattedMessage}\n{historyText}";
+                        historyText = $"{formattedMessage}\n{historyText}"; // drop the plan from the history and stop adding messages
                         remainingToken -= tokenCount;
                     }
                     else
@@ -527,6 +542,7 @@ public class ChatSkill
             var ctx = Utilities.CopyContextWithVariablesClone(context);
             ctx.Variables.Set("chat_history", historyText);
 
+            // TODO - Save chat_history on the plan itself?
             var completion = await functionOrPlan.InvokeAsync(ctx);
 
             if (completion.Variables.Get("continuePlan", out var continuePlan) && bool.TryParse(continuePlan, out var continuePlanBool) && continuePlanBool)
