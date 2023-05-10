@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.AI.ImageGeneration;
 using Microsoft.SemanticKernel.AI.TextCompletion;
 using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.Orchestration;
@@ -34,6 +35,8 @@ public class ChatSkill
     /// of the <see cref="ChatAsync"/> function will generate a new prompt dynamically.
     /// </summary>
     private readonly IKernel _kernel;
+
+    private readonly IKernel _actionKernel;
 
     /// <summary>
     /// A repository to save and retrieve chat messages.
@@ -65,6 +68,7 @@ public class ChatSkill
     /// </summary>
     public ChatSkill(
         IKernel kernel,
+        IKernel actionKernel,
         ChatMessageRepository chatMessageRepository,
         ChatSessionRepository chatSessionRepository,
         PromptSettings promptSettings,
@@ -74,6 +78,7 @@ public class ChatSkill
     {
         this._logger = logger;
         this._kernel = kernel;
+        this._actionKernel = actionKernel;
         this._chatMessageRepository = chatMessageRepository;
         this._chatSessionRepository = chatSessionRepository;
         this._promptSettings = promptSettings;
@@ -97,9 +102,9 @@ public class ChatSkill
             this._promptSettings.ResponseTokenLimit -
             Utilities.TokenCount(string.Join("\n", new string[]
                 {
-                    this._promptSettings.SystemDescriptionPrompt,
+                    this._promptSettings.SystemDescriptionPrompt, // knowledgeCutoff, audience, format
                     this._promptSettings.SystemIntentPrompt,
-                    this._promptSettings.SystemIntentContinuationPrompt
+                    this._promptSettings.SystemIntentContinuationPrompt // audience
                 })
             );
 
@@ -336,20 +341,46 @@ public class ChatSkill
         }
 
         chatContext.Variables.Set("userIntent", userIntent);
+
+        // HACK. maybe we should use planner...
+        if (!string.IsNullOrEmpty(userIntent) && userIntent.Contains("image", StringComparison.OrdinalIgnoreCase))
+        {
+            IImageGeneration stableDiffusion = this._kernel.GetService<IImageGeneration>();
+            var base64Image = await stableDiffusion.GenerateImageAsync(userIntent, 256, 256);
+            chatContext.Variables.Update(base64Image);
+
+            // Save this response to chat history repository
+            try
+            {
+                await this.SaveNewResponseAsync(base64Image, chatId);
+            }
+            catch (Exception ex) when (!ex.IsCriticalException())
+            {
+                context.Log.LogError("Unable to save new response: {0}", ex.Message);
+                context.Fail($"Unable to save new response: {ex.Message}", ex);
+                return context;
+            }
+
+            // skip text completion, memory update, ... etc when the ask is to generate image.
+            return chatContext;
+        }
+
         // Update remaining token count
         remainingToken -= Utilities.TokenCount(userIntent);
         chatContext.Variables.Set("contextTokenLimit", contextTokenLimit.ToString(new NumberFormatInfo()));
         chatContext.Variables.Set("tokenLimit", remainingToken.ToString(new NumberFormatInfo()));
 
-        var completionFunction = this._kernel.CreateSemanticFunction(
-            this._promptSettings.SystemChatPrompt,
-            skillName: nameof(ChatSkill),
-            description: "Complete the prompt.");
-
-        chatContext = await completionFunction.InvokeAsync(
-            context: chatContext,
-            settings: this.CreateChatResponseCompletionSettings()
-        );
+        // Chat (now refactored into ActionPlanner in ActOnMessageAsync)
+        chatContext = await this.ActOnMessageAsync(chatContext);
+        if (chatContext.Variables.Get("action", out var nextAction))
+        {
+            context.Variables.Set("action", nextAction);
+        }
+        // TODO I think this can be cut.
+        if (chatContext.Variables.Get("continuePlan", out var continuePlanString))
+        {
+            context.Variables.Set("continuePlan", continuePlanString);
+        }
 
         // If the completion function failed, return the context containing the error.
         if (chatContext.ErrorOccurred)
@@ -370,10 +401,185 @@ public class ChatSkill
         }
 
         // Extract semantic memory
-        await this.ExtractSemanticMemoryAsync(chatId, chatContext);
+        await this.ExtractSemanticMemoryAsync(chatId, chatContext); //memoryName, format
 
         context.Variables.Update(chatContext.Result);
         context.Variables.Set("userId", "Bot");
+        return context;
+    }
+
+    [SKFunction(description: "DoChat")]
+    [SKFunctionName("DoChat")]
+    [SKFunctionContextParameter(Name = "userId", Description = "Unique and persistent identifier for the user")]
+    [SKFunctionContextParameter(Name = "userName", Description = "Name of the user")]
+    [SKFunctionContextParameter(Name = "chatId", Description = "Unique and persistent identifier for the chat")]
+    [SKFunctionContextParameter(Name = "tokenLimit", Description = "Maximum number of tokens")]
+    [SKFunctionContextParameter(Name = "contextTokenLimit", Description = "Maximum number of context tokens")]
+    [SKFunctionContextParameter(Name = "userIntent", Description = "The intent of the user.")]
+    public async Task<SKContext> DoChatAsync(SKContext context)
+    {
+        // This is the chatting
+        var completionFunction = this._kernel.CreateSemanticFunction(
+            this._promptSettings.SystemChatPrompt,
+            skillName: nameof(ChatSkill),
+            description: "Complete the prompt.");
+
+        context = await completionFunction.InvokeAsync(
+            context: context,
+            settings: this.CreateChatResponseCompletionSettings()
+        );
+        return context;
+    }
+
+    // ActOnMessage
+    [SKFunction(description: "ActOnMessage")]
+    [SKFunctionName("ActOnMessage")]
+    [SKFunctionContextParameter(Name = "action", Description = "Action to handle the message next time")]
+    [SKFunctionContextParameter(Name = "userId", Description = "Unique and persistent identifier for the user")]
+    [SKFunctionContextParameter(Name = "userName", Description = "Name of the user")]
+    [SKFunctionContextParameter(Name = "chatId", Description = "Unique and persistent identifier for the chat")]
+    public async Task<SKContext> ActOnMessageAsync(SKContext context)
+    {
+        if (context.Variables.Get("action", out var action) && !string.IsNullOrEmpty(action))
+        {
+            context.Variables.Get("chatId", out var chatId);
+            string historyText = "";
+            if (chatId is not null)
+            {
+                var messages = await this._chatMessageRepository.FindByChatIdAsync(chatId);
+                var sortedMessages = messages.OrderByDescending(m => m.Timestamp);
+
+                var tokenLimit = this._promptSettings.CompletionTokenLimit;
+                // TODO - should be tied to action. For now, 500 buffer for most prompts.
+                var remainingToken = tokenLimit - 500;
+                foreach (var chatMessage in sortedMessages)
+                {
+                    var formattedMessage = chatMessage.ToFormattedString();
+                    var tokenCount = Utilities.TokenCount(formattedMessage);
+                    if (remainingToken - tokenCount > 0)
+                    {
+                        historyText = $"{formattedMessage}\n{historyText}";
+                        remainingToken -= tokenCount;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+
+            ISKFunction? functionOrPlan = null;
+            try
+            {
+                var planContext = new SKContext(
+                    context.Variables,
+                    this._actionKernel.Memory,
+                    this._actionKernel.Skills,
+                    this._actionKernel.Log
+                );
+                // TODO - Kernel should throw if context can't load functions
+                functionOrPlan = Plan.FromJson(action, context);
+            }
+#pragma warning disable CA1031
+            catch (Exception e)
+            {
+                context.Log.LogError("DoWhile: action {0} is not a valid plan: {1}", action, e.Message);
+            }
+#pragma warning restore CA1031
+
+            if (functionOrPlan == null)
+            {
+                if (action.Contains('.', StringComparison.Ordinal))
+                {
+                    var parts = action.Split('.');
+                    functionOrPlan = context.Skills!.GetFunction(parts[0], parts[1]);
+                }
+                else
+                {
+                    functionOrPlan = context.Skills!.GetFunction(action);
+                }
+            }
+
+            if (functionOrPlan == null)
+            {
+                context.Log.LogError("ActOnMessageAsync: action {0} not found yet was specified", action);
+                return context;
+            }
+
+            var ctx = Utilities.CopyContextWithVariablesClone(context);
+            ctx.Variables.Set("chat_history", historyText);
+
+            var completion = await functionOrPlan.InvokeAsync(ctx);
+
+            if (completion.Variables.Get("continuePlan", out var continuePlan) && bool.TryParse(continuePlan, out var continuePlanBool) && continuePlanBool)
+            {
+                if (continuePlan is not null)
+                {
+                    completion.Variables.Set("action", action);
+                }
+                else
+                {
+                    completion.Variables.Set("action", null);
+                }
+            }
+            else
+            {
+                completion.Variables.Set("action", null);
+            }
+
+            return completion;
+        }
+        else if (context.Variables.Get("userIntent", out var userIntent))
+        {
+            // TODO Use actionPlanner to either ContinueChat or StartStudyAgent
+            // So right now, ActionPlanner will route down either DoChat or CreateLesson (and others [Yes]? undesired [Yes]?)
+            // Next, ExecuteLesson will run an agent for that lesson and replace the chat handler here (how[action]? state[another option]? context[yeah, action is in context]?)
+            // P3 - MonitorLesson will run an agent for the lesson that is not chat based (skip those steps) (also, how?) (also, very P3)
+            // Notes: AcquireExternalInformation ChatSkill was called, filter would be so nice. As said above, probably need to separate things
+            var planner = new ActionPlanner(this._actionKernel);
+
+            Console.WriteLine("***reading***");
+
+            var plan = await planner.CreatePlanAsync(
+                $"Review the most recent 'User:' message and determine which function to run. If unsure, use 'DoChat'.\n[MESSAGES]\n{userIntent}\n[END MESSAGES]\n");
+
+            if (plan.Steps[0].Name == "DoChat")
+            {
+                Console.WriteLine("***typing***");
+            }
+            else
+            {
+                Console.WriteLine($"***thinking*** {plan.Steps[0].Name} {plan.Steps[0].SkillName}");
+            }
+
+            // TODO - Can this hack be removed now with Plan changes?
+            // Previously, need to do this to ensure action is passed to ActOnMessageAsync
+            plan.Steps[0].Outputs.Add("action");
+            // today though this will put the step output in action even if not in the variables, so lets parse as plan and remove if not
+            plan.Steps[0].Outputs.Add("continuePlan");
+
+            var originalPlanJson = plan.ToJson();
+            var completion = await plan.InvokeAsync(context);
+
+            if (completion.Variables.Get("continuePlan", out var continuePlan) && bool.TryParse(continuePlan, out var continuePlanBool) && continuePlanBool)
+            {
+                if (continuePlan is not null)
+                {
+                    completion.Variables.Set("action", originalPlanJson);
+                }
+                else
+                {
+                    completion.Variables.Set("action", null);
+                }
+            }
+            else
+            {
+                completion.Variables.Set("action", null);
+            }
+
+            return completion;
+        }
+
         return context;
     }
 

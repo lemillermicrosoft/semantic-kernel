@@ -240,6 +240,7 @@ public class BotController : ControllerBase
 
         foreach (var collection in chatCollections)
         {
+            // TODO: Final Validation. LessonPlan follows naming pattern so this should work in some fashion.
             await GetMemoryRecordsAndAppendToEmbeddingsAsync(kernel: kernel, collectionName: collection, embeddings: bot.Embeddings);
         }
 
@@ -296,7 +297,7 @@ public class BotController : ControllerBase
                         embedding: record.Embedding.Value,
                         description: null, additionalMetadata: null);
 
-                    if (!(await this._memoryStore.DoesCollectionExistAsync(newCollectionName, default)))
+                    if (!await this._memoryStore.DoesCollectionExistAsync(newCollectionName, default))
                     {
                         await this._memoryStore.CreateCollectionAsync(newCollectionName, default);
                     }

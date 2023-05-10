@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.AI.Embeddings;
 using Microsoft.SemanticKernel.Connectors.AI.OpenAI.TextEmbedding;
+using Microsoft.SemanticKernel.Connectors.HuggingFace.TextToImage;
 using Microsoft.SemanticKernel.Connectors.Memory.AzureCognitiveSearch;
 using Microsoft.SemanticKernel.Connectors.Memory.Qdrant;
 using Microsoft.SemanticKernel.Memory;
@@ -48,19 +49,83 @@ internal static class SemanticKernelExtensions
                 new SkillCollection(),
                 chatKernel.PromptTemplateEngine,
                 chatKernel.Memory,
-                new KernelConfig().AddCompletionBackend(plannerOptions.Value.AIService!),
+                new KernelConfig().AddCompletionBackend(plannerOptions.Value.AIService!)
+                    .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig() { MaxRetryCount = 5, UseExponentialBackoff = true }),
                 sp.GetRequiredService<ILogger<CopilotChatPlanner>>());
             return new CopilotChatPlanner(plannerKernel, plannerOptions);
         });
 
+        services.AddScoped<ChatBot>(sp =>
+            {
+                IKernel chatKernel = sp.GetRequiredService<IKernel>();
+                var aiServiceOptions = sp.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>();
+                IKernel chatBotKernel = new Kernel(
+                    new SkillCollection(),
+                    chatKernel.PromptTemplateEngine,
+                    chatKernel.Memory,
+                    new KernelConfig()
+                        .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
+                        .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
+                        .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig()
+                        { MaxRetryCount = 5, UseExponentialBackoff = true }),
+                    sp.GetRequiredService<ILogger<ChatBot>>());
+
+                return new ChatBot(chatBotKernel);
+            }
+        );
+
+        services.AddScoped<LearningSkill>(sp =>
+            {
+                IKernel chatKernel = sp.GetRequiredService<IKernel>();
+                var aiServiceOptions = sp.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>();
+                IKernel learningSkillKernel = new Kernel(
+                    new SkillCollection(),
+                    chatKernel.PromptTemplateEngine,
+                    chatKernel.Memory,
+                    new KernelConfig()
+                        .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
+                        .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
+                        .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig()
+                        { MaxRetryCount = 5, UseExponentialBackoff = true }),
+                    sp.GetRequiredService<ILogger<LearningSkill>>());
+
+                return new LearningSkill(learningSkillKernel);
+            }
+        );
+
+        services.AddScoped<StudySkill>(sp =>
+            {
+                IKernel chatKernel = sp.GetRequiredService<IKernel>();
+                var aiServiceOptions = sp.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>();
+                IKernel k = new Kernel(
+                    new SkillCollection(),
+                    chatKernel.PromptTemplateEngine,
+                    chatKernel.Memory,
+                    new KernelConfig()
+                        .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
+                        .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
+                        .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig()
+                        { MaxRetryCount = 5, UseExponentialBackoff = true }),
+                    sp.GetRequiredService<ILogger<StudySkill>>());
+
+                return new StudySkill(k);
+            }
+        );
+
         // Add the Semantic Kernel
+        // TODO - How does the kernelConfig get used?
         services.AddSingleton<IPromptTemplateEngine, PromptTemplateEngine>();
         services.AddScoped<ISkillCollection, SkillCollection>();
-        services.AddScoped<KernelConfig>(serviceProvider => new KernelConfig()
-            .AddCompletionBackend(serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>()
-                .Get(AIServiceOptions.CompletionPropertyName))
-            .AddEmbeddingBackend(serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>()
-                .Get(AIServiceOptions.EmbeddingPropertyName)));
+        services.AddScoped<KernelConfig>(serviceProvider =>
+        {
+            return new KernelConfig()
+                .AddCompletionBackend(serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>()
+                    .Get(AIServiceOptions.CompletionPropertyName))
+                .AddEmbeddingBackend(serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>()
+                    .Get(AIServiceOptions.EmbeddingPropertyName))
+                .AddImageGenerationBackend()
+                .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig() { MaxRetryCount = 5, UseExponentialBackoff = true });
+        });
         services.AddScoped<IKernel, Kernel>();
 
         return services;
@@ -162,6 +227,16 @@ internal static class SemanticKernelExtensions
             default:
                 throw new ArgumentException($"Invalid {nameof(aiServiceOptions.AIService)} value in '{AIServiceOptions.EmbeddingPropertyName}' settings.");
         }
+
+        return kernelConfig;
+    }
+
+    /// <summary>
+    /// Add the image generation backend to the kernel config
+    /// </summary>
+    internal static KernelConfig AddImageGenerationBackend(this KernelConfig kernelConfig)
+    {
+        kernelConfig.AddImageGenerationService(_ => new HuggingFaceTextToImage("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", model: "stabilityai/stable-diffusion-2-1"));
 
         return kernelConfig;
     }
