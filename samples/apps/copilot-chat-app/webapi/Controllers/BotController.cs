@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Memory;
+using Microsoft.SemanticKernel.Planning;
 using SemanticKernel.Service.Config;
 using SemanticKernel.Service.Model;
 using SemanticKernel.Service.Storage;
@@ -85,7 +86,7 @@ public class BotController : ControllerBase
                                    $"for the {bot.EmbeddingConfigurations.DeploymentOrModelId} model from {bot.EmbeddingConfigurations.AIService}.");
         }
 
-        string chatTitle = $"{bot.ChatTitle} - Clone";
+        string chatTitle = $"{bot.ChatTitle}";
         string chatId = string.Empty;
 
         // Upload chat history into chat repository and embeddings into memory.
@@ -226,12 +227,38 @@ public class BotController : ControllerBase
             }
         };
 
-        // get the chat title
-        ChatSession chat = await this._chatRepository.FindByIdAsync(chatIdString);
-        bot.ChatTitle = chat.Title;
+        // TODO Specify lesson some way
+        var memories = kernel.Memory.SearchAsync($"{chatIdString}-LearningSkill.LessonPlans", query: "lesson", limit: 1, minRelevanceScore: 0.0)
+            .ToEnumerable()
+            .ToList();
+        if (memories.Count == 0)
+        {
+            // no lessons to save
+            // get the chat title
+            ChatSession chat = await this._chatRepository.FindByIdAsync(chatIdString);
+            bot.ChatTitle = $"{chat.Title} - Clone";
 
-        // get the chat history
-        bot.ChatHistory = await this.GetAllChatMessagesAsync(chatIdString);
+            // get the chat history
+            bot.ChatHistory = await this.GetAllChatMessagesAsync(chatIdString);
+        }
+        else
+        {
+            var lessonPlanJson = memories[0].Metadata.AdditionalMetadata;
+            var lessonPlan = Plan.FromJson(lessonPlanJson);
+            var lessonStepIndex = lessonPlan.NextStepIndex;
+
+            bot.ChatTitle = lessonPlan.Name;
+            bot.ChatHistory = new List<ChatMessage>()
+            {
+                // TODO - How to use lessonPLan.Name for all future messages?
+                new ChatMessage(userId, lessonPlan.Name, chatIdString, lessonPlan.Description, ChatMessage.AuthorRoles.Bot),
+
+                // TODO how to shows the learning plan with buttons to start or save.
+                new ChatMessage(userId, lessonPlan.Name, chatIdString, lessonPlanJson, ChatMessage.AuthorRoles.Bot)
+            };
+
+            // TODO automatically make it so the plan is ready to instruct.
+        }
 
         // get the memory collections associated with this chat
         // TODO: filtering memory collections by name might be fragile.
@@ -295,7 +322,7 @@ public class BotController : ControllerBase
                         id: record.Metadata.Id,
                         text: record.Metadata.Text,
                         embedding: record.Embedding.Value,
-                        description: null, additionalMetadata: null);
+                        description: record.Metadata.Description, additionalMetadata: record.Metadata.AdditionalMetadata);
 
                     if (!await this._memoryStore.DoesCollectionExistAsync(newCollectionName, default))
                     {
