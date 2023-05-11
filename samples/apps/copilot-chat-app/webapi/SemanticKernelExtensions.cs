@@ -68,7 +68,10 @@ internal static class SemanticKernelExtensions
                         .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
                         .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
                         .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig()
-                        { MaxRetryCount = 5, UseExponentialBackoff = true }),
+                        {
+                            MaxRetryCount = 5,
+                            UseExponentialBackoff = true
+                        }),
                     sp.GetRequiredService<ILogger<ChatBot>>());
 
                 return new ChatBot(chatBotKernel);
@@ -87,7 +90,10 @@ internal static class SemanticKernelExtensions
                         .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
                         .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
                         .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig()
-                        { MaxRetryCount = 5, UseExponentialBackoff = true }),
+                        {
+                            MaxRetryCount = 5,
+                            UseExponentialBackoff = true
+                        }),
                     sp.GetRequiredService<ILogger<LearningSkill>>());
 
                 return new LearningSkill(learningSkillKernel);
@@ -106,7 +112,9 @@ internal static class SemanticKernelExtensions
                         .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
                         .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
                         .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig()
-                        { MaxRetryCount = 5, UseExponentialBackoff = true }),
+                        {
+                            MaxRetryCount = 5, UseExponentialBackoff = true
+                        }),
                     sp.GetRequiredService<ILogger<StudySkill>>());
 
                 return new StudySkill(k);
