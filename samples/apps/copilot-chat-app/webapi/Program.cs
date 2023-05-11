@@ -28,7 +28,8 @@ public sealed class Program
             .AddSingleton<ILogger>(sp => sp.GetRequiredService<ILogger<Program>>()) // some services require an un-templated ILogger
             .AddOptions(builder.Configuration)
             .AddSemanticKernelServices()
-            .AddPersistentChatStore();
+            .AddPersistentChatStore()
+            .AddContentModerator();
 
         // Add in the rest of the services.
         builder.Services

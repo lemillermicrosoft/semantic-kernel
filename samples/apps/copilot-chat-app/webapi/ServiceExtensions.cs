@@ -8,6 +8,7 @@ using Microsoft.Identity.Web;
 using SemanticKernel.Service.Auth;
 using SemanticKernel.Service.Config;
 using SemanticKernel.Service.Model;
+using SemanticKernel.Service.Services;
 using SemanticKernel.Service.Storage;
 
 namespace SemanticKernel.Service;
@@ -141,7 +142,7 @@ internal static class ServicesExtensions
     /// <summary>
     /// Add persistent chat store services.
     /// </summary>
-    internal static void AddPersistentChatStore(this IServiceCollection services)
+    internal static IServiceCollection AddPersistentChatStore(this IServiceCollection services)
     {
         IStorageContext<ChatSession> chatSessionInMemoryContext;
         IStorageContext<ChatMessage> chatMessageInMemoryContext;
@@ -198,6 +199,21 @@ internal static class ServicesExtensions
 
         services.AddSingleton<ChatSessionRepository>(new ChatSessionRepository(chatSessionInMemoryContext));
         services.AddSingleton<ChatMessageRepository>(new ChatMessageRepository(chatMessageInMemoryContext));
+
+        return services;
+    }
+
+    /// <summary>
+    /// Add content moderator service.
+    /// </summary>
+    internal static IServiceCollection AddContentModerator(this IServiceCollection services)
+    {
+        // HACK. TODO: Get the URI from configuration
+#pragma warning disable CA2000 // Dispose objects before losing scope - objects are singletons for the duration of the process and disposed when the process exits.
+        services.AddSingleton<AzureContentModerator>(new AzureContentModerator(new Uri("https://content-moderator-eastus.cognitiveservices.azure.com/")));
+#pragma warning restore CA2000 // Dispose objects before losing scope
+
+        return services;
     }
 
     /// <summary>
