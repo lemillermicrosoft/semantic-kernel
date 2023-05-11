@@ -43,7 +43,7 @@ public class DocumentMemorySkill
     [SKFunctionContextParameter(Name = "userId", Description = "ID of the user who owns the documents")]
     [SKFunctionContextParameter(Name = "tokenLimit", Description = "Maximum number of tokens")]
     [SKFunctionContextParameter(Name = "contextTokenLimit", Description = "Maximum number of context tokens")]
-    public async Task<string> QueryDocumentsAsync(string query, SKContext context)
+    public Task<string> QueryDocumentsAsync(string query, SKContext context)
     {
         string userId = context.Variables["userId"];
         int tokenLimit = int.Parse(context.Variables["tokenLimit"], new NumberFormatInfo());
@@ -60,15 +60,16 @@ public class DocumentMemorySkill
             this._documentImportConfig.GlobalDocumentCollectionName
         };
 
-        List<MemoryQueryResult> relevantMemories = new List<MemoryQueryResult>();
+        List<MemoryQueryResult> relevantMemories = new();
         foreach (var documentCollection in documentCollections)
         {
             var results = context.Memory.SearchAsync(
-                documentCollection,
-                query,
-                limit: 100,
-                minRelevanceScore: this._promptSettings.DocumentMemoryMinRelevance);
-            await foreach (var memory in results)
+                    documentCollection,
+                    query,
+                    limit: 100,
+                    minRelevanceScore: 0.5).ToEnumerable()
+                .ToList(); //this._promptSettings.DocumentMemoryMinRelevance);
+            foreach (var memory in results)
             {
                 relevantMemories.Add(memory);
             }
@@ -95,7 +96,7 @@ public class DocumentMemorySkill
         if (string.IsNullOrEmpty(documentsText))
         {
             // No relevant documents found
-            return string.Empty;
+            return Task.FromResult(string.Empty);
         }
 
         // Update the token limit.
@@ -103,6 +104,6 @@ public class DocumentMemorySkill
         tokenLimit -= Utilities.TokenCount(documentsText);
         context.Variables.Set("tokenLimit", tokenLimit.ToString(new NumberFormatInfo()));
 
-        return documentsText;
+        return Task.FromResult(documentsText);
     }
 }

@@ -37,20 +37,59 @@ public class LearningSkill
     [SKFunctionContextParameter(Name = "lessonName", Description = "Name of the lesson")]
     [SKFunctionContextParameter(Name = "lessonDescription", Description = "Description of the lesson")]
     [SKFunctionContextParameter(Name = "chatId", Description = "Unique and persistent identifier for the chat")]
+    [SKFunctionContextParameter(Name = "userId", Description = "ID of the user who owns the documents")]
+    [SKFunctionContextParameter(Name = "tokenLimit", Description = "Maximum number of tokens")]
+    [SKFunctionContextParameter(Name = "contextTokenLimit", Description = "Maximum number of context tokens")]
     [SKFunction("Create a lesson")]
     public async Task<SKContext> CreateLessonAsync(SKContext context)
     {
         context.Variables.Get("lessonName", out var lessonName);
         context.Variables.Get("lessonDescription", out var lessonDescription);
+        context.Variables.Get("chatId", out var chatId);
+        context.Variables.Get("userId", out var userId);
+        context.Variables.Get("tokenLimit", out var tokenLimit);
+        context.Variables.Get("contextTokenLimit", out var contextTokenLimit);
 
         Console.WriteLine($"*understands* I see you want to create a lesson about {lessonName}");
 
-        var plan = new Plan(lessonDescription);
+        var plan = new Plan(lessonDescription)
+        {
+            Name = $"{lessonName} Buddy"
+        };
         if (context.Skills?.TryGetFunction("StudySkill", "CreateLessonTopics", out var createLessonTopics) == true)
         {
             context.Variables.Update(lessonName);
+
+            var lessonContext = lessonDescription;
+            if (context.Skills is not null && context.Skills.TryGetFunction("DocumentMemorySkill", "QueryDocuments", out var queryDocuments))
+            {
+                // [SKFunctionContextParameter(Name = "userId", Description = "ID of the user who owns the documents")]
+                // [SKFunctionContextParameter(Name = "tokenLimit", Description = "Maximum number of tokens")]
+                // [SKFunctionContextParameter(Name = "contextTokenLimit", Description = "Maximum number of context tokens")]
+                var documentContext = new ContextVariables(string.Join(" ", lessonName, lessonDescription));
+                documentContext.Set("userId", userId);
+                documentContext.Set("tokenLimit", tokenLimit);
+                documentContext.Set("contextTokenLimit", contextTokenLimit);
+                var queryDocumentsContext = new SKContext(documentContext, context.Memory, context.Skills, context.Log, context.CancellationToken);
+
+                var queryDocumentsResult = await queryDocuments.InvokeAsync(queryDocumentsContext);
+                lessonContext = queryDocumentsResult.Result.ToString();
+                if (string.IsNullOrEmpty(lessonContext))
+                {
+                    Console.WriteLine($"*understands* I didn't find any documents about {lessonName}");
+                }
+                else
+                {
+                    Console.WriteLine($"*understands* I found {lessonContext}");
+                }
+            }
+            else
+            {
+                Console.WriteLine("DocumentMemorySkill not found");
+            }
+
             // TODO: Make this better
-            context.Variables.Set("context", lessonDescription);
+            context.Variables.Set("context", lessonContext); // {DocumentMemorySkill.QueryDocuments $INPUT}
             var course = context.Variables.Input;
             context = await createLessonTopics.InvokeAsync(context);
 
@@ -80,13 +119,12 @@ public class LearningSkill
         } // else say that we can't
 
         var lessonPlanJson = plan.ToJson();
-        var lessonPlanString = LearningSkill.ToPlanString(plan);
+        var lessonPlanString = lessonPlanJson;//LearningSkill.ToPlanString(plan);
+        // TODO - let's get rid of some state like 'action' and stuff before serializing. How?
         context.Variables.Update(lessonPlanString);
         context.Variables.Set("lessonPlanJson", lessonPlanJson);
 
         // chat/bot support
-        context.Variables.Get("chatId", out var chatId);
-
         await context.Memory.SaveInformationAsync(
             collection: $"{chatId}-LearningSkill.LessonPlans",
             text: lessonPlanString,
@@ -124,6 +162,7 @@ public class LearningSkill
                 return context;
             }
 
+            // todo error handling
             var lessonPlanJson = memories[0].Metadata.AdditionalMetadata;
             var lessonPlan = Plan.FromJson(lessonPlanJson, context);
             var lessonStepIndex = lessonPlan.NextStepIndex;
@@ -143,6 +182,7 @@ public class LearningSkill
                     // continue with next step in plan.
                     context.Variables.Set("continuePlan", null);
                 }
+
                 Console.WriteLine($"Lesson state: {result}");
                 context.Variables.Update(result);
             }
