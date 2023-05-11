@@ -60,7 +60,7 @@ export const ChatList: FC = () => {
                                 leaf
                                 style={
                                     id === selectedId
-                                        ? { background: 'var(--colorNeutralBackground1Selected)' }
+                                        ? { background: 'var(--colorNeutralBackground1)' }
                                         : undefined
                                 }
                             >
