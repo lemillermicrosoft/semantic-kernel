@@ -391,6 +391,7 @@ public class ChatSkill
         {
             context.Variables.Set("action", nextAction);
         }
+
         // TODO I think this can be cut.
         if (chatContext.Variables.Get("continuePlan", out var continuePlanString))
         {
@@ -453,6 +454,8 @@ public class ChatSkill
     [SKFunctionContextParameter(Name = "userId", Description = "Unique and persistent identifier for the user")]
     [SKFunctionContextParameter(Name = "userName", Description = "Name of the user")]
     [SKFunctionContextParameter(Name = "chatId", Description = "Unique and persistent identifier for the chat")]
+    [SKFunctionContextParameter(Name = "tokenLimit", Description = "Maximum number of tokens")]
+    [SKFunctionContextParameter(Name = "contextTokenLimit", Description = "Maximum number of context tokens")]
     public async Task<SKContext> ActOnMessageAsync(SKContext context)
     {
         if (context.Variables.Get("action", out var action) && !string.IsNullOrEmpty(action))
@@ -742,12 +745,9 @@ public class ChatSkill
 
     private Type GetJiraSkillResponseType(ref JsonDocument document, ref string lastSkillFunctionInvoked)
     {
-        if (lastSkillFunctionInvoked == "GetIssue")
-        {
-            return document.RootElement.ValueKind == JsonValueKind.Array ? typeof(IssueResponse[]) : typeof(IssueResponse);
-        }
-
-        return typeof(IssueResponse);
+        return lastSkillFunctionInvoked == "GetIssue"
+            ? document.RootElement.ValueKind == JsonValueKind.Array ? typeof(IssueResponse[]) : typeof(IssueResponse)
+            : typeof(IssueResponse);
     }
 
     /// <summary>
