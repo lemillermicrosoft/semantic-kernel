@@ -57,11 +57,7 @@ export const ChatList: FC = () => {
                             <TreeItem
                                 key={id}
                                 leaf
-                                style={
-                                    id === selectedId
-                                        ? { background: tokens.colorNeutralBackground1 }
-                                        : undefined
-                                }
+                                style={id === selectedId ? { background: tokens.colorNeutralBackground1 } : undefined}
                             >
                                 <ChatListItem
                                     id={id}
