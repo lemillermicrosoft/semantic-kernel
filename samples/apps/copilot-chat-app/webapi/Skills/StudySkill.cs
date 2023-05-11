@@ -36,6 +36,7 @@ public class StudySkill
     [SKFunctionContextParameter(Name = "topic", Description = "Topic to study e.g. 'Equations and inequalities'")]
     [SKFunctionContextParameter(Name = "course", Description = "The course of study e.g. 'Algebra 1'")]
     [SKFunctionContextParameter(Name = "chat_history", Description = "Chat message history")]
+    [SKFunctionContextParameter(Name = "LESSON_STATE", Description = "State of the study session")]
     public async Task<SKContext> StudySessionAsync(SKContext context)
     {
         //
@@ -88,6 +89,7 @@ public class StudySkill
     [SKFunctionContextParameter(Name = "topic", Description = "Message to send")]
     [SKFunctionContextParameter(Name = "context", Description = "Message to send")]
     [SKFunctionContextParameter(Name = "course", Description = "Message to send")]
+    [SKFunctionContextParameter(Name = "LESSON_STATE", Description = "State of the study session")]
     public async Task<SKContext> PrepareMessageAsync(SKContext context)
     {
         // If there is a message, use it. Otherwise, get the chat history and generate completion for next message.
@@ -102,9 +104,30 @@ public class StudySkill
             // parse completion
             var completionObject = JObject.Parse(completion.Result);
 
-            context.Variables.Update(completionObject!["message"].ToString());
-            context.Variables.Set("evaluationScore", completionObject!["evaluationScore"].ToString());
-            // context.Variables.Update(completion.Result);
+            var message = completionObject!["message"].ToString();
+            var evaluationScore = completionObject!["evaluationScore"].ToString();
+
+            context.Variables.Update(message);
+            context.Variables.Set("evaluationScore", evaluationScore);
+
+            // get float from evaluationScore and see if greater than 0.9
+            Console.WriteLine($"Evaluation score: {evaluationScore}");
+            if (float.TryParse(evaluationScore, out var evaluationScoreFloat))
+            {
+                if (evaluationScoreFloat > 0.95) // should be more like 0.9 but for quick testing...
+                {
+                    Console.WriteLine("Lesson is done!");
+                    context.Variables.Set("LESSON_STATE", "DONE");
+                }
+                else
+                {
+                    context.Variables.Set("LESSON_STATE", "IN_PROGRESS");
+                }
+            }
+            else
+            {
+                context.Variables.Set("LESSON_STATE", "IN_PROGRESS");
+            }
         }
         else if (context.Variables.Get("message", out var message))
         {

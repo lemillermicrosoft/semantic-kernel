@@ -306,7 +306,7 @@ public class ChatSkill
     public async Task<SKContext> ChatAsync(string message, SKContext context)
     {
         // Log exception and strip it from the context, leaving the error description.
-        SKContext RemoveExceptionFromContext(SKContext chatContext)
+        static SKContext RemoveExceptionFromContext(SKContext chatContext)
         {
             chatContext.Log.LogError("{0}: {1}", chatContext.LastErrorDescription, chatContext.LastException);
             chatContext.Fail(chatContext.LastErrorDescription);
@@ -469,6 +469,7 @@ public class ChatSkill
 
                 var tokenLimit = this._promptSettings.CompletionTokenLimit;
                 // TODO - should be tied to action. For now, 500 buffer for most prompts.
+                // TODO - should give unique chat_history per lesson and should save context as memories (and make available for lesson, too)
                 var remainingToken = tokenLimit - 500;
                 foreach (var chatMessage in sortedMessages)
                 {
@@ -549,7 +550,22 @@ public class ChatSkill
             {
                 if (continuePlan is not null)
                 {
-                    completion.Variables.Set("action", action);
+                    if (continuePlanBool)
+                    {
+                        if (functionOrPlan is Plan p)
+                        {
+                            if (completion.Variables.Get("updatePlan", out var updatePlan) && bool.TryParse(updatePlan, out var updatePlanBool) && updatePlanBool)
+                            {
+                                // So the plan is actually the InstructLesson plan -- probably should tweak this to be the learning plan in memory instead that's getting run there.
+                            }
+                        }
+                        completion.Variables.Set("action", action);
+                    }
+                    else
+                    {
+                        Console.WriteLine("ActOnMessageAsync: continuePlan is false, so setting action to null");
+                        completion.Variables.Set("action", null);
+                    }
                 }
                 else
                 {
@@ -591,6 +607,7 @@ public class ChatSkill
             plan.Steps[0].Outputs.Add("action");
             // today though this will put the step output in action even if not in the variables, so lets parse as plan and remove if not
             plan.Steps[0].Outputs.Add("continuePlan");
+            plan.Steps[0].Outputs.Add("updatePlan");
 
             var originalPlanJson = plan.ToJson();
             var completion = await plan.InvokeAsync(context);
@@ -599,7 +616,7 @@ public class ChatSkill
             {
                 if (continuePlan is not null)
                 {
-                    completion.Variables.Set("action", originalPlanJson);
+                    completion.Variables.Set("action", originalPlanJson); // this is a plan to run execute lesson -- TODO params instead of relying on memory only?
                 }
                 else
                 {
