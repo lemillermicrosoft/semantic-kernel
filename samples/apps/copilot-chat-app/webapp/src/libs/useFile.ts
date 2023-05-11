@@ -19,6 +19,23 @@ export const useFile = () => {
         });
     }
 
+    function loadImage(file: File, loadCallBack: (base64Image: string) => Promise<void>): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const fileReader = new FileReader();
+            fileReader.onload = async (event: ProgressEvent<FileReader>) => {
+                const content = event?.target?.result as string;
+                try {
+                    await loadCallBack(content);
+                    resolve(content);
+                } catch (e) {
+                    reject(e);
+                }
+            };
+            fileReader.onerror = reject;
+            fileReader.readAsDataURL(file);
+        });
+    }
+
     function downloadFile(filename: string, content: string, type: string) {
         const data: BlobPart[] = [content];
         let file: File | null = new File(data, filename, { type });
@@ -35,6 +52,7 @@ export const useFile = () => {
 
     return {
         loadFile,
+        loadImage,
         downloadFile,
     };
 };
