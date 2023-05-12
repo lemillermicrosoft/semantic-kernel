@@ -29,6 +29,7 @@ import botIcon2 from '../assets/bot-icons/bot-icon-2.png';
 import botIcon3 from '../assets/bot-icons/bot-icon-3.png';
 import botIcon4 from '../assets/bot-icons/bot-icon-4.png';
 import botIcon5 from '../assets/bot-icons/bot-icon-5.png';
+import { useFile } from './useFile';
 
 export const useChat = () => {
     const dispatch = useAppDispatch();
@@ -42,6 +43,8 @@ export const useChat = () => {
     const chatService = new ChatService(process.env.REACT_APP_BACKEND_URI as string);
 
     const botProfilePictures: string[] = [botIcon1, botIcon2, botIcon3, botIcon4, botIcon5];
+
+    const { downloadFile } = useFile();
 
     const loggedInUser: ChatUser = {
         id: account?.homeAccountId || '',
@@ -104,6 +107,8 @@ export const useChat = () => {
         approvedPlanJson?: string,
         planUserIntent?: string,
         userCancelledPlan?: boolean,
+        userSavedPlan?: boolean,
+        userInvokedPlanViaChat?: boolean,
     ) => {
         const ask = {
             input: value,
@@ -127,7 +132,7 @@ export const useChat = () => {
             ],
         };
 
-        if (approvedPlanJson) {
+        if (approvedPlanJson && !userInvokedPlanViaChat) {
             ask.variables.push(
                 {
                     key: 'proposedPlan',
@@ -138,6 +143,8 @@ export const useChat = () => {
                     value: planUserIntent!,
                 },
             );
+        } else if (userInvokedPlanViaChat) {
+            ask.input = planUserIntent!;
         }
 
         if (userCancelledPlan) {
@@ -147,31 +154,37 @@ export const useChat = () => {
             });
         }
 
-        try {
-            var result = await sk.invokeAsync(
-                ask,
-                'ChatSkill',
-                'Chat',
-                await AuthHelper.getSKaaSAccessToken(instance),
-                connectors.getEnabledPlugins(),
-            ); // this is the entry point to the semantic kernel
+        if (userSavedPlan) {
+            // do it
+            const content = await downloadBot(chatId, true);
+            downloadFile(`lesson-bot-${new Date().toISOString()}.json`, JSON.stringify(content), 'text/json');
+        } else {
+            try {
+                var result = await sk.invokeAsync(
+                    ask,
+                    'ChatSkill',
+                    'Chat',
+                    await AuthHelper.getSKaaSAccessToken(instance),
+                    connectors.getEnabledPlugins(),
+                ); // this is the entry point to the semantic kernel
 
-            const messageResult = {
-                timestamp: new Date().getTime(),
-                userName: 'bot',
-                userId: 'bot',
-                content: result.value,
-                authorRole: AuthorRoles.Bot,
-                planApprovalRequired: isPlan(result.value),
-            };
+                const messageResult = {
+                    timestamp: new Date().getTime(),
+                    userName: 'bot',
+                    userId: 'bot',
+                    content: result.value,
+                    authorRole: AuthorRoles.Bot,
+                    planApprovalRequired: isPlan(result.value),
+                };
 
-            // get the variable named 'action'
-            const nextAction = result.variables.find((v) => v.key === 'action')?.value;
+                // get the variable named 'action'
+                const nextAction = result.variables.find((v) => v.key === 'action')?.value;
 
-            dispatch(updateConversation({ message: messageResult, chatId: chatId, nextAction }));
-        } catch (e: any) {
-            const errorMessage = `Unable to generate bot response. Details: ${e.message ?? e}`;
-            dispatch(addAlert({ message: errorMessage, type: AlertType.Error }));
+                dispatch(updateConversation({ message: messageResult, chatId: chatId, nextAction }));
+            } catch (e: any) {
+                const errorMessage = `Unable to generate bot response. Details: ${e.message ?? e}`;
+                dispatch(addAlert({ message: errorMessage, type: AlertType.Error }));
+            }
         }
     };
 
@@ -233,12 +246,13 @@ export const useChat = () => {
         }
     };
 
-    const downloadBot = async (chatId: string) => {
+    const downloadBot = async (chatId: string, planOnly: boolean = false) => {
         try {
             return botService.downloadAsync(
                 chatId,
                 account?.homeAccountId || '',
                 await AuthHelper.getSKaaSAccessToken(instance),
+                planOnly,
             );
         } catch (e: any) {
             const errorMessage = `Unable to download the bot. Details: ${e.message ?? e}`;

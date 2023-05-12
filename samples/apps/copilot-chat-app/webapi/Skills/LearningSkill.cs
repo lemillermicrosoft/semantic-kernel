@@ -63,9 +63,6 @@ public class LearningSkill
             var lessonContext = lessonDescription;
             if (context.Skills is not null && context.Skills.TryGetFunction("DocumentMemorySkill", "QueryDocuments", out var queryDocuments))
             {
-                // [SKFunctionContextParameter(Name = "userId", Description = "ID of the user who owns the documents")]
-                // [SKFunctionContextParameter(Name = "tokenLimit", Description = "Maximum number of tokens")]
-                // [SKFunctionContextParameter(Name = "contextTokenLimit", Description = "Maximum number of context tokens")]
                 var documentContext = new ContextVariables(string.Join(" ", lessonName, lessonDescription));
                 documentContext.Set("userId", userId);
                 documentContext.Set("tokenLimit", tokenLimit);
@@ -99,7 +96,10 @@ public class LearningSkill
             if (context.Skills is not null &&
                 context.Skills.TryGetFunction("StudySkill", "StudySession", out var studySession))
             {
-                studyPlan.AddSteps(studySession!);
+                // TODO either make studySession plan and then set its outputs or just make that the studyPlan
+                var p = new Plan(studySession);
+                p.Outputs.Add("LESSON_STATE");
+                studyPlan.AddSteps(p);
             }
 
             var forEachContext = new ContextVariables(context.Result.ToString());
@@ -114,12 +114,15 @@ public class LearningSkill
             var result = await this._learningSkillKernel.RunAsync(forEachContext, this._forEachSkill["ForEach"]);
             if (result.Variables.Get("FOREACH_RESULT", out var forEachResultPlan))
             {
-                plan.AddSteps(Plan.FromJson(forEachResultPlan.ToString(), context)!);
+                plan = Plan.FromJson(forEachResultPlan.ToString(), context);
+                plan.Name = $"{lessonName} Buddy";
+                plan.Description = lessonDescription;
             }
         } // else say that we can't
 
         var lessonPlanJson = plan.ToJson();
         var lessonPlanString = lessonPlanJson;//LearningSkill.ToPlanString(plan);
+        var formattedPlanString = LearningSkill.ToPlanString(plan);
         // TODO - let's get rid of some state like 'action' and stuff before serializing. How?
         context.Variables.Update(lessonPlanString);
         context.Variables.Set("lessonPlanJson", lessonPlanJson);
@@ -127,7 +130,7 @@ public class LearningSkill
         // chat/bot support
         await context.Memory.SaveInformationAsync(
             collection: $"{chatId}-LearningSkill.LessonPlans",
-            text: lessonPlanString,
+            text: formattedPlanString,
             id: Guid.NewGuid().ToString(),
             description: $"Lesson plan about {lessonName}",
             additionalMetadata: lessonPlanJson);
@@ -142,7 +145,11 @@ public class LearningSkill
     [SKFunctionName("InstructLesson")]
     [SKFunction("Instruct a lesson plan")]
     [SKFunctionContextParameter(Name = "chatId", Description = "Unique and persistent identifier for the chat", DefaultValue = "")]
-    [SKFunctionContextParameter(Name = "chat_history", Description = "Chat message history")]
+    [SKFunctionContextParameter(Name = "chat_history", Description = "Chat message history", DefaultValue = "")]
+    [SKFunctionContextParameter(Name = "userId", Description = "ID of the user who owns the documents", DefaultValue = "")]
+    [SKFunctionContextParameter(Name = "tokenLimit", Description = "Maximum number of tokens", DefaultValue = "")]
+    [SKFunctionContextParameter(Name = "contextTokenLimit", Description = "Maximum number of context tokens", DefaultValue = "")]
+    [SKFunctionContextParameter(Name = "userIntent", Description = "The user intent", DefaultValue = "")]
     // TODO: maybe userIntent instead of "lesson" query
     public async Task<SKContext> InstructSessionAsync(SKContext context)
     {
@@ -165,31 +172,95 @@ public class LearningSkill
             // todo error handling
             var lessonPlanJson = memories[0].Metadata.AdditionalMetadata;
             var lessonPlan = Plan.FromJson(lessonPlanJson, context);
-            var lessonStepIndex = lessonPlan.NextStepIndex;
+            var lessonStepIndex = lessonPlan.Steps[lessonPlan.NextStepIndex].NextStepIndex;
+            Console.WriteLine($"Lesson step index: {lessonStepIndex}");
 
-            // PROBLEM It's doing all of the lessons. It should only do the next one.
+
+            var lessonDescription = lessonPlan.Description;
+            var lessonName = lessonPlan.Name;
+            var lessonContext = lessonDescription;
+            var userIntent = context.Variables["userIntent"];
+            context.Variables.Get("userId", out var userId);
+            context.Variables.Get("tokenLimit", out var tokenLimit);
+            context.Variables.Get("contextTokenLimit", out var contextTokenLimit);
+
+            if (context.Skills is not null && context.Skills.TryGetFunction("DocumentMemorySkill", "QueryDocuments", out var queryDocuments))
+            {
+                var documentContext = new ContextVariables(string.Join(" ", lessonName, lessonDescription));
+                documentContext.Set("userId", userId);
+                documentContext.Set("tokenLimit", tokenLimit);
+                documentContext.Set("contextTokenLimit", contextTokenLimit);
+                var queryDocumentsContext = new SKContext(documentContext, context.Memory, context.Skills, context.Log, context.CancellationToken);
+
+                var queryDocumentsResult = await queryDocuments.InvokeAsync(queryDocumentsContext);
+                lessonContext = queryDocumentsResult.Result.ToString();
+                if (string.IsNullOrEmpty(lessonContext))
+                {
+                    Console.WriteLine($"*understands* I didn't find any documents about {lessonName}");
+                }
+                else
+                {
+                    Console.WriteLine($"*understands* I found {lessonContext}");
+                }
+            }
+            else
+            {
+                Console.WriteLine("DocumentMemorySkill not found");
+            }
+
+            // TODO: Make this better
+            context.Variables.Set("context", lessonContext); // {DocumentMemorySkill.QueryDocuments $INPUT}
+
             var plan = await lessonPlan.InvokeNextStepAsync(context);
             if (plan is not null)
             {
                 var result = plan.State.ToString();
                 // Requirement: Steps "LESSON_STATE" must be set to "IN_PROGRESS"|empty or "DONE"
-                if (!plan.Steps[lessonStepIndex].State.Get("LESSON_STATE", out var lessonState) || lessonState == "IN_PROGRESS")
+                if (!lessonPlan.HasNextStep || !lessonPlan.Steps[lessonPlan.NextStepIndex].HasNextStep)
                 {
+                    Console.WriteLine("No more steps in plan");
+                    context.Variables.Set("continuePlan", null);
+                    context.Variables.Set("updatePlan", null);
+                }
+                else if (!lessonPlan.Steps[lessonPlan.NextStepIndex].Steps[lessonStepIndex].State.Get("LESSON_STATE", out var lessonState))
+                {
+                    Console.WriteLine("LESSON_STATE not found, continue plan");
                     context.Variables.Set("continuePlan", "true");
                 }
                 else // if (lessonState == "DONE")
                 {
-                    // continue with next step in plan.
-                    context.Variables.Set("continuePlan", null);
+                    if (lessonState == "DONE")
+                    {
+                        // continue with next step in plan.
+                        Console.WriteLine($"Continuing with next step in lesson plan and updating memory: {plan.HasNextStep}");
+                        context.Variables.Set("continuePlan", plan.HasNextStep.ToString());
+                        context.Variables.Set("updatePlan", "true");
+
+                        // Update the plan in memory
+                        var lessonPlanString = plan.ToJson();
+                        var formattedLessonPlanString = LearningSkill.ToPlanString(plan);
+                        await context.Memory.SaveInformationAsync(
+                            collection: $"{chatId}-LearningSkill.LessonPlans",
+                            text: formattedLessonPlanString,
+                            id: memories[0].Metadata.Id,
+                            description: $"In Progress {memories[0].Metadata.Description}",
+                            additionalMetadata: lessonPlanString);
+                    }
+                    else
+                    {
+                        Console.WriteLine("LESSON_STATE was not DONE, continue plan");
+                        context.Variables.Set("continuePlan", "true");
+                        context.Variables.Set("updatePlan", "false");
+                    }
                 }
 
-                Console.WriteLine($"Lesson state: {result}");
                 context.Variables.Update(result);
             }
             else
             {
                 Console.WriteLine("Clearing action from context 2");
                 context.Variables.Set("continuePlan", null);
+                context.Variables.Set("updatePlan", null);
             }
         }
         else
