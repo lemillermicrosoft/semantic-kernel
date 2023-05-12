@@ -147,7 +147,38 @@ public class BotController : ControllerBase
         var memory = await this.CreateBotAsync(
             kernel: kernel,
             chatId: chatId,
-            userId: userId);
+            userId: userId,
+            planOnly: false);
+
+        return JsonSerializer.Serialize(memory);
+    }
+
+
+    /// <summary>
+    /// Download a lesson bot.
+    /// </summary>
+    /// <param name="kernel">The Semantic Kernel instance.</param>
+    /// <param name="chatId">The chat id to be downloaded.</param>
+    /// <param name="userId">The id of the current user and its home tenant.</param>
+    /// <returns>The serialized Bot object of the chat id.</returns>
+    [Authorize]
+    [HttpGet]
+    [Route("lessonbot/download/{chatId:guid}/{userId:regex(([[a-z0-9]]+-)+[[a-z0-9]]+\\.([[a-z0-9]]+-)+[[a-z0-9]]+)}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<string>> DownloadLessonAsync(
+        [FromServices] IKernel kernel,
+        Guid chatId,
+        string userId)
+    {
+        // TODO: get thh userId from the AAD token/claim.
+        this._logger.LogDebug("Received call to download a bot");
+        var memory = await this.CreateBotAsync(
+            kernel: kernel,
+            chatId: chatId,
+            userId: userId,
+            planOnly: true);
 
         return JsonSerializer.Serialize(memory);
     }
@@ -210,11 +241,13 @@ public class BotController : ControllerBase
     /// <param name="kernel">The semantic kernel object.</param>
     /// <param name="chatId">The chat id of the bot</param>
     /// <param name="userId">The id of the current user and its home tenant.</param>
+    /// <param name="planOnly"></param>
     /// <returns>A Bot object that represents the chat session.</returns>
     private async Task<Bot> CreateBotAsync(
         IKernel kernel,
         Guid chatId,
-        string userId)
+        string userId,
+        bool planOnly)
     {
         var chatIdString = chatId.ToString();
         var bot = new Bot
@@ -234,7 +267,7 @@ public class BotController : ControllerBase
         var memories = kernel.Memory.SearchAsync($"{chatIdString}-LearningSkill.LessonPlans", query: "lesson", limit: 1, minRelevanceScore: 0.0)
             .ToEnumerable()
             .ToList();
-        if (memories.Count == 0)
+        if (!planOnly || memories.Count == 0)
         {
             // no lessons to save
             // get the chat title

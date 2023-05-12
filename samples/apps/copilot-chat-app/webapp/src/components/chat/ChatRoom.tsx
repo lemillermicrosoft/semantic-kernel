@@ -89,6 +89,8 @@ export const ChatRoom: React.FC = () => {
         approvedPlanJson?: string,
         planUserIntent?: string,
         userCancelledPlan?: boolean,
+        userSavedPlan?: boolean,
+        userInvokePlanViaChat?: boolean,
     ) => {
         log('submitting user chat message');
 
@@ -100,11 +102,22 @@ export const ChatRoom: React.FC = () => {
             authorRole: AuthorRoles.User,
         };
 
-        setIsBotTyping(true);
-        dispatch(updateConversation({ message: chatInput }));
+        if (!!!userSavedPlan) {
+            setIsBotTyping(true);
+            dispatch(updateConversation({ message: chatInput }));
+        }
 
         try {
-            await chat.getResponse(value, selectedId, nextAction, approvedPlanJson, planUserIntent, userCancelledPlan);
+            await chat.getResponse(
+                value,
+                selectedId,
+                nextAction ?? approvedPlanJson,
+                approvedPlanJson,
+                planUserIntent,
+                userCancelledPlan,
+                userSavedPlan,
+                userInvokePlanViaChat,
+            );
         } finally {
             setIsBotTyping(false);
         }

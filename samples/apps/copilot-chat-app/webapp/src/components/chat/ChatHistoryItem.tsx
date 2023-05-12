@@ -65,6 +65,8 @@ interface ChatHistoryItemProps {
         approvedPlanJson?: string,
         planUserIntent?: string,
         userCancelledPlan?: boolean,
+        userSavedPlan?: boolean,
+        userInvokePlanViaChat?: boolean,
     ) => Promise<void>;
 }
 
@@ -85,13 +87,15 @@ export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = ({ message, getRe
     const onPlanApproval = async () => {
         // Invoke plan
         // Extract plan from bot response
-        const proposedPlan = JSON.parse(message.content).proposedPlan;
-        await getResponse('Yes, proceed', JSON.stringify(proposedPlan), plan?.description);
+        // const proposedPlan = JSON.parse(message.content).proposedPlan;
+        // await getResponse('Yes, proceed', JSON.stringify(proposedPlan), plan?.description);
+        await getResponse('Start Instruction', message.content, 'Instruct the lesson', undefined, undefined, true);
     };
 
     const onPlanCancel = async () => {
         // Bail out of plan
-        await getResponse('No, cancel', undefined, undefined, true);
+        // await getResponse('No, cancel', undefined, undefined, true);
+        await getResponse('Save Plan', message.content, plan?.description, undefined, true);
     };
 
     const content = !isPlan
