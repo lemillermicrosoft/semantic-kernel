@@ -159,7 +159,7 @@ export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = ({ message, getRe
                     {isPlan && (
                         <PlanViewer
                             plan={plan}
-                            actionRequired={message.planApprovalRequired}
+                            actionRequired={message.planApprovalRequired || isPlan}
                             onSubmit={onPlanApproval}
                             onCancel={onPlanCancel}
                         />
