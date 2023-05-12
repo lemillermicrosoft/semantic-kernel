@@ -114,8 +114,7 @@ public class LearningSkill
             var result = await this._learningSkillKernel.RunAsync(forEachContext, this._forEachSkill["ForEach"]);
             if (result.Variables.Get("FOREACH_RESULT", out var forEachResultPlan))
             {
-                var p = Plan.FromJson(forEachResultPlan.ToString(), context);
-                plan.AddSteps(p);
+                plan = Plan.FromJson(forEachResultPlan.ToString(), context);
             }
         } // else say that we can't
 
@@ -210,7 +209,6 @@ public class LearningSkill
             // TODO: Make this better
             context.Variables.Set("context", lessonContext); // {DocumentMemorySkill.QueryDocuments $INPUT}
 
-            // PROBLEM It's doing all of the lessons. It should only do the next one.
             var plan = await lessonPlan.InvokeNextStepAsync(context);
             if (plan is not null)
             {

@@ -103,14 +103,15 @@ public class StudySkill
 
             // completion is now a JSON object e.g. {"message": "What is the answer to 2+2?", "evaluationScore": 0.2}
             // parse completion
-            string message = "";
-            string evaluationScore = "";
+            string? message = "";
+            string? evaluationScore = "";
             try
             {
                 var completionObject = JObject.Parse(completion.Result);
-                message = completionObject!["message"].ToString();
-                evaluationScore = completionObject!["evaluationScore"].ToString();
+                message = completionObject?["message"]?.ToString();
+                evaluationScore = completionObject?["evaluationScore"]?.ToString();
             }
+#pragma warning disable CA1031 // Do not catch general exception types
             catch (Exception e)
             {
                 // sometimes it's ending the json prematurely... append ", "evaluationScore": 1}" to the end and try again, otherwise just use the whole thing
@@ -118,8 +119,8 @@ public class StudySkill
                 try
                 {
                     var completionObject = JObject.Parse(completion.Result + ", \"evaluationScore\": 1}");
-                    message = completionObject!["message"].ToString();
-                    evaluationScore = completionObject!["evaluationScore"].ToString();
+                    message = completionObject?["message"]?.ToString();
+                    evaluationScore = completionObject?["evaluationScore"]?.ToString();
                 }
                 catch (Exception e2)
                 {
@@ -128,9 +129,10 @@ public class StudySkill
                     evaluationScore = "1"; // assumption
                 }
             }
+#pragma warning restore CA1031 // Do not catch general exception types
 
 
-            context.Variables.Update(message);
+            context.Variables.Update(message!);
             context.Variables.Set("evaluationScore", evaluationScore);
 
             // get float from evaluationScore and see if greater than 0.9
