@@ -3,6 +3,7 @@
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.SkillDefinition;
+using Newtonsoft.Json.Linq;
 
 namespace SemanticKernel.Service.Skills;
 
@@ -35,6 +36,8 @@ public class StudySkill
     [SKFunctionContextParameter(Name = "topic", Description = "Topic to study e.g. 'Equations and inequalities'")]
     [SKFunctionContextParameter(Name = "course", Description = "The course of study e.g. 'Algebra 1'")]
     [SKFunctionContextParameter(Name = "chat_history", Description = "Chat message history")]
+    [SKFunctionContextParameter(Name = "LESSON_STATE", Description = "State of the study session")]
+    [SKFunctionContextParameter(Name = "context", Description = "Contextual information for the study session")]
     public async Task<SKContext> StudySessionAsync(SKContext context)
     {
         //
@@ -87,6 +90,7 @@ public class StudySkill
     [SKFunctionContextParameter(Name = "topic", Description = "Message to send")]
     [SKFunctionContextParameter(Name = "context", Description = "Message to send")]
     [SKFunctionContextParameter(Name = "course", Description = "Message to send")]
+    [SKFunctionContextParameter(Name = "LESSON_STATE", Description = "State of the study session")]
     public async Task<SKContext> PrepareMessageAsync(SKContext context)
     {
         // If there is a message, use it. Otherwise, get the chat history and generate completion for next message.
@@ -94,7 +98,61 @@ public class StudySkill
         {
             // course, chat_history, topic, context
             var completion = await this._semanticSkills["ContinueLesson"].InvokeAsync(context);
-            context.Variables.Update(completion.Result);
+
+            Console.WriteLine($"Completion: {completion.Result}");
+
+            // completion is now a JSON object e.g. {"message": "What is the answer to 2+2?", "evaluationScore": 0.2}
+            // parse completion
+            string? message = "";
+            string? evaluationScore = "";
+            try
+            {
+                var completionObject = JObject.Parse(completion.Result);
+                message = completionObject?["message"]?.ToString();
+                evaluationScore = completionObject?["evaluationScore"]?.ToString();
+            }
+#pragma warning disable CA1031 // Do not catch general exception types
+            catch (Exception e)
+            {
+                // sometimes it's ending the json prematurely... append ", "evaluationScore": 1}" to the end and try again, otherwise just use the whole thing
+                Console.WriteLine($"Error parsing completion: {e.Message}");
+                try
+                {
+                    var completionObject = JObject.Parse(completion.Result + ", \"evaluationScore\": 1}");
+                    message = completionObject?["message"]?.ToString();
+                    evaluationScore = completionObject?["evaluationScore"]?.ToString();
+                }
+                catch (Exception e2)
+                {
+                    Console.WriteLine($"Error parsing completion: {e2.Message}");
+                    message = completion.Result;
+                    evaluationScore = "1"; // assumption
+                }
+            }
+#pragma warning restore CA1031 // Do not catch general exception types
+
+
+            context.Variables.Update(message!);
+            context.Variables.Set("evaluationScore", evaluationScore);
+
+            // get float from evaluationScore and see if greater than 0.9
+            Console.WriteLine($"Evaluation score: {evaluationScore}");
+            if (float.TryParse(evaluationScore, out var evaluationScoreFloat))
+            {
+                if (evaluationScoreFloat > 0.99)
+                {
+                    Console.WriteLine("Lesson is done!");
+                    context.Variables.Set("LESSON_STATE", "DONE");
+                }
+                else
+                {
+                    context.Variables.Set("LESSON_STATE", "IN_PROGRESS");
+                }
+            }
+            else
+            {
+                context.Variables.Set("LESSON_STATE", "IN_PROGRESS");
+            }
         }
         else if (context.Variables.Get("message", out var message))
         {

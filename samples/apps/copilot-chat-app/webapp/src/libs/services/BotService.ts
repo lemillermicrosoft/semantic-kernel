@@ -8,10 +8,12 @@ export class BotService extends BaseService {
         chatId: string,
         userId: string,
         accessToken: string,
+        planOnly: boolean,
     ): Promise<any> => {
+        const prefix = planOnly ? 'lesson' : '';
         const result = await this.getResponseAsync<any>(
             {
-                commandPath: `bot/download/${chatId}/${userId}`,
+                commandPath: `${prefix}bot/download/${chatId}/${userId}`,
                 method: 'GET',
             },
             accessToken,

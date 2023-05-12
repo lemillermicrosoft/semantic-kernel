@@ -1,4 +1,5 @@
 import { Badge, Body1, Card, CardHeader, makeStyles, shorthands, Text, tokens } from '@fluentui/react-components';
+import { useEffect, useState } from 'react';
 import { IPlan, IPlanInput } from '../../../libs/models/Plan';
 import { CopilotChatTokens } from '../../../styles';
 
@@ -55,6 +56,23 @@ export const PlanStepCard: React.FC<PlanStepCardProps> = ({ index, step }) => {
     const numbersAsStrings = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
     const stepNumber = numbersAsStrings[index];
 
+    const [stepLabel, setStepLabel] = useState<string>('');
+    const [stepDot, setStepDot] = useState<string>('');
+
+    useEffect(() => {
+        if (step.skill || step.function) {
+            setStepLabel(` ${step.skill}.${step.function}`);
+        } else if (step.steps && step.steps.length === 1 && step.steps[0].function !== '') {
+            setStepLabel(` ${step.steps[0].skill}.${step.steps[0].function}`);
+        }
+    }, [step]);
+
+    useEffect(() => {
+        if (stepLabel) {
+            setStepDot(' •');
+        }
+    }, [stepLabel]);
+
     return (
         <Card className={classes.card}>
             <div className={classes.flexRow}>
@@ -65,9 +83,9 @@ export const PlanStepCard: React.FC<PlanStepCardProps> = ({ index, step }) => {
                             <Body1>
                                 <b className={classes.header}>
                                     Step {stepNumber}
-                                    {(step.skill || step.function) && ' •'}
+                                    {stepDot}
                                 </b>
-                                {step.skill || step.function ? ` ${step.skill}.${step.function}` : ''}
+                                {stepLabel}
                                 <br />
                             </Body1>
                         }
@@ -87,7 +105,10 @@ export const PlanStepCard: React.FC<PlanStepCardProps> = ({ index, step }) => {
                             );
                         })}
                     </div>
-                    {step.steps && step.steps.map((s: IPlan) => <PlanStepCard index={stepCount++} step={s} />)}
+                    {step.steps &&
+                        step.steps.length > 1 &&
+                        step.steps[0].function === '' &&
+                        step.steps.map((s: IPlan) => <PlanStepCard index={stepCount++} step={s} />)}
                 </div>
             </div>
         </Card>
