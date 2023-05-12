@@ -29,8 +29,9 @@ internal static class SemanticKernelExtensions
         {
             string promptsConfigPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!, "prompts.json");
             PromptsConfig promptsConfig = JsonSerializer.Deserialize<PromptsConfig>(
-                File.ReadAllText(promptsConfigPath), new JsonSerializerOptions() { ReadCommentHandling = JsonCommentHandling.Skip })
-                ?? throw new InvalidOperationException($"Failed to load '{promptsConfigPath}'.");
+                                              File.ReadAllText(promptsConfigPath),
+                                              new JsonSerializerOptions() { ReadCommentHandling = JsonCommentHandling.Skip })
+                                          ?? throw new InvalidOperationException($"Failed to load '{promptsConfigPath}'.");
             promptsConfig.Validate();
             return promptsConfig;
         });
@@ -176,7 +177,8 @@ internal static class SemanticKernelExtensions
                     throw new InvalidOperationException("MemoriesStore type is AzureCognitiveSearch and AzureCognitiveSearch configuration is null.");
                 }
 
-                services.AddSingleton<ISemanticTextMemory>(sp => new AzureCognitiveSearchMemory(config.AzureCognitiveSearch.Endpoint, config.AzureCognitiveSearch.Key));
+                services.AddSingleton<ISemanticTextMemory>(sp =>
+                    new AzureCognitiveSearchMemory(config.AzureCognitiveSearch.Endpoint, config.AzureCognitiveSearch.Key));
                 break;
 
             default:
@@ -245,7 +247,8 @@ internal static class SemanticKernelExtensions
     /// </summary>
     internal static KernelConfig AddImageGenerationBackend(this KernelConfig kernelConfig)
     {
-        kernelConfig.AddImageGenerationService(_ => new HuggingFaceTextToImage("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", model: "stabilityai/stable-diffusion-2-1"));
+        kernelConfig.AddImageGenerationService(_ =>
+            new HuggingFaceTextToImage("", model: "stabilityai/stable-diffusion-2-1"));
 
         return kernelConfig;
     }

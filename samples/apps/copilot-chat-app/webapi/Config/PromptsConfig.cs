@@ -46,17 +46,20 @@ public class PromptsConfig
     {
         if (this.CompletionTokenLimit <= 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(this.CompletionTokenLimit), $"{nameof(this.CompletionTokenLimit)} is not valid: '{this.CompletionTokenLimit}' is not greater than 0.");
+            throw new ArgumentOutOfRangeException(nameof(this.CompletionTokenLimit),
+                $"{nameof(this.CompletionTokenLimit)} is not valid: '{this.CompletionTokenLimit}' is not greater than 0.");
         }
 
         if (this.ResponseTokenLimit <= 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(this.ResponseTokenLimit), $"{nameof(this.ResponseTokenLimit)} is not valid: '{this.ResponseTokenLimit}' is not greater than 0.");
+            throw new ArgumentOutOfRangeException(nameof(this.ResponseTokenLimit),
+                $"{nameof(this.ResponseTokenLimit)} is not valid: '{this.ResponseTokenLimit}' is not greater than 0.");
         }
 
         if (this.ResponseTokenLimit > this.CompletionTokenLimit)
         {
-            throw new ArgumentOutOfRangeException(nameof(this.ResponseTokenLimit), $"{nameof(this.ResponseTokenLimit)} is not valid: '{this.ResponseTokenLimit}' is greater than '{this.CompletionTokenLimit}'.");
+            throw new ArgumentOutOfRangeException(nameof(this.ResponseTokenLimit),
+                $"{nameof(this.ResponseTokenLimit)} is not valid: '{this.ResponseTokenLimit}' is greater than '{this.CompletionTokenLimit}'.");
         }
 
         Validate(this.KnowledgeCutoffDate, nameof(this.KnowledgeCutoffDate));
