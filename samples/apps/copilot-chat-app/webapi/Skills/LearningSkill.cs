@@ -121,7 +121,7 @@ public class LearningSkill
         } // else say that we can't
 
         var lessonPlanJson = plan.ToJson();
-        var lessonPlanString = lessonPlanJson;//LearningSkill.ToPlanString(plan);
+        var lessonPlanString = lessonPlanJson; //LearningSkill.ToPlanString(plan);
         var formattedPlanString = LearningSkill.ToPlanString(plan);
         // TODO - let's get rid of some state like 'action' and stuff before serializing. How?
         context.Variables.Update(lessonPlanString);
@@ -174,7 +174,6 @@ public class LearningSkill
             var lessonPlan = Plan.FromJson(lessonPlanJson, context);
             var lessonStepIndex = lessonPlan.Steps[lessonPlan.NextStepIndex].NextStepIndex;
             Console.WriteLine($"Lesson step index: {lessonStepIndex}");
-
 
             var lessonDescription = lessonPlan.Description;
             var lessonName = lessonPlan.Name;
