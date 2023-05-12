@@ -1,6 +1,6 @@
 import { IPlan, IPlanInput } from '../models/Plan';
 
-export const isPlan = (object: string) => {
+export const isPlan = (object: string): boolean => {
     // backslash has to be escaped since it's a JSON string
     // eslint-disable-next-line
     const planPrefix = `Microsoft.SemanticKernel.Planning.Plan`; // TODO make this better, teresa's pattern is likely better.

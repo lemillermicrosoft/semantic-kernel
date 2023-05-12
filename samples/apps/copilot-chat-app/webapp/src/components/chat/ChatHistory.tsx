@@ -31,6 +31,8 @@ interface ChatHistoryProps {
         approvedPlanJson?: string,
         planUserIntent?: string,
         userCancelledPlan?: boolean,
+        userSavedPlan?: boolean,
+        userInvokePlanViaChat?: boolean,
     ) => Promise<void>;
 }
 

@@ -44,7 +44,8 @@ export const PlanViewer: React.FC<PlanViewerProps> = ({ plan, actionRequired, on
 
     return (
         <div className={classes.container}>
-            <Text>Based on the request, Copilot Chat will run the following steps:</Text>
+            {/* <Text>Based on the request, Copilot Chat will run the following steps:</Text> */}
+            <Text>Here is a lesson plan we've created to guide a user through.</Text>
             <Text weight="bold">{`Goal: ${plan.description}`}</Text>
             {plan.steps && plan.steps.map((step: IPlan) => <PlanStepCard index={stepCount++} step={step} />)}
             {showButtons && (
@@ -52,10 +53,10 @@ export const PlanViewer: React.FC<PlanViewerProps> = ({ plan, actionRequired, on
                     Would you like to proceed with the plan?
                     <div className={classes.buttons}>
                         <Button appearance="secondary" onClick={onCancelClick}>
-                            No, cancel plan
+                            Save Plan
                         </Button>
                         <Button type="submit" appearance="primary" onClick={onProceedClick}>
-                            Yes, proceed
+                            Start Instruction
                         </Button>
                     </div>
                 </>
