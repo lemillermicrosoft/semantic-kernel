@@ -115,6 +115,8 @@ public class LearningSkill
             if (result.Variables.Get("FOREACH_RESULT", out var forEachResultPlan))
             {
                 plan = Plan.FromJson(forEachResultPlan.ToString(), context);
+                plan.Name = $"{lessonName} Buddy";
+                plan.Description = lessonDescription;
             }
         } // else say that we can't
 
