@@ -144,7 +144,17 @@ public class ChatSkill
     [SKFunctionContextParameter(Name = "contextTokenLimit", Description = "Maximum number of context tokens")]
     public async Task<string> ExtractUserMemoriesAsync(SKContext context)
     {
-        var chatId = context["chatId"];
+        string latestMessage;
+        if (context.Variables.Get("chatId", out var chatId))
+        {
+            // Find the most recent message.
+            latestMessage = (await this._chatMessageRepository.FindLastByChatIdAsync(chatId)).ToString();
+        }
+        else
+        {
+            latestMessage = context.Result;
+        }
+
         var tokenLimit = int.Parse(context["tokenLimit"], new NumberFormatInfo());
         var contextTokenLimit = int.Parse(context["contextTokenLimit"], new NumberFormatInfo());
         var remainingToken = Math.Min(
@@ -152,16 +162,13 @@ public class ChatSkill
             Math.Floor(contextTokenLimit * this._promptSettings.MemoriesResponseContextWeight)
         );
 
-        // Find the most recent message.
-        var latestMessage = await this._chatMessageRepository.FindLastByChatIdAsync(chatId);
-
         // Search for relevant memories.
         List<MemoryQueryResult> relevantMemories = new();
         foreach (var memoryName in this._promptSettings.MemoryMap.Keys)
         {
             var results = context.Memory.SearchAsync(
                 SemanticMemoryExtractor.MemoryCollectionName(chatId, memoryName),
-                latestMessage.ToString(),
+                latestMessage,
                 limit: 100,
                 minRelevanceScore: this._promptSettings.SemanticMemoryMinRelevance);
             await foreach (var memory in results)
