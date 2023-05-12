@@ -131,7 +131,6 @@ public class StudySkill
             }
 #pragma warning restore CA1031 // Do not catch general exception types
 
-
             context.Variables.Update(message!);
             context.Variables.Set("evaluationScore", evaluationScore);
 

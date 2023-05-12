@@ -121,8 +121,8 @@ public sealed class HuggingFaceTextToImage : IImageGeneration, IDisposable
             if (!response.IsSuccessStatusCode)
             {
                 throw new AIException(
-                AIException.ErrorCodes.ServiceError,
-                $"Failed to call {this._model} model. {response.StatusCode}.");
+                    AIException.ErrorCodes.ServiceError,
+                    $"Failed to call {this._model} model. {response.StatusCode}.");
             }
 
             var imageBytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
