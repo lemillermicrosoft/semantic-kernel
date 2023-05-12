@@ -111,6 +111,9 @@ public class BotController : ControllerBase
 
             // 3. Update the memory.
             await this.BulkUpsertMemoryRecordsAsync(oldChatId, chatId, bot.Embeddings);
+
+            // 4. Update the document memory.
+            await this.BulkUpsertMemoryRecordsAsync(oldChatId, chatId, bot.DocumentEmbeddings);
         }
         catch
         {
