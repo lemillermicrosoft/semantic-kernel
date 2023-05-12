@@ -144,7 +144,11 @@ public class LearningSkill
     [SKFunctionName("InstructLesson")]
     [SKFunction("Instruct a lesson plan")]
     [SKFunctionContextParameter(Name = "chatId", Description = "Unique and persistent identifier for the chat", DefaultValue = "")]
-    [SKFunctionContextParameter(Name = "chat_history", Description = "Chat message history")]
+    [SKFunctionContextParameter(Name = "chat_history", Description = "Chat message history", DefaultValue = "")]
+    [SKFunctionContextParameter(Name = "userId", Description = "ID of the user who owns the documents", DefaultValue = "")]
+    [SKFunctionContextParameter(Name = "tokenLimit", Description = "Maximum number of tokens", DefaultValue = "")]
+    [SKFunctionContextParameter(Name = "contextTokenLimit", Description = "Maximum number of context tokens", DefaultValue = "")]
+    [SKFunctionContextParameter(Name = "userIntent", Description = "The user intent", DefaultValue = "")]
     // TODO: maybe userIntent instead of "lesson" query
     public async Task<SKContext> InstructSessionAsync(SKContext context)
     {
@@ -169,6 +173,42 @@ public class LearningSkill
             var lessonPlan = Plan.FromJson(lessonPlanJson, context);
             var lessonStepIndex = lessonPlan.Steps[lessonPlan.NextStepIndex].NextStepIndex;
             Console.WriteLine($"Lesson step index: {lessonStepIndex}");
+
+
+            var lessonDescription = lessonPlan.Description;
+            var lessonName = lessonPlan.Name;
+            var lessonContext = lessonDescription;
+            var userIntent = context.Variables["userIntent"];
+            context.Variables.Get("userId", out var userId);
+            context.Variables.Get("tokenLimit", out var tokenLimit);
+            context.Variables.Get("contextTokenLimit", out var contextTokenLimit);
+
+            if (context.Skills is not null && context.Skills.TryGetFunction("DocumentMemorySkill", "QueryDocuments", out var queryDocuments))
+            {
+                var documentContext = new ContextVariables(string.Join(" ", lessonName, lessonDescription));
+                documentContext.Set("userId", userId);
+                documentContext.Set("tokenLimit", tokenLimit);
+                documentContext.Set("contextTokenLimit", contextTokenLimit);
+                var queryDocumentsContext = new SKContext(documentContext, context.Memory, context.Skills, context.Log, context.CancellationToken);
+
+                var queryDocumentsResult = await queryDocuments.InvokeAsync(queryDocumentsContext);
+                lessonContext = queryDocumentsResult.Result.ToString();
+                if (string.IsNullOrEmpty(lessonContext))
+                {
+                    Console.WriteLine($"*understands* I didn't find any documents about {lessonName}");
+                }
+                else
+                {
+                    Console.WriteLine($"*understands* I found {lessonContext}");
+                }
+            }
+            else
+            {
+                Console.WriteLine("DocumentMemorySkill not found");
+            }
+
+            // TODO: Make this better
+            context.Variables.Set("context", lessonContext); // {DocumentMemorySkill.QueryDocuments $INPUT}
 
             // PROBLEM It's doing all of the lessons. It should only do the next one.
             var plan = await lessonPlan.InvokeNextStepAsync(context);
@@ -214,7 +254,6 @@ public class LearningSkill
                     }
                 }
 
-                Console.WriteLine($"Lesson output: {result}");
                 context.Variables.Update(result);
             }
             else
