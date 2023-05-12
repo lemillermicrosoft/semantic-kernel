@@ -37,6 +37,7 @@ public class StudySkill
     [SKFunctionContextParameter(Name = "course", Description = "The course of study e.g. 'Algebra 1'")]
     [SKFunctionContextParameter(Name = "chat_history", Description = "Chat message history")]
     [SKFunctionContextParameter(Name = "LESSON_STATE", Description = "State of the study session")]
+    [SKFunctionContextParameter(Name = "context", Description = "Contextual information for the study session")]
     public async Task<SKContext> StudySessionAsync(SKContext context)
     {
         //
@@ -102,10 +103,32 @@ public class StudySkill
 
             // completion is now a JSON object e.g. {"message": "What is the answer to 2+2?", "evaluationScore": 0.2}
             // parse completion
-            var completionObject = JObject.Parse(completion.Result);
+            string message = "";
+            string evaluationScore = "";
+            try
+            {
+                var completionObject = JObject.Parse(completion.Result);
+                message = completionObject!["message"].ToString();
+                evaluationScore = completionObject!["evaluationScore"].ToString();
+            }
+            catch (Exception e)
+            {
+                // sometimes it's ending the json prematurely... append ", "evaluationScore": 1}" to the end and try again, otherwise just use the whole thing
+                Console.WriteLine($"Error parsing completion: {e.Message}");
+                try
+                {
+                    var completionObject = JObject.Parse(completion.Result + ", \"evaluationScore\": 1}");
+                    message = completionObject!["message"].ToString();
+                    evaluationScore = completionObject!["evaluationScore"].ToString();
+                }
+                catch (Exception e2)
+                {
+                    Console.WriteLine($"Error parsing completion: {e2.Message}");
+                    message = completion.Result;
+                    evaluationScore = "1"; // assumption
+                }
+            }
 
-            var message = completionObject!["message"].ToString();
-            var evaluationScore = completionObject!["evaluationScore"].ToString();
 
             context.Variables.Update(message);
             context.Variables.Set("evaluationScore", evaluationScore);
@@ -114,7 +137,7 @@ public class StudySkill
             Console.WriteLine($"Evaluation score: {evaluationScore}");
             if (float.TryParse(evaluationScore, out var evaluationScoreFloat))
             {
-                if (evaluationScoreFloat > 0.95) // should be more like 0.9 but for quick testing...
+                if (evaluationScoreFloat > 0.99)
                 {
                     Console.WriteLine("Lesson is done!");
                     context.Variables.Set("LESSON_STATE", "DONE");
