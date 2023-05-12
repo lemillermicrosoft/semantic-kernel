@@ -153,7 +153,6 @@ public class BotController : ControllerBase
         return JsonSerializer.Serialize(memory);
     }
 
-
     /// <summary>
     /// Download a lesson bot.
     /// </summary>

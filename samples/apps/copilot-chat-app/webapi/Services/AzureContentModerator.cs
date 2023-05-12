@@ -8,17 +8,20 @@ using Microsoft.SemanticKernel.AI;
 namespace SemanticKernel.Service.Services;
 
 public record AnalysisResult(
-    [property: JsonPropertyName("category")] string Category,
-    [property: JsonPropertyName("riskLevel")] short RiskLevel
+    [property: JsonPropertyName("category")]
+    string Category,
+    [property: JsonPropertyName("riskLevel")]
+    short RiskLevel
 );
 
-public record ImageContent([property: JsonPropertyName("content")] string Content);
+public record ImageContent([property: JsonPropertyName("content")]
+    string Content);
 
 public record ImageAnalysisRequest(
     [property: JsonPropertyName("image")] ImageContent Image,
-    [property: JsonPropertyName("categories")] List<string> Categories
+    [property: JsonPropertyName("categories")]
+    List<string> Categories
 );
-
 
 public sealed class AzureContentModerator : IDisposable
 {
@@ -28,11 +31,13 @@ public sealed class AzureContentModerator : IDisposable
     private readonly HttpClient _httpClient;
     private readonly HttpClientHandler? _httpClientHandler;
 
-    private static readonly List<string> s_categories = new List<string> {
+    private static readonly List<string> s_categories = new List<string>
+    {
         "Hate",
         "Sexual",
         "SelfHarm",
-        "Violence" };
+        "Violence"
+    };
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AzureContentModerator"/> class.
@@ -66,7 +71,6 @@ public sealed class AzureContentModerator : IDisposable
         // HACK
         this._httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", "KEY");
     }
-
 
     public async Task<Dictionary<string, AnalysisResult>> ImageAnalysisAsync(string base64Image, CancellationToken cancellationToken)
     {
