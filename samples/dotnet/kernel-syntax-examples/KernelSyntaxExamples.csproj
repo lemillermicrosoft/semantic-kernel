@@ -36,6 +36,7 @@
     <ProjectReference Include="..\..\..\dotnet\src\Connectors\Connectors.Memory.Weaviate\Connectors.Memory.Weaviate.csproj" />
     <ProjectReference Include="..\..\..\dotnet\src\Connectors\Connectors.Memory.Redis\Connectors.Memory.Redis.csproj" />
     <ProjectReference Include="..\..\..\dotnet\src\Extensions\Planning.ActionPlanner\Planning.ActionPlanner.csproj" />
+    <ProjectReference Include="..\..\..\dotnet\src\Extensions\Planning.IterativePlanner\Planning.IterativePlanner.csproj" />
     <ProjectReference Include="..\..\..\dotnet\src\Extensions\Planning.SequentialPlanner\Planning.SequentialPlanner.csproj" />
     <ProjectReference Include="..\..\..\dotnet\src\Connectors\Connectors.Memory.Pinecone\Connectors.Memory.Pinecone.csproj" />
     <ProjectReference Include="..\..\..\dotnet\src\Skills\Skills.OpenAPI\Skills.OpenAPI.csproj" />
