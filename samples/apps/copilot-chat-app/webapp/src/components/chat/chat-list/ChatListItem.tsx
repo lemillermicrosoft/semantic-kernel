@@ -60,6 +60,7 @@ const useClasses = makeStyles({
     protectedIcon: {
         color: '#6BB700',
         verticalAlign: 'text-bottom',
+        marginLeft: '4px',
     },
 });
 
