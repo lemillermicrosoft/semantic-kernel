@@ -19,10 +19,11 @@ public record ImageAnalysisRequest(
     [property: JsonPropertyName("categories")] List<string> Categories
 );
 
-
+// TODO: Move the moderator to SK.
 public sealed class AzureContentModerator : IDisposable
 {
     private const string HttpUserAgent = "Copilot Chat";
+    private const short ViolationThreshold = 4;
 
     private readonly Uri _endpoint;
     private readonly HttpClient _httpClient;
@@ -47,7 +48,7 @@ public sealed class AzureContentModerator : IDisposable
         this._httpClient.DefaultRequestHeaders.Add("User-Agent", HttpUserAgent);
 
         // HACK
-        this._httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", "KEY");
+        this._httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", "");
     }
 
     /// <summary>
@@ -64,13 +65,35 @@ public sealed class AzureContentModerator : IDisposable
         this._httpClient.DefaultRequestHeaders.Add("User-Agent", HttpUserAgent);
 
         // HACK
-        this._httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", "KEY");
+        this._httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", "");
+    }
+
+    /// <summary>
+    /// Prase the analysis result and return the violated categories.
+    /// </summary>
+    /// <param name="analysisResult">The content analysis result.</param>
+    /// <returns>The list of violated category names. Will return an empty list if there is no violoation.</returns>
+    public static List<string> ParseViolatedCategories(Dictionary<string, AnalysisResult> analysisResult)
+    {
+        var violatedCategories = new List<string>();
+
+        foreach (var category in analysisResult.Values)
+        {
+            if (category.RiskLevel > ViolationThreshold)
+            {
+                violatedCategories.Add(category.Category);
+            }
+        }
+
+        return violatedCategories;
     }
 
 
     public async Task<Dictionary<string, AnalysisResult>> ImageAnalysisAsync(string base64Image, CancellationToken cancellationToken)
     {
-        ImageContent content = new(base64Image);
+        var image = base64Image.Replace("data:image/png;base64,", "", StringComparison.InvariantCultureIgnoreCase).Replace("data:image/jpeg;base64,", "", StringComparison.InvariantCultureIgnoreCase);
+
+        ImageContent content = new(image);
         ImageAnalysisRequest requestBody = new(content, s_categories);
 
         using var httpRequestMessage = new HttpRequestMessage()
