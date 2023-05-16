@@ -515,6 +515,7 @@ public class ChatSkill
                 var remainingToken = tokenLimit - 500;
                 foreach (var chatMessage in sortedMessages)
                 {
+#pragma warning disable CA1031 // Do not catch general exception types
                     bool isPlan = false;
                     try
                     {
@@ -523,8 +524,9 @@ public class ChatSkill
                     }
                     catch (Exception)
                     {
-
                     }
+#pragma warning restore CA1031 // Do not catch general exception types
+
                     if (isPlan)
                     {
                         break;
@@ -596,11 +598,13 @@ public class ChatSkill
                     {
                         if (functionOrPlan is Plan p)
                         {
-                            if (completion.Variables.Get("updatePlan", out var updatePlan) && bool.TryParse(updatePlan, out var updatePlanBool) && updatePlanBool)
+                            if (completion.Variables.Get("updatePlan", out var updatePlan) && bool.TryParse(updatePlan, out var updatePlanBool) &&
+                                updatePlanBool)
                             {
                                 // So the plan is actually the InstructLesson plan -- probably should tweak this to be the learning plan in memory instead that's getting run there.
                             }
                         }
+
                         completion.Variables.Set("action", action);
                     }
                     else
@@ -658,7 +662,8 @@ public class ChatSkill
             {
                 if (continuePlan is not null)
                 {
-                    completion.Variables.Set("action", originalPlanJson); // this is a plan to run execute lesson -- TODO params instead of relying on memory only?
+                    completion.Variables.Set("action",
+                        originalPlanJson); // this is a plan to run execute lesson -- TODO params instead of relying on memory only?
                 }
                 else
                 {
@@ -792,7 +797,8 @@ public class ChatSkill
             : string.Format(CultureInfo.InvariantCulture, "JSON response for {0} is too large to be consumed at this time.", lastSkillInvoked);
     }
 
-    private Type GetOpenApiSkillResponseType(ref JsonDocument document, ref string lastSkillInvoked, ref string lastSkillFunctionInvoked, ref bool trimSkillResponse)
+    private Type GetOpenApiSkillResponseType(ref JsonDocument document, ref string lastSkillInvoked, ref string lastSkillFunctionInvoked,
+        ref bool trimSkillResponse)
     {
         Type skillResponseType = typeof(object); // Use a reasonable default response type
 
