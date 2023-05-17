@@ -269,7 +269,7 @@ internal static class SemanticKernelExtensions
     internal static KernelConfig AddImageGenerationBackend(this KernelConfig kernelConfig)
     {
         kernelConfig.AddImageGenerationService(_ =>
-            new HuggingFaceTextToImage("", model: "stabilityai/stable-diffusion-2-1"));
+            new HuggingFaceTextToImage("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", model: "stabilityai/stable-diffusion-2-1"));
 
         return kernelConfig;
     }
