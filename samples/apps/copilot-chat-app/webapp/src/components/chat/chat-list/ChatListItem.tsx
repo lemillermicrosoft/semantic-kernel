@@ -1,5 +1,5 @@
 import { Avatar, makeStyles, shorthands, Text } from '@fluentui/react-components';
-import { ChatWarning16Regular, CommentLink16Regular } from '@fluentui/react-icons';
+import { ChatWarning16Regular, CommentLink16Regular, ShieldTask16Regular } from '@fluentui/react-icons';
 import { FC } from 'react';
 import { useAppDispatch } from '../../../redux/app/hooks';
 import { ChatBadge } from '../../../redux/features/conversations/ChatState';
@@ -57,6 +57,11 @@ const useClasses = makeStyles({
         WebkitLineClamp: 2,
         WebkitBoxOrient: 'vertical',
     },
+    protectedIcon: {
+        color: '#6BB700',
+        verticalAlign: 'text-bottom',
+        marginLeft: '4px',
+    },
 });
 
 interface IChatListItemProps {
@@ -103,6 +108,7 @@ export const ChatListItem: FC<IChatListItemProps> = ({
                 <div className={classes.header}>
                     <Text className={classes.title} style={{ color: 'var(--colorNeutralForeground1)' }}>
                         {header}
+                        <ShieldTask16Regular className={classes.protectedIcon} />
                     </Text>
                     {timestamp && (
                         <Text className={classes.timestamp} size={300}>

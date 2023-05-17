@@ -13,6 +13,7 @@ using Microsoft.SemanticKernel.Planning;
 using Microsoft.SemanticKernel.SkillDefinition;
 using SemanticKernel.Service.Config;
 using SemanticKernel.Service.Model;
+using SemanticKernel.Service.Services;
 using SemanticKernel.Service.Skills.OpenApiSkills.GitHubSkill.Model;
 using SemanticKernel.Service.Skills.OpenApiSkills.JiraSkill.Model;
 using SemanticKernel.Service.Storage;
@@ -64,6 +65,12 @@ public class ChatSkill
     private readonly PlannerOptions _plannerOptions;
 
     /// <summary>
+    /// Content moderator.
+    /// TODO: We probably need an interface in SK.
+    /// </summary>
+    private readonly AzureContentModerator _contentModerator;
+
+    /// <summary>
     /// Create a new instance of <see cref="ChatSkill"/>.
     /// </summary>
     public ChatSkill(
@@ -74,6 +81,7 @@ public class ChatSkill
         PromptSettings promptSettings,
         CopilotChatPlanner planner,
         PlannerOptions plannerOptions,
+        AzureContentModerator contentModerator,
         ILogger logger)
     {
         this._logger = logger;
@@ -84,6 +92,7 @@ public class ChatSkill
         this._promptSettings = promptSettings;
         this._planner = planner;
         this._plannerOptions = plannerOptions;
+        this._contentModerator = contentModerator;
     }
 
     /// <summary>
@@ -337,6 +346,32 @@ public class ChatSkill
         var chatId = context["chatId"];
 
         // TODO: check if user has access to the chat
+
+        // HACK: identifying if user input is image.
+        // Can we write a simple SK function to identifying image input? Hmm... one more model call?
+        if (message.StartsWith("data:image", StringComparison.InvariantCultureIgnoreCase))
+        {
+            var moderationResult = await this._contentModerator.ImageAnalysisAsync(message, default);
+            var violationCategories = AzureContentModerator.ParseViolatedCategories(moderationResult);
+
+            // Clone the context to avoid modifying the original context variables.
+            var chatContextClone = Utilities.CopyContextWithVariablesClone(context);
+            chatContextClone.Variables.Set("knowledgeCutoff", this._promptSettings.KnowledgeCutoffDate);
+            chatContextClone.Variables.Set("audience", userName);
+
+            if (violationCategories.Count > 0)
+            {
+                await this.SaveNewMessageAsync($"Content is reducted due to potential violation: {string.Join(", ", violationCategories)}", userId, userName, chatId);
+
+                chatContextClone.Variables.Update("It seems the content isn't appropriate.");
+            }
+            else
+            {
+                chatContextClone.Variables.Update("Great image!");
+            }
+
+            return chatContextClone;
+        }
 
         // Save this new message to memory such that subsequent chat responses can use it
         try
