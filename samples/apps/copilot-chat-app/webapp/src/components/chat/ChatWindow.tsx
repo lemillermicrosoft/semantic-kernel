@@ -8,12 +8,17 @@ import {
     Label,
     makeStyles,
     Persona,
+    SelectTabData,
+    SelectTabEvent,
     shorthands,
+    Tab,
+    TabList,
+    TabValue,
     tokens,
     Tooltip,
 } from '@fluentui/react-components';
 import { EditRegular, Save24Regular } from '@fluentui/react-icons';
-import React, { useEffect, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import { AuthHelper } from '../../libs/auth/AuthHelper';
 import { AlertType } from '../../libs/models/AlertType';
 import { ChatService } from '../../libs/services/ChatService';
@@ -23,6 +28,7 @@ import { addAlert } from '../../redux/features/app/appSlice';
 import { editConversationTitle } from '../../redux/features/conversations/conversationsSlice';
 import { ChatRoom } from './ChatRoom';
 import { ShareBotMenu } from './ShareBotMenu';
+import { ChatResourceList } from './ChatResourceList';
 
 const useClasses = makeStyles({
     root: {
@@ -92,6 +98,14 @@ export const ChatWindow: React.FC = () => {
 
     const chatService = new ChatService(process.env.REACT_APP_BACKEND_URI as string);
 
+    const [selectedValue, setSelectedValue] = React.useState<TabValue>('chat');
+
+    const onTabSelect = (_event: SelectTabEvent, data: SelectTabData) => {
+        setSelectedValue(data.value);
+    };
+
+    const ChatExternalResourcesComponent = memo(() => <ChatResourceList />);
+
     const onEdit = async () => {
         if (isEditing) {
             if (chatName !== title) {
@@ -130,7 +144,7 @@ export const ChatWindow: React.FC = () => {
                         <Persona
                             key={'SK Bot'}
                             size="medium"
-                            avatar={{ image: { src: conversations[selectedId].botProfilePicture }}}
+                            avatar={{ image: { src: conversations[selectedId].botProfilePicture } }}
                             presence={{ status: 'available' }}
                         />
                         {isEditing ? (
@@ -140,7 +154,10 @@ export const ChatWindow: React.FC = () => {
                                 {chatName}
                             </Label>
                         )}
-                        <Tooltip content={isEditing ? "Save conversation name" : "Edit conversation name"} relationship="label">
+                        <Tooltip
+                            content={isEditing ? 'Save conversation name' : 'Edit conversation name'}
+                            relationship="label"
+                        >
                             <Button
                                 icon={isEditing ? <Save24Regular /> : <EditRegular />}
                                 appearance="transparent"
@@ -148,6 +165,14 @@ export const ChatWindow: React.FC = () => {
                                 disabled={title === undefined || !title}
                             />
                         </Tooltip>
+                        <TabList selectedValue={selectedValue} onTabSelect={onTabSelect}>
+                            <Tab id="chat" value="chat">
+                                Chat
+                            </Tab>
+                            <Tab id="sources" value="sources">
+                                Sources
+                            </Tab>
+                        </TabList>
                     </div>
                     <div className={classes.controls}>
                         <ShareBotMenu chatId={selectedId} chatTitle={title || ''} />
@@ -157,7 +182,8 @@ export const ChatWindow: React.FC = () => {
             <div className={classes.content}>
                 <div className={classes.contentOuter}>
                     <div className={classes.contentInner}>
-                        <ChatRoom />
+                        {selectedValue === 'chat' && <ChatRoom />}
+                        {selectedValue === 'sources' && <ChatExternalResourcesComponent />}
                     </div>
                 </div>
             </div>

@@ -3,7 +3,7 @@ import { Constants } from '../Constants';
 import { useAppDispatch, useAppSelector } from '../redux/app/hooks';
 import { RootState } from '../redux/app/store';
 import { addAlert } from '../redux/features/app/appSlice';
-import { ChatBadge, ChatState } from '../redux/features/conversations/ChatState';
+import { ChatState } from '../redux/features/conversations/ChatState';
 import { Conversations } from '../redux/features/conversations/ConversationsState';
 import {
     addConversation,
@@ -219,12 +219,12 @@ export const useChat = () => {
                         botTypingTimestamp: 0,
                         botProfilePicture: botProfilePictures[Object.keys(conversations).length % 5],
                         // HACK
-                        botBadge:
-                            Object.keys(conversations).length === 0
+                        botBadge: undefined,
+                        /*Object.keys(conversations).length === 0
                                 ? ChatBadge.External
                                 : Object.keys(conversations).length === 1
                                 ? ChatBadge.Warning
-                                : undefined,
+                                : undefined,*/
                     };
 
                     dispatch(incrementBotProfilePictureIndex());
