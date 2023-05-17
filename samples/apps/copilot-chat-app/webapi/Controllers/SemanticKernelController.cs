@@ -16,6 +16,7 @@ using Microsoft.SemanticKernel.Skills.MsGraph.Connectors.Client;
 using Microsoft.SemanticKernel.Skills.OpenAPI.Authentication;
 using SemanticKernel.Service.Config;
 using SemanticKernel.Service.Model;
+using SemanticKernel.Service.Services;
 using SemanticKernel.Service.Skills;
 using SemanticKernel.Service.Storage;
 
@@ -78,6 +79,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
         [FromServices] ChatBot chatBot,
         [FromServices] LearningSkill learningSkill,
         [FromServices] StudySkill studySkill,
+        [FromServices] AzureContentModerator contentModerator,
         [FromBody] Ask ask,
         [FromHeader] OpenApiSkillsAuthHeaders openApiSkillsAuthHeaders,
         string skillName, string functionName)
@@ -120,6 +122,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
             planner: planner,
             plannerOptions: plannerOptions.Value,
             documentMemoryOptions: documentMemoryOptions.Value,
+            contentModerator: contentModerator,
             logger: this._logger);
         kernel.ImportSkill(learningSkill, "LearningSkill");
         kernel.ImportSkill(studySkill, "StudySkill");

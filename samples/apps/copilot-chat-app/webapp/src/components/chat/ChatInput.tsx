@@ -16,7 +16,6 @@ import { useSKSpeechService } from './../../libs/semantic-kernel/useSKSpeech';
 import { TypingIndicatorRenderer } from './typing-indicator/TypingIndicatorRenderer';
 import { FileUploader } from '../FileUploader';
 import { useFile } from '../../libs/useFile';
-import { useContentModerator } from '../../libs/useContentModerator';
 
 const log = debug(Constants.debug.root).extend('chat-input');
 
@@ -41,6 +40,7 @@ const useClasses = makeStyles({
     },
     textarea: {
         height: '70px',
+        backgroundSize: 'contain',
     },
     controls: {
         display: 'flex',
@@ -69,6 +69,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
     const { instance } = useMsal();
     const dispatch = useAppDispatch();
     const [value, setValue] = React.useState('');
+    const [image, setImage] = React.useState(''); // we only support single image in the input file.
     const [previousValue, setPreviousValue] = React.useState('');
     const [recognizer, setRecognizer] = React.useState<speechSdk.SpeechRecognizer>();
     const [isListening, setIsListening] = React.useState(false);
@@ -78,7 +79,6 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
     const documentFileRef = useRef<HTMLInputElement | null>(null);
     const imageUploaderRef = useRef<HTMLInputElement>(null);
     const fileHandler = useFile();
-    const contentModerator = useContentModerator();
 
     React.useEffect(() => {
         if (recognizer) return;
@@ -128,12 +128,13 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
 
     const handleSubmit = (data: string) => {
         try {
-            if (data.trim() === '') {
+            if (data.trim() === '' && image === '') {
                 return; // only submit if data is not empty
             }
-            onSubmit(data);
-            setPreviousValue(data);
+            onSubmit(image || data);
+            setPreviousValue(data); // previous value doens't support image.
             setValue('');
+            setImage('');
         } catch (error) {
             const message = `Error submitting chat input: ${(error as Error).message}`;
             log(message);
@@ -150,12 +151,14 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
     const onImageUpload = useCallback(
         (file: File) => {
             fileHandler
-                .loadImage(file, contentModerator.analyzeImage)
+                .loadImage(file, (base64Image) => {
+                    setImage(base64Image);
+                })
                 .catch((error) =>
                     dispatch(addAlert({ message: `Failed to upload image. ${error.message}`, type: AlertType.Error })),
                 );
         },
-        [fileHandler, dispatch, contentModerator],
+        [fileHandler, dispatch /*contentModerator*/],
     );
 
     return (
@@ -165,7 +168,15 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                 <Textarea
                     id="chat-input"
                     resize="vertical"
-                    textarea={{ className: classes.textarea }}
+                    textarea={{
+                        className: classes.textarea,
+                        style: {
+                            backgroundImage: `url(${image})`,
+                            backgroundSize: 'contain',
+                            backgroundPosition: 'left center',
+                            backgroundRepeat: 'no-repeat',
+                        },
+                    }}
                     className={classes.input}
                     value={value}
                     onFocus={() => {
