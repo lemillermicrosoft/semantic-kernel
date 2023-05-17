@@ -1,0 +1,44 @@
+Get a list of all the specified properties in [PROPERTIES] from the json-like [INPUT]. End response with [END RESULT]. If json is invalid or title not available, return empty string followed by [END RESULT].
+
+[INPUT]
+{results: [
+    {name: "John", age: 5},
+    {name: "Jane", age: 6},
+    {name: "Jack", age: 7},
+    {name: "Jill", age: 8}
+]}
+[END INPUT]
+
+[PROPERTIES]
+Name
+[END PROPERTIES]
+
+[RESULT]
+John, Jane, Jack, Jill
+[END RESULT]
+
+[INPUT]
+{"results": [
+    {"city": "New York", "state": "NY", "country": "USA"},
+    {"city": "San Francisco", "state": "CA", "country": "USA"},
+    {"city": "London", "state": "England", "country": "UK"},
+    {"city": "Paris", "state": "Ile-de-France", "country": "France"}
+[END INPUT]
+
+[PROPERTIES]
+countries and city
+[END PROPERTIES]
+
+[RESULT]
+New York, USA, San Francisco, USA, London, UK, Paris, France
+[END RESULT]
+
+[INPUT]
+{{$input}}
+[END INPUT]
+
+[PROPERTIES]
+{{$properties}}
+[END PROPERTIES]
+
+[RESULT]

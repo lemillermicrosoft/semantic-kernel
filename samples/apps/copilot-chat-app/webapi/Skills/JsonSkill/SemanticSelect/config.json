@@ -1,0 +1,28 @@
+{
+    "schema": 1,
+    "type": "completion",
+    "description": "[BANNED FROM PLANS]Selects one or more properties from a JSON object or array.",
+    "completion": {
+        "max_tokens": 256,
+        "temperature": 0.0,
+        "top_p": 0.0,
+        "presence_penalty": 0.0,
+        "frequency_penalty": 0.0,
+        "stop_sequences": ["[INPUT]"]
+    },
+    "input": {
+        "parameters": [
+            {
+                "name": "input",
+                "description": "JSON-like input to select from.",
+                "defaultValue": ""
+            },
+            {
+                "name": "properties",
+                "description": "Properties to select.",
+                "defaultValue": ""
+            }
+        ]
+    },
+    "default_backends": []
+}
