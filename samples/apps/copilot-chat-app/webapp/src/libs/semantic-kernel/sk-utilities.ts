@@ -3,7 +3,7 @@ import { IPlan, IPlanInput } from '../models/Plan';
 export const isPlan = (object: string): boolean => {
     // backslash has to be escaped since it's a JSON string
     // eslint-disable-next-line
-    const planPrefix = `Microsoft.SemanticKernel.Planning.Plan`; // TODO make this better, teresa's pattern is likely better.
+    const planPrefix = `Microsoft.SemanticKernel.Planning.Plan`; // TODO make this better, teresa's pattern is likely better., want to support action/assistant/learning
     return object.indexOf(planPrefix) !== -1;
 };
 
