@@ -649,7 +649,7 @@ public class ChatSkill
 
             Console.WriteLine("***reading***");
 
-            var prompt = $"Review the [MESSAGES] and determine which function to run. If unsure, use 'DoChat'.\n[BANNED FUNCTIONS]AcquireExternalInformation, Chat[END BANNED FUNCTIONS]\n[MESSAGES]\nUser Input:{context.Variables.Input}\n{userIntent}\n[END MESSAGES]\n";
+            var prompt = $"Review the [MESSAGES] and determine which function to run. If unsure, use 'DoChat'.\n[BANNED FUNCTIONS]AcquireExternalInformation, Chat, ExtractUserMemories[END BANNED FUNCTIONS]\n[MESSAGES]\nUser Input:{context.Variables.Input}\n{userIntent}\n[END MESSAGES]\n";
             Console.WriteLine(prompt);
             var plan = await planner.CreatePlanAsync(prompt);
 
