@@ -66,6 +66,7 @@ public sealed class SequentialPlanner
 
         this._context.Variables.Update(goal);
 
+        // TODO - When the manual is empty, it makes up a manual -- these can be suggestions to the user. How to handle this?
         var planResult = await this._functionFlowFunction.InvokeAsync(this._context).ConfigureAwait(false);
 
         string planResultString = planResult.Result.Trim();
