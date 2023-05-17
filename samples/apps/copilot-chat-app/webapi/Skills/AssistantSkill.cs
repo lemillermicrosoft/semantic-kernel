@@ -28,7 +28,7 @@ public class AssistantSkill
 
     // ProblemSolve
     [SKFunctionName("ProblemSolve")]
-    [SKFunction("Given a goal or user ask, create a sequential plan to achieve the goal or solve the problem")]
+    [SKFunction("Given a goal or user ask, create a sequential plan to achieve the goal or solve the problem. Keywords for plan: Assistant, AssistantSkill, ProblemSolve, Solve a problem, Do this for me")]
     [SKFunctionContextParameter(Name = "input", Description = "Goal to achieve or problem to solve")]
     [SKFunctionContextParameter(Name = "chatId", Description = "Unique and persistent identifier for the chat")]
     [SKFunctionContextParameter(Name = "userId", Description = "ID of the user who owns the documents")]
