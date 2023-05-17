@@ -122,6 +122,27 @@ internal static class SemanticKernelExtensions
             }
         );
 
+        services.AddScoped<AssistantSkill>(sp =>
+            {
+                IKernel chatKernel = sp.GetRequiredService<IKernel>();
+                var aiServiceOptions = sp.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>();
+                IKernel k = new Kernel(
+                    new SkillCollection(),
+                    chatKernel.PromptTemplateEngine,
+                    chatKernel.Memory,
+                    new KernelConfig()
+                        .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
+                        .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
+                        .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig()
+                        {
+                            MaxRetryCount = 5, UseExponentialBackoff = true
+                        }),
+                    sp.GetRequiredService<ILogger<AssistantSkill>>());
+
+                return new AssistantSkill(k);
+            }
+        );
+
         // Add the Semantic Kernel
         // TODO - How does the kernelConfig get used?
         services.AddSingleton<IPromptTemplateEngine, PromptTemplateEngine>();
