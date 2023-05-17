@@ -87,6 +87,7 @@ internal static class FunctionLoadingExtensions
     internal static void RegisterNativeSkills(
         this IKernel kernel,
         IKernel chatKernel,
+        IKernel assistantKernel,
         ChatSessionRepository chatSessionRepository,
         ChatMessageRepository chatMessageRepository,
         PromptSettings promptSettings,
@@ -105,6 +106,7 @@ internal static class FunctionLoadingExtensions
         var chatSkill = new ChatSkill(
             kernel: kernel,
             actionKernel: chatKernel,
+            assistantKernel: assistantKernel,
             chatMessageRepository: chatMessageRepository,
             chatSessionRepository: chatSessionRepository,
             promptSettings: promptSettings,

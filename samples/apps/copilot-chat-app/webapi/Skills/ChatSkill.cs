@@ -39,6 +39,8 @@ public class ChatSkill
 
     private readonly IKernel _actionKernel;
 
+    private readonly IKernel _assistantKernel;
+
     /// <summary>
     /// A repository to save and retrieve chat messages.
     /// </summary>
@@ -76,6 +78,7 @@ public class ChatSkill
     public ChatSkill(
         IKernel kernel,
         IKernel actionKernel,
+        IKernel assistantKernel,
         ChatMessageRepository chatMessageRepository,
         ChatSessionRepository chatSessionRepository,
         PromptSettings promptSettings,
@@ -87,6 +90,7 @@ public class ChatSkill
         this._logger = logger;
         this._kernel = kernel;
         this._actionKernel = actionKernel;
+        this._assistantKernel = assistantKernel;
         this._chatMessageRepository = chatMessageRepository;
         this._chatSessionRepository = chatSessionRepository;
         this._promptSettings = promptSettings;
@@ -233,7 +237,11 @@ public class ChatSkill
         plannerContext.Variables.Update(plannerContext["userIntent"]);
 
         // Create a plan and run it.
-        Plan plan = await this._planner.CreatePlanAsync(plannerContext.Variables.Input);
+        var options = new JsonSerializerOptions();
+        options.Converters.Add(new ContextVariablesConverter());
+        Console.WriteLine($"Context:{JsonSerializer.Serialize(plannerContext.Variables, options)}");
+        plannerContext.Variables.Get("context", out var c);
+        Plan plan = await this._planner.CreatePlanAsync($"Context: {c}. Goal:{plannerContext.Variables.Input}");
         if (plan.Steps.Count <= 0)
         {
             return string.Empty;
@@ -433,6 +441,10 @@ public class ChatSkill
         {
             context.Variables.Set("action", nextAction);
         }
+        else
+        {
+            context.Variables.Set("action", null); // todo does this impact lesson?
+        }
 
         // TODO I think this can be cut.
         if (chatContext.Variables.Get("continuePlan", out var continuePlanString))
@@ -551,12 +563,13 @@ public class ChatSkill
             {
                 var planContext = new SKContext(
                     context.Variables,
-                    this._actionKernel.Memory,
-                    this._actionKernel.Skills,
-                    this._actionKernel.Log
+
+                    this._assistantKernel.Memory,
+                    this._assistantKernel.Skills,
+                    this._assistantKernel.Log
                 );
                 // TODO - Kernel should throw if context can't load functions
-                functionOrPlan = Plan.FromJson(action, context);
+                functionOrPlan = Plan.FromJson(action, planContext); // todo does this break learning plans?
             }
 #pragma warning disable CA1031
             catch (Exception e)
@@ -636,8 +649,9 @@ public class ChatSkill
 
             Console.WriteLine("***reading***");
 
-            var plan = await planner.CreatePlanAsync(
-                $"Review the most recent 'User:' message and determine which function to run. If unsure, use 'DoChat'.\n[MESSAGES]\n{userIntent}\n[END MESSAGES]\n");
+            var prompt = $"Review the [MESSAGES] and determine which function to run. If unsure, use 'DoChat'.\n[BANNED FUNCTIONS]AcquireExternalInformation, Chat[END BANNED FUNCTIONS]\n[MESSAGES]\nUser Input:{context.Variables.Input}\n{userIntent}\n[END MESSAGES]\n";
+            Console.WriteLine(prompt);
+            var plan = await planner.CreatePlanAsync(prompt);
 
             if (plan.Steps[0].Name == "DoChat")
             {
@@ -650,15 +664,23 @@ public class ChatSkill
 
             // TODO - Can this hack be removed now with Plan changes?
             // Previously, need to do this to ensure action is passed to ActOnMessageAsync
-            plan.Steps[0].Outputs.Add("action");
+            // plan.Steps[0].Outputs.Add("action");
+            // plan.Steps WHTALKHJSDLKJ DO I DO
             // today though this will put the step output in action even if not in the variables, so lets parse as plan and remove if not
             plan.Steps[0].Outputs.Add("continuePlan");
             plan.Steps[0].Outputs.Add("updatePlan");
 
+            // 5/15 - Adding Support for SequentialPlan creation a,la "Get items from Jira" and "Summarize them" and then "email it"
+
             var originalPlanJson = plan.ToJson();
             var completion = await plan.InvokeAsync(context);
-
-            if (completion.Variables.Get("continuePlan", out var continuePlan) && bool.TryParse(continuePlan, out var continuePlanBool) && continuePlanBool)
+            if (completion.Variables.Get("action", out var newActionPlan) && !string.IsNullOrEmpty(newActionPlan))
+            {
+                Console.WriteLine($"***thought of***");
+                Console.WriteLine(Plan.FromJson(newActionPlan).ToJson(true));
+                completion.Variables.Set("action", newActionPlan);
+            }
+            else if (completion.Variables.Get("continuePlan", out var continuePlan) && bool.TryParse(continuePlan, out var continuePlanBool) && continuePlanBool)
             {
                 if (continuePlan is not null)
                 {
@@ -672,8 +694,23 @@ public class ChatSkill
             }
             else
             {
-                completion.Variables.Set("action", null);
+                // completion.Variables.Set("action", null);
+#pragma warning disable CA1031
+                try
+                {
+                    var completionPlan = Plan.FromJson(completion.Result);
+                    Console.WriteLine($"***I was thinking...***");
+                    Console.WriteLine(completionPlan.ToJson(true));
+                    completion.Variables.Set("action", completion.Result);
+                }
+                catch
+                {
+                    completion.Variables.Set("action", null);
+                }
+#pragma warning restore CA1031
             }
+
+
 
             return completion;
         }
