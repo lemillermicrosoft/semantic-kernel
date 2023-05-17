@@ -34,6 +34,7 @@ const useClasses = makeStyles({
     },
     header: {
         backgroundColor: CopilotChatTokens.backgroundColor,
+        backgroundImage: CopilotChatTokens.backgroundColor,
         width: '100%',
         height: '5.5%',
         color: '#FFF',

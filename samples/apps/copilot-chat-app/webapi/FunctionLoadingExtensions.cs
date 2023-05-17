@@ -6,6 +6,7 @@ using Microsoft.SemanticKernel.CoreSkills;
 using Microsoft.SemanticKernel.SkillDefinition;
 using Microsoft.SemanticKernel.TemplateEngine;
 using SemanticKernel.Service.Config;
+using SemanticKernel.Service.Services;
 using SemanticKernel.Service.Skills;
 using SemanticKernel.Service.Storage;
 
@@ -92,6 +93,7 @@ internal static class FunctionLoadingExtensions
         CopilotChatPlanner planner,
         PlannerOptions plannerOptions,
         DocumentMemoryOptions documentMemoryOptions,
+        AzureContentModerator contentModerator,
         ILogger logger)
     {
         // Hardcode your native function registrations here
@@ -108,6 +110,7 @@ internal static class FunctionLoadingExtensions
             promptSettings: promptSettings,
             planner: planner,
             plannerOptions: plannerOptions,
+            contentModerator: contentModerator,
             logger: logger
         );
         kernel.ImportSkill(chatSkill, nameof(ChatSkill));
