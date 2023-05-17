@@ -104,7 +104,6 @@ export const ChatWindow: React.FC = () => {
         setSelectedValue(data.value);
     };
 
-    const ChatHistoryComponent = memo(() => <ChatRoom />);
     const ChatExternalResourcesComponent = memo(() => <ChatResourceList />);
 
     const onEdit = async () => {
@@ -183,7 +182,7 @@ export const ChatWindow: React.FC = () => {
             <div className={classes.content}>
                 <div className={classes.contentOuter}>
                     <div className={classes.contentInner}>
-                        {selectedValue === 'chat' && <ChatHistoryComponent />}
+                        {selectedValue === 'chat' && <ChatRoom />}
                         {selectedValue === 'sources' && <ChatExternalResourcesComponent />}
                     </div>
                 </div>
