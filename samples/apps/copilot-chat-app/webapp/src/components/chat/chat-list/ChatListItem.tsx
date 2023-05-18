@@ -50,12 +50,14 @@ const useClasses = makeStyles({
         minWidth: '4rem',
     },
     preview: {
-        ...shorthands.overflow('hidden'),
         marginTop: '0.2rem',
         lineHeight: '16px',
-        display: '-webkit-box',
-        WebkitLineClamp: 2,
-        WebkitBoxOrient: 'vertical',
+    },
+    previewText: {
+        display: 'block',
+        ...shorthands.overflow('hidden'),
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
     },
     protectedIcon: {
         color: '#6BB700',
@@ -119,7 +121,7 @@ export const ChatListItem: FC<IChatListItemProps> = ({
                 {preview && (
                     <div className={classes.preview}>
                         {
-                            <Text id={`message-preview-${id}`} size={200}>
+                            <Text id={`message-preview-${id}`} size={200} className={classes.previewText}>
                                 {preview}
                             </Text>
                         }
