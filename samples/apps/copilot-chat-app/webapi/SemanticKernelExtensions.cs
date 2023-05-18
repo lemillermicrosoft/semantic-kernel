@@ -154,7 +154,6 @@ internal static class SemanticKernelExtensions
                     .Get(AIServiceOptions.CompletionPropertyName))
                 .AddEmbeddingBackend(serviceProvider.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>()
                     .Get(AIServiceOptions.EmbeddingPropertyName))
-                .AddImageGenerationBackend()
                 .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig() { MaxRetryCount = 5, UseExponentialBackoff = true });
         });
         services.AddScoped<IKernel, Kernel>();
@@ -259,17 +258,6 @@ internal static class SemanticKernelExtensions
             default:
                 throw new ArgumentException($"Invalid {nameof(aiServiceOptions.AIService)} value in '{AIServiceOptions.EmbeddingPropertyName}' settings.");
         }
-
-        return kernelConfig;
-    }
-
-    /// <summary>
-    /// Add the image generation backend to the kernel config
-    /// </summary>
-    internal static KernelConfig AddImageGenerationBackend(this KernelConfig kernelConfig)
-    {
-        kernelConfig.AddImageGenerationService(_ =>
-            new HuggingFaceTextToImage("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", model: "stabilityai/stable-diffusion-2-1"));
 
         return kernelConfig;
     }

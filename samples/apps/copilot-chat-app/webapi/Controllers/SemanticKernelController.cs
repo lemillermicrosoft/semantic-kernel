@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.AI;
+using Microsoft.SemanticKernel.Connectors.HuggingFace.TextToImage;
 using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.Reliability;
 using Microsoft.SemanticKernel.SkillDefinition;
@@ -82,6 +83,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
         [FromServices] AssistantSkill assistantSkill,
         [FromServices] StudySkill studySkill,
         [FromServices] AzureContentModerator contentModerator,
+        [FromServices] KernelConfig kernelConfig,
         [FromBody] Ask ask,
         [FromHeader] OpenApiSkillsAuthHeaders openApiSkillsAuthHeaders,
         string skillName, string functionName)
@@ -91,6 +93,13 @@ public class SemanticKernelController : ControllerBase, IDisposable
         if (string.IsNullOrWhiteSpace(ask.Input))
         {
             return this.BadRequest("Input is required.");
+        }
+
+        // HACK: add image generation service because the key is on the SK request after user setup the connector via UI.
+        if (!string.IsNullOrEmpty(openApiSkillsAuthHeaders.HuggingFaceAuthentication))
+        {
+            kernelConfig.AddImageGenerationService(_ =>
+                new HuggingFaceTextToImage(openApiSkillsAuthHeaders.HuggingFaceAuthentication, model: "stabilityai/stable-diffusion-2-1"));
         }
 
         // Put ask's variables in the context we will use.
