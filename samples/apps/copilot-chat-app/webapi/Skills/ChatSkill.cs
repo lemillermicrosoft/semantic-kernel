@@ -443,7 +443,7 @@ public class ChatSkill
         }
         else
         {
-            context.Variables.Set("action", null); // todo does this impact lesson?
+            context.Variables.Set("action", null);
         }
 
         // TODO I think this can be cut.
@@ -561,7 +561,7 @@ public class ChatSkill
             ISKFunction? functionOrPlan = null;
             try
             {
-                SKContext planContext = action.Contains("StudySession", StringComparison.Ordinal)
+                SKContext planContext = action.Contains("StudySession", StringComparison.Ordinal) || action.Contains("LearningSkill", StringComparison.Ordinal)
                     ? new SKContext(
                         context.Variables,
                         context.Memory,
@@ -669,11 +669,6 @@ public class ChatSkill
                 Console.WriteLine($"***thinking*** {plan.Steps[0].Name} {plan.Steps[0].SkillName}");
             }
 
-            // TODO - Can this hack be removed now with Plan changes?
-            // Previously, need to do this to ensure action is passed to ActOnMessageAsync
-            // plan.Steps[0].Outputs.Add("action");
-            // plan.Steps WHTALKHJSDLKJ DO I DO
-            // today though this will put the step output in action even if not in the variables, so lets parse as plan and remove if not
             plan.Steps[0].Outputs.Add("continuePlan");
             plan.Steps[0].Outputs.Add("updatePlan");
 
@@ -681,13 +676,7 @@ public class ChatSkill
 
             var originalPlanJson = plan.ToJson();
             var completion = await plan.InvokeAsync(context);
-            if (completion.Variables.Get("action", out var newActionPlan) && !string.IsNullOrEmpty(newActionPlan))
-            {
-                Console.WriteLine($"***thought of***");
-                Console.WriteLine(Plan.FromJson(newActionPlan).ToJson(true));
-                completion.Variables.Set("action", newActionPlan);
-            }
-            else if (completion.Variables.Get("continuePlan", out var continuePlan) && bool.TryParse(continuePlan, out var continuePlanBool) && continuePlanBool)
+            if (completion.Variables.Get("continuePlan", out var continuePlan) && bool.TryParse(continuePlan, out var continuePlanBool) && continuePlanBool)
             {
                 if (continuePlan is not null)
                 {
@@ -696,23 +685,48 @@ public class ChatSkill
                 }
                 else
                 {
-                    completion.Variables.Set("action", null);
+                    completion.Variables.Set("action", null); // todo will this ever get hit?
                 }
             }
             else
             {
-                // completion.Variables.Set("action", null);
-#pragma warning disable CA1031
-                try
+                // If 'action' is specified, this is the assistant skill path most likely, so we'll just run that by setting it as the action
+                if (completion.Variables.Get("action", out var newActionPlan) && !string.IsNullOrEmpty(newActionPlan))
                 {
-                    var completionPlan = Plan.FromJson(completion.Result);
-                    Console.WriteLine($"***I was thinking...***");
-                    Console.WriteLine(completionPlan.ToJson(true));
-                    completion.Variables.Set("action", completion.Result);
+#pragma warning disable CA1031
+                    try
+                    {
+                        var completionPlan = Plan.FromJson(newActionPlan);
+                        Console.WriteLine($"***thought of***");
+                        Console.WriteLine(completionPlan.ToJson(true));
+                        completion.Variables.Set("action", completion.Result);
+                    }
+                    catch
+                    {
+                        // not a plan, so clear it
+                        completion.Variables.Set("action", null);
+                    }
                 }
-                catch
+                // Not the plan we want to say is the next action until they start it.
+                else if (!completion.Result.Contains("StudySession", StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        // I don't think anything will hit this right now.
+                        var completionPlan = Plan.FromJson(completion.Result);
+                        Console.WriteLine($"***I was thinking...***");
+                        Console.WriteLine(completionPlan.ToJson(true));
+                        completion.Variables.Set("action", completion.Result);
+                    }
+                    catch
+                    {
+                        completion.Variables.Set("action", null);
+                    }
+                }
+                else
                 {
                     completion.Variables.Set("action", null);
+
                 }
 #pragma warning restore CA1031
             }
