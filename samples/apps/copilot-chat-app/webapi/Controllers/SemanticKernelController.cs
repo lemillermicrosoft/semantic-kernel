@@ -57,6 +57,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
     /// <param name="plannerOptions">Options for the planner.</param>
     /// <param name="chatBot">Chat bot to use to generate prompts.</param>
     /// <param name="learningSkill">Learning skill to use to learn new topics.</param>
+    /// <param name="assistantSkill"></param>
     /// <param name="studySkill">Study skill to use to study new topics.</param>
     /// <param name="ask">Prompt along with its parameters</param>
     /// <param name="openApiSkillsAuthHeaders">Authentication headers to connect to OpenAPI Skills</param>
@@ -78,6 +79,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
         [FromServices] IOptions<PlannerOptions> plannerOptions,
         [FromServices] ChatBot chatBot,
         [FromServices] LearningSkill learningSkill,
+        [FromServices] AssistantSkill assistantSkill,
         [FromServices] StudySkill studySkill,
         [FromServices] AzureContentModerator contentModerator,
         [FromBody] Ask ask,
@@ -108,14 +110,17 @@ public class SemanticKernelController : ControllerBase, IDisposable
         // Register skills with the planner if enabled.
         if (plannerOptions.Value.Enabled)
         {
-            await this.RegisterPlannerSkillsAsync(planner, plannerOptions.Value, openApiSkillsAuthHeaders, context.Variables);
+            await this.RegisterPlannerSkillsAsync(planner.Kernel, openApiSkillsAuthHeaders, context.Variables);
         }
+
+        await this.RegisterPlannerSkillsAsync(assistantSkill.Kernel, openApiSkillsAuthHeaders, context.Variables);
 
         kernel.RegisterNamedSemanticSkills(null, null, "StudySkill");
 
         // Register native skills with the general kernel
         kernel.RegisterNativeSkills(
             chatKernel: chatBot.Kernel,
+            assistantKernel: assistantSkill.Kernel,
             chatSessionRepository: chatRepository,
             chatMessageRepository: chatMessageRepository,
             promptSettings: this._promptSettings,
@@ -129,6 +134,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
 
         // Register native skills with the chat's kernel
         chatBot.Kernel.ImportSkill(learningSkill, "LearningSkill");
+        chatBot.Kernel.ImportSkill(assistantSkill, "AssistantSkill");
 
         // Get the function to invoke
         ISKFunction? function = null;
@@ -159,7 +165,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
     /// <summary>
     /// Register skills with the planner's kernel.
     /// </summary>
-    private async Task RegisterPlannerSkillsAsync(CopilotChatPlanner planner, PlannerOptions options, OpenApiSkillsAuthHeaders openApiSkillsAuthHeaders,
+    private async Task RegisterPlannerSkillsAsync(IKernel kernel, OpenApiSkillsAuthHeaders openApiSkillsAuthHeaders,
         ContextVariables variables)
     {
         // Register authenticated skills with the planner's kernel only if the request includes an auth header for the skill.
@@ -174,7 +180,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
             };
             using HttpClient importHttpClient = new(retryHandler, false);
             importHttpClient.DefaultRequestHeaders.Add("User-Agent", "Microsoft.CopilotChat");
-            await planner.Kernel.ImportChatGptPluginSkillFromUrlAsync("KlarnaShoppingSkill", new Uri("https://www.klarna.com/.well-known/ai-plugin.json"),
+            await kernel.ImportChatGptPluginSkillFromUrlAsync("KlarnaShoppingSkill", new Uri("https://www.klarna.com/.well-known/ai-plugin.json"),
                 importHttpClient);
         }
 
@@ -183,7 +189,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
         {
             this._logger.LogInformation("Enabling GitHub skill.");
             BearerAuthenticationProvider authenticationProvider = new(() => Task.FromResult(openApiSkillsAuthHeaders.GithubAuthentication));
-            await planner.Kernel.ImportOpenApiSkillFromFileAsync(
+            await kernel.ImportOpenApiSkillFromFileAsync(
                 skillName: "GitHubSkill",
                 filePath: Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!, @"Skills/OpenApiSkills/GitHubSkill/openapi.json"),
                 authCallback: authenticationProvider.AuthenticateRequestAsync);
@@ -196,7 +202,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
             var authenticationProvider = new BasicAuthenticationProvider(() => { return Task.FromResult(openApiSkillsAuthHeaders.JiraAuthentication); });
             var hasServerUrlOverride = variables.Get("jira-server-url", out string serverUrlOverride);
 
-            await planner.Kernel.ImportOpenApiSkillFromFileAsync(
+            await kernel.ImportOpenApiSkillFromFileAsync(
                 skillName: "JiraSkill",
                 filePath: Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!, @"Skills/OpenApiSkills/JiraSkill/openapi.json"),
                 authCallback: authenticationProvider.AuthenticateRequestAsync,
@@ -210,9 +216,9 @@ public class SemanticKernelController : ControllerBase, IDisposable
             BearerAuthenticationProvider authenticationProvider = new(() => Task.FromResult(openApiSkillsAuthHeaders.GraphAuthentication));
             GraphServiceClient graphServiceClient = this.CreateGraphServiceClient(authenticationProvider.AuthenticateRequestAsync);
 
-            planner.Kernel.ImportSkill(new TaskListSkill(new MicrosoftToDoConnector(graphServiceClient)), "todo");
-            planner.Kernel.ImportSkill(new CalendarSkill(new OutlookCalendarConnector(graphServiceClient)), "calendar");
-            planner.Kernel.ImportSkill(new EmailSkill(new OutlookMailConnector(graphServiceClient)), "email");
+            kernel.ImportSkill(new TaskListSkill(new MicrosoftToDoConnector(graphServiceClient)), "todo");
+            kernel.ImportSkill(new CalendarSkill(new OutlookCalendarConnector(graphServiceClient)), "calendar");
+            kernel.ImportSkill(new EmailSkill(new OutlookMailConnector(graphServiceClient)), "email");
         }
     }
 

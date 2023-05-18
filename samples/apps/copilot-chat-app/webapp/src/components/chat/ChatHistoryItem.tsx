@@ -89,7 +89,19 @@ export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = ({ message, getRe
         // Extract plan from bot response
         // const proposedPlan = JSON.parse(message.content).proposedPlan;
         // await getResponse('Yes, proceed', JSON.stringify(proposedPlan), plan?.description);
-        await getResponse('Start Instruction', message.content, 'Instruct the lesson', undefined, undefined, true);
+        if (isPlan && message.content.indexOf('StudySession') > 0) {
+            await getResponse(
+                'Start Instruction',
+                JSON.stringify(plan),
+                'Instruct the lesson',
+                undefined,
+                undefined,
+                true,
+            );
+        } else {
+            // const proposedPlan = JSON.parse(message.content).proposedPlan;
+            await getResponse('Yes, proceed', JSON.stringify(plan), plan?.description, undefined, undefined, true);
+        }
     };
 
     const onPlanCancel = async () => {
@@ -159,7 +171,8 @@ export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = ({ message, getRe
                     {isPlan && (
                         <PlanViewer
                             plan={plan}
-                            actionRequired={message.planApprovalRequired || isPlan}
+                            actionRequired={message.planApprovalRequired}
+                            learningPlan={isPlan && message.content.indexOf('StudySession') > 0}
                             onSubmit={onPlanApproval}
                             onCancel={onPlanCancel}
                         />
