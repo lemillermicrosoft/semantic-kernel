@@ -561,15 +561,22 @@ public class ChatSkill
             ISKFunction? functionOrPlan = null;
             try
             {
-                var planContext = new SKContext(
-                    context.Variables,
+                SKContext planContext = action.Contains("StudySession", StringComparison.Ordinal)
+                    ? new SKContext(
+                        context.Variables,
+                        context.Memory,
+                        context.Skills,
+                        context.Log
+                    )
+                    : new SKContext(
+                        context.Variables,
+                        this._assistantKernel.Memory,
+                        this._assistantKernel.Skills,
+                        this._assistantKernel.Log
+                    );
 
-                    this._assistantKernel.Memory,
-                    this._assistantKernel.Skills,
-                    this._assistantKernel.Log
-                );
                 // TODO - Kernel should throw if context can't load functions
-                functionOrPlan = Plan.FromJson(action, planContext); // todo does this break learning plans?
+                functionOrPlan = Plan.FromJson(action, planContext);
             }
 #pragma warning disable CA1031
             catch (Exception e)
