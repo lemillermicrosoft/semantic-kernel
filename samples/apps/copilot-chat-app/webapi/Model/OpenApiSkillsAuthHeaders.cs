@@ -32,4 +32,10 @@ public class OpenApiSkillsAuthHeaders
     /// </summary>
     [FromHeader(Name = "x-sk-copilot-klarna-auth")]
     public string? KlarnaAuthentication { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Hugging Face header value.
+    /// </summary>
+    [FromHeader(Name = "x-sk-copilot-huggingface-auth")]
+    public string? HuggingFaceAuthentication { get; set; }
 }
