@@ -51,7 +51,9 @@ export const PlanViewer: React.FC<PlanViewerProps> = ({ plan, actionRequired, le
             {actionRequired && !learningPlan && (
                 <Text>Based on the request, Copilot Chat will run the following steps:</Text>
             )}
-            {learningPlan && <Text>Here is a lesson plan we've created to guide a user through.</Text>}
+            {learningPlan && actionRequired && (
+                <Text>Here is a lesson plan we've created to guide a user through.</Text>
+            )}
             <Text weight="bold">{`Goal: ${plan.description}`}</Text>
             {plan.steps && plan.steps.map((step: IPlan) => <PlanStepCard index={stepCount++} step={step} />)}
             {showButtons && (
