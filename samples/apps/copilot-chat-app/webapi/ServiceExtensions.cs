@@ -79,6 +79,12 @@ internal static class ServicesExtensions
             .ValidateOnStart()
             .PostConfigure(TrimStringProperties);
 
+        // Content moderation options
+        services.AddOptions<ContentModerationOptions>()
+            .Bind(configuration.GetSection(ContentModerationOptions.PropertyName))
+            .ValidateOnStart()
+            .PostConfigure(TrimStringProperties);
+
         return services;
     }
 
@@ -208,10 +214,16 @@ internal static class ServicesExtensions
     /// </summary>
     internal static IServiceCollection AddContentModerator(this IServiceCollection services)
     {
-        // HACK. TODO: Get the URI from configuration
+        IConfiguration configuration = services.BuildServiceProvider().GetRequiredService<IConfiguration>();
+        ContentModerationOptions settings = configuration.GetSection(ContentModerationOptions.PropertyName).Get<ContentModerationOptions>();
+
+        if (settings.Enabled)
+        {
+            // HACK. TODO: Get the URI from configuration
 #pragma warning disable CA2000 // Dispose objects before losing scope - objects are singletons for the duration of the process and disposed when the process exits.
-        services.AddSingleton<AzureContentModerator>(new AzureContentModerator(new Uri("https://content-moderator-eastus.cognitiveservices.azure.com/")));
+            services.AddSingleton<AzureContentModerator>(new AzureContentModerator(new Uri(settings.Endpoint), settings.Key));
 #pragma warning restore CA2000 // Dispose objects before losing scope
+        }
 
         return services;
     }
