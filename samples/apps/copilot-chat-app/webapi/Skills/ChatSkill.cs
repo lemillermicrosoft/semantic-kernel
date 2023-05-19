@@ -67,6 +67,11 @@ public class ChatSkill
     private readonly PlannerOptions _plannerOptions;
 
     /// <summary>
+    /// Options for the content moderation
+    /// </summary>
+    private readonly ContentModerationOptions _contentModerationOptions;
+
+    /// <summary>
     /// Content moderator.
     /// TODO: We probably need an interface in SK.
     /// </summary>
@@ -84,6 +89,7 @@ public class ChatSkill
         PromptSettings promptSettings,
         CopilotChatPlanner planner,
         PlannerOptions plannerOptions,
+        ContentModerationOptions contentModerationOptions, // TODO: pass less parameters about content safy.
         AzureContentModerator contentModerator,
         ILogger logger)
     {
@@ -96,6 +102,7 @@ public class ChatSkill
         this._promptSettings = promptSettings;
         this._planner = planner;
         this._plannerOptions = plannerOptions;
+        this._contentModerationOptions = contentModerationOptions;
         this._contentModerator = contentModerator;
     }
 
@@ -359,25 +366,36 @@ public class ChatSkill
         // Can we write a simple SK function to identifying image input? Hmm... one more model call?
         if (message.StartsWith("data:image", StringComparison.InvariantCultureIgnoreCase))
         {
-            var moderationResult = await this._contentModerator.ImageAnalysisAsync(message, default);
-            var violationCategories = AzureContentModerator.ParseViolatedCategories(moderationResult);
-
             // Clone the context to avoid modifying the original context variables.
             var chatContextClone = Utilities.CopyContextWithVariablesClone(context);
             chatContextClone.Variables.Set("knowledgeCutoff", this._promptSettings.KnowledgeCutoffDate);
             chatContextClone.Variables.Set("audience", userName);
 
-            if (violationCategories.Count > 0)
-            {
-                await this.SaveNewMessageAsync($"Content is reducted due to potential violation: {string.Join(", ", violationCategories)}", userId, userName, chatId);
+            var imageCannedResponse = "Great image!";
 
-                chatContextClone.Variables.Update("It seems the content isn't appropriate.");
+            if (this._contentModerationOptions.Enabled)
+            {
+                var moderationResult = await this._contentModerator.ImageAnalysisAsync(message, default);
+                var violationCategories = AzureContentModerator.ParseViolatedCategories(moderationResult, this._contentModerationOptions.ViolationThreshold);
+
+                if (violationCategories.Count > 0)
+                {
+                    await this.SaveNewMessageAsync($"Content is redacted due to potential violation: {string.Join(", ", violationCategories)}", userId, userName, chatId);
+
+                    chatContextClone.Variables.Update("It seems the content isn't appropriate.");
+                }
+                else
+                {
+                    chatContextClone.Variables.Update(imageCannedResponse);
+                    await this.SaveNewMessageAsync(imageCannedResponse, userId, userName, chatId);
+                }
             }
             else
             {
-                chatContextClone.Variables.Update("Great image!");
+                chatContextClone.Variables.Update(imageCannedResponse);
+                await this.SaveNewMessageAsync(imageCannedResponse, userId, userName, chatId);
             }
-
+            
             return chatContextClone;
         }
 
