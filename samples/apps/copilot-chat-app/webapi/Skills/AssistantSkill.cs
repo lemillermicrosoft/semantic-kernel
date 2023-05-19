@@ -22,13 +22,13 @@ public class AssistantSkill
         var t = this.Kernel.ImportSemanticSkillFromDirectory(folder, "JsonSkill");
         this.Kernel.ImportSkill(new JsonSkill(t["SemanticSelect"]), "JsonSkill");
 
-        this.Kernel.ImportSemanticSkillFromDirectory(Path.GetFullPath(Path.Combine(Path.GetFullPath(System.Reflection.Assembly.GetExecutingAssembly().Location), "..")), "SummarizeSkill");
+        this.Kernel.ImportSemanticSkillFromDirectory(Path.GetFullPath(Path.Combine(Path.GetFullPath(System.Reflection.Assembly.GetExecutingAssembly().Location), "..")), "SummarizeSkill", "WriterSkill");
 
     }
 
     // ProblemSolve
     [SKFunctionName("ProblemSolve")]
-    [SKFunction("Given a goal or user ask, create a sequential plan to achieve the goal or solve the problem. Keywords for plan: Assistant, AssistantSkill, ProblemSolve, Solve a problem, Do this for me, Help me")]
+    [SKFunction("Given a goal or user ask, create a sequential plan to achieve the goal or solve the problem. Contains ability to interact with plugins like Jira and Microsot Graph as well as Summarize and Writer skills. Keywords for plan: Assistant, AssistantSkill, ProblemSolve, Solve a problem, Do this for me, Help me")]
     [SKFunctionContextParameter(Name = "input", Description = "Goal to achieve or problem to solve")]
     [SKFunctionContextParameter(Name = "chatId", Description = "Unique and persistent identifier for the chat")]
     [SKFunctionContextParameter(Name = "userId", Description = "ID of the user who owns the documents")]
