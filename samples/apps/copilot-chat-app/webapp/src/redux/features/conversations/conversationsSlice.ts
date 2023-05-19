@@ -38,6 +38,29 @@ export const conversationsSlice = createSlice({
             state.conversations[id].nextAction = nextAction ?? '';
             frontLoadChat(state, id);
         },
+        setChatSessionModeratingMessage: (
+            state: ConversationsState,
+            action: PayloadAction<{ message: IChatMessage; chatId?: string }>,
+        ) => {
+            const { message, chatId } = action.payload;
+            const id = chatId ?? state.selectedId;
+            state.conversations[id].moderatingMessages.push(message.userId + message.timestamp);
+            frontLoadChat(state, id);
+        },
+        removeChatSessionModeratingMessage: (
+            state: ConversationsState,
+            action: PayloadAction<{ message: IChatMessage; chatId?: string }>,
+        ) => {
+            const { message, chatId } = action.payload;
+            const id = chatId ?? state.selectedId;
+
+            const index = state.conversations[id].moderatingMessages.indexOf(message.userId + message.timestamp);
+
+            if (index !== -1) {
+                state.conversations[id].moderatingMessages.splice(index, 1);
+                frontLoadChat(state, id);
+            }
+        },
     },
 });
 
@@ -48,6 +71,8 @@ export const {
     setSelectedConversation,
     addConversation,
     updateConversation,
+    setChatSessionModeratingMessage,
+    removeChatSessionModeratingMessage,
 } = conversationsSlice.actions;
 
 export default conversationsSlice.reducer;
