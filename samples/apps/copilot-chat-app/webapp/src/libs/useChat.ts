@@ -16,7 +16,7 @@ import { AuthHelper } from './auth/AuthHelper';
 import { useConnectors } from './connectors/useConnectors';
 import { AlertType } from './models/AlertType';
 import { Bot } from './models/Bot';
-import { AuthorRoles } from './models/ChatMessage';
+import { AuthorRoles, IChatMessage } from './models/ChatMessage';
 import { IChatSession } from './models/ChatSession';
 import { ChatUser } from './models/ChatUser';
 import { isPlan } from './semantic-kernel/sk-utilities';
@@ -86,6 +86,7 @@ export const useChat = () => {
                         audience: [loggedInUser],
                         botTypingTimestamp: 0,
                         botProfilePicture: botProfilePictures.at(botProfilePictureIndex) ?? botIcon1,
+                        moderatingMessages: [],
                     };
 
                     dispatch(incrementBotProfilePictureIndex());
@@ -109,7 +110,7 @@ export const useChat = () => {
         userCancelledPlan?: boolean,
         userSavedPlan?: boolean,
         userInvokedPlanViaChat?: boolean,
-    ) => {
+    ): Promise<IChatMessage> => {
         const ask = {
             input: value,
             variables: [
@@ -154,6 +155,14 @@ export const useChat = () => {
             });
         }
 
+        var messageResult: IChatMessage = {
+            timestamp: new Date().getTime(),
+            userName: 'bot',
+            userId: 'bot',
+            content: '',
+            authorRole: AuthorRoles.Bot,
+        };
+
         if (userSavedPlan) {
             // do it
             const content = await downloadBot(chatId, true);
@@ -168,7 +177,7 @@ export const useChat = () => {
                     connectors.getEnabledPlugins(),
                 ); // this is the entry point to the semantic kernel
 
-                const messageResult = {
+                messageResult = {
                     timestamp: new Date().getTime(),
                     userName: 'bot',
                     userId: 'bot',
@@ -186,6 +195,8 @@ export const useChat = () => {
                 dispatch(addAlert({ message: errorMessage, type: AlertType.Error }));
             }
         }
+
+        return messageResult;
     };
 
     const loadChats = async () => {
@@ -220,6 +231,7 @@ export const useChat = () => {
                         botProfilePicture: botProfilePictures[Object.keys(conversations).length % 5],
                         // HACK
                         botBadge: undefined,
+                        moderatingMessages: [],
                         /*Object.keys(conversations).length === 0
                                 ? ChatBadge.External
                                 : Object.keys(conversations).length === 1
