@@ -17,4 +17,15 @@ export class ContentModerationService extends BaseService {
 
         return result;
     };
+
+    public getContentModerationStatusAsync = async (accessToken: string): Promise<boolean> => {
+        const result = await this.getResponseAsync<boolean>(
+            {
+                commandPath: 'contentModerator/status',
+                method: 'GET',
+            },
+            accessToken,
+        );
+        return result;
+    };
 }

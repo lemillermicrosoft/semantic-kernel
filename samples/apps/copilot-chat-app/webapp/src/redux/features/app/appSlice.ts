@@ -24,9 +24,16 @@ export const appSlice = createSlice({
         removeAlert: (state: AppState, action: PayloadAction<string>) => {
             if (state.alerts) delete state.alerts[action.payload];
         },
+        // HACK. The logic is not straightforward.
+        setFeatures: (state: AppState, action: PayloadAction<string[]>) => {
+            state.features = {};
+            action.payload.forEach((feature) => {
+                state.features![feature] = true;
+            });
+        },
     },
 });
 
-export const { addAlert, removeAlert, setAlerts } = appSlice.actions;
+export const { addAlert, removeAlert, setAlerts, setFeatures } = appSlice.actions;
 
 export default appSlice.reducer;
