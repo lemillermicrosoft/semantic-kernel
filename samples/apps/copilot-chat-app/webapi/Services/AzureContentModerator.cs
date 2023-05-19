@@ -27,7 +27,6 @@ public record ImageAnalysisRequest(
 public sealed class AzureContentModerator : IDisposable
 {
     private const string HttpUserAgent = "Copilot Chat";
-    private const short ViolationThreshold = 4;
 
     private readonly Uri _endpoint;
     private readonly HttpClient _httpClient;
@@ -45,8 +44,9 @@ public sealed class AzureContentModerator : IDisposable
     /// Initializes a new instance of the <see cref="AzureContentModerator"/> class.
     /// </summary>
     /// <param name="endpoint">Endpoint for service API call.</param>
+    /// <param name="apiKey">The API key.</param>
     /// <param name="httpClientHandler">Instance of <see cref="HttpClientHandler"/> to setup specific scenarios.</param>
-    public AzureContentModerator(Uri endpoint, HttpClientHandler httpClientHandler)
+    public AzureContentModerator(Uri endpoint, string apiKey, HttpClientHandler httpClientHandler)
     {
         this._endpoint = endpoint;
         this._httpClient = new(httpClientHandler);
@@ -54,14 +54,15 @@ public sealed class AzureContentModerator : IDisposable
         this._httpClient.DefaultRequestHeaders.Add("User-Agent", HttpUserAgent);
 
         // HACK
-        this._httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", "");
+        this._httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", apiKey);
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AzureContentModerator"/> class.
     /// </summary>
     /// <param name="endpoint">Endpoint for service API call.</param>
-    public AzureContentModerator(Uri endpoint)
+    /// <param name="apiKey">The API key.</param>
+    public AzureContentModerator(Uri endpoint, string apiKey)
     {
         this._endpoint = endpoint;
 
@@ -71,21 +72,22 @@ public sealed class AzureContentModerator : IDisposable
         this._httpClient.DefaultRequestHeaders.Add("User-Agent", HttpUserAgent);
 
         // HACK
-        this._httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", "");
+        this._httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", apiKey);
     }
 
     /// <summary>
     /// Prase the analysis result and return the violated categories.
     /// </summary>
     /// <param name="analysisResult">The content analysis result.</param>
+    /// <param name="threshold">The violation threshold.</param>
     /// <returns>The list of violated category names. Will return an empty list if there is no violoation.</returns>
-    public static List<string> ParseViolatedCategories(Dictionary<string, AnalysisResult> analysisResult)
+    public static List<string> ParseViolatedCategories(Dictionary<string, AnalysisResult> analysisResult, short threshold)
     {
         var violatedCategories = new List<string>();
 
         foreach (var category in analysisResult.Values)
         {
-            if (category.RiskLevel > ViolationThreshold)
+            if (category.RiskLevel > threshold)
             {
                 violatedCategories.Add(category.Category);
             }
