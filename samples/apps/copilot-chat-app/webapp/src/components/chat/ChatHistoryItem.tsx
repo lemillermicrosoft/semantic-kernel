@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft. All rights reserved.
 
-import { Text, makeStyles, mergeClasses, Persona, shorthands, tokens } from '@fluentui/react-components';
+import { Persona, Text, makeStyles, mergeClasses, shorthands, tokens } from '@fluentui/react-components';
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
 import { AuthorRoles, IChatMessage } from '../../libs/models/ChatMessage';
 import { SKBotAudienceMember } from '../../libs/semantic-kernel/bot-agent/models/SKBotAudienceMember';
 import { parsePlan } from '../../libs/semantic-kernel/sk-utilities';
@@ -39,7 +40,7 @@ const useClasses = makeStyles({
     time: {
         color: tokens.colorNeutralForeground3,
         fontSize: '12px',
-        fontWeight: 400
+        fontWeight: 400,
     },
     header: {
         position: 'relative',
@@ -120,7 +121,7 @@ export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = ({ message, getRe
               })
               .replace(/^sk:\/\/.*$/gm, (match: string) => createCommandLink(match))
               .replace(/^!sk:.*$/gm, (match: string) => createCommandLink(match))
-              .replace(/\n/g, '<br />')
+              //   .replace(/\n/g, '<br />')
               .replace(/ {2}/g, '&nbsp;&nbsp;')
         : '';
 
@@ -164,7 +165,9 @@ export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = ({ message, getRe
                             {content.startsWith('data:image') ? (
                                 <img className={classes.image} src={content} alt="TBA" />
                             ) : (
-                                <span>{content}</span>
+                                <ReactMarkdown disallowedElements={['paragraph', 'Paragraph', 'p']} unwrapDisallowed>
+                                    {content}
+                                </ReactMarkdown>
                             )}
                         </div>
                     )}

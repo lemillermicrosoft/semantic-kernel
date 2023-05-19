@@ -395,7 +395,7 @@ public class ChatSkill
                 chatContextClone.Variables.Update(imageCannedResponse);
                 await this.SaveNewMessageAsync(imageCannedResponse, userId, userName, chatId);
             }
-            
+
             return chatContextClone;
         }
 
@@ -659,6 +659,22 @@ public class ChatSkill
             else
             {
                 completion.Variables.Set("action", null);
+            }
+
+            if (!(action.Contains("StudySession", StringComparison.InvariantCultureIgnoreCase) || action.Contains("LearningSkill", StringComparison.InvariantCultureIgnoreCase)))
+            {
+                if (functionOrPlan is Plan skillPlan)
+                {
+                    await skillPlan.InvokeAsync();
+                    // Update input.
+                    var emoji = "👍";
+                    var skills = string.Join(", ", skillPlan.Steps.Select(s => s.SkillName));
+                    var skillText = string.Join("", "---\n\n**Powered by:** ", string.IsNullOrEmpty(skills) ? null : skills);
+                    var actionTaken = skillPlan.Description;
+                    var format = $"{emoji}*{actionTaken}*\n\n---\n\n```{completion.Result}```\n\n{skillText}";
+
+                    completion.Variables.Update(format);
+                }
             }
 
             return completion;
