@@ -1,10 +1,11 @@
 import { Avatar, makeStyles, shorthands, Text } from '@fluentui/react-components';
 import { ChatWarning16Regular, CommentLink16Regular, ShieldTask16Regular } from '@fluentui/react-icons';
 import { FC } from 'react';
-import { useAppDispatch } from '../../../redux/app/hooks';
+import { useAppDispatch, useAppSelector } from '../../../redux/app/hooks';
 import { ChatBadge } from '../../../redux/features/conversations/ChatState';
 import { setSelectedConversation } from '../../../redux/features/conversations/conversationsSlice';
 import { ChatSessionMenu } from './ChatSessionMenu';
+import { RootState } from '../../../redux/app/store';
 
 const useClasses = makeStyles({
     root: {
@@ -95,6 +96,7 @@ export const ChatListItem: FC<IChatListItemProps> = ({
 }) => {
     const classes = useClasses();
     const dispatch = useAppDispatch();
+    const { features } = useAppSelector((state: RootState) => state.app);
 
     const onClick = (_ev: any) => {
         dispatch(setSelectedConversation(id));
@@ -110,7 +112,9 @@ export const ChatListItem: FC<IChatListItemProps> = ({
                 <div className={classes.header}>
                     <Text className={classes.title} style={{ color: 'var(--colorNeutralForeground1)' }}>
                         {header}
-                        <ShieldTask16Regular className={classes.protectedIcon} />
+                        {features && features['contentModeration'] && (
+                            <ShieldTask16Regular className={classes.protectedIcon} />
+                        )}
                     </Text>
                     {timestamp && (
                         <Text className={classes.timestamp} size={300}>

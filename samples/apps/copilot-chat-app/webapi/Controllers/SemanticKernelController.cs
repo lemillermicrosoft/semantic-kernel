@@ -84,6 +84,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
         [FromServices] StudySkill studySkill,
         [FromServices] AzureContentModerator contentModerator,
         [FromServices] KernelConfig kernelConfig,
+        [FromServices] IOptions<ContentModerationOptions> contentModerationOptions,
         [FromBody] Ask ask,
         [FromHeader] OpenApiSkillsAuthHeaders openApiSkillsAuthHeaders,
         string skillName, string functionName)
@@ -136,6 +137,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
             planner: planner,
             plannerOptions: plannerOptions.Value,
             documentMemoryOptions: documentMemoryOptions.Value,
+            contentModerationOptions: contentModerationOptions.Value,
             contentModerator: contentModerator,
             logger: this._logger);
         kernel.ImportSkill(learningSkill, "LearningSkill");

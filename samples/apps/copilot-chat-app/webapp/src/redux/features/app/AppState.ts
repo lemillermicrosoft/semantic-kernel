@@ -5,7 +5,12 @@ export interface AppState {
     alerts?: Alerts;
     unclaimed?: boolean;
     documentId?: string;
+    features?: Features;
 }
+
+export type Features = {
+    [key: string]: boolean;
+};
 
 export type Alert = {
     message: string;

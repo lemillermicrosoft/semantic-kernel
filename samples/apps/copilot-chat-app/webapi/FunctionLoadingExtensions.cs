@@ -94,6 +94,7 @@ internal static class FunctionLoadingExtensions
         CopilotChatPlanner planner,
         PlannerOptions plannerOptions,
         DocumentMemoryOptions documentMemoryOptions,
+        ContentModerationOptions contentModerationOptions,
         AzureContentModerator contentModerator,
         ILogger logger)
     {
@@ -112,6 +113,7 @@ internal static class FunctionLoadingExtensions
             promptSettings: promptSettings,
             planner: planner,
             plannerOptions: plannerOptions,
+            contentModerationOptions: contentModerationOptions,
             contentModerator: contentModerator,
             logger: logger
         );
