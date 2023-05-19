@@ -39,7 +39,7 @@ const useClasses = makeStyles({
     time: {
         color: tokens.colorNeutralForeground3,
         fontSize: '12px',
-        fontWeight: 400
+        fontWeight: 400,
     },
     header: {
         position: 'relative',
@@ -56,6 +56,9 @@ const useClasses = makeStyles({
     },
     image: {
         maxWidth: '250px',
+    },
+    blur: {
+        filter: 'blur(5px)',
     },
 });
 
@@ -81,6 +84,11 @@ export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = ({ message, getRe
     const chat = useChat();
     const classes = useClasses();
     const { conversations, selectedId } = useAppSelector((state: RootState) => state.conversations);
+    const { features } = useAppSelector((state: RootState) => state.app);
+
+    // if the current message is moderated
+    const moderatingMessages = conversations[selectedId].moderatingMessages;
+    const isModerating = moderatingMessages.some((m) => m === `${message.userId}${message.timestamp}`);
 
     const plan = parsePlan(message.content);
     const isPlan = plan !== null;
@@ -162,7 +170,15 @@ export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = ({ message, getRe
                     {!isPlan && (
                         <div className={classes.content}>
                             {content.startsWith('data:image') ? (
-                                <img className={classes.image} src={content} alt="TBA" />
+                                <img
+                                    className={
+                                        features && features['contentModeration'] && isModerating
+                                            ? mergeClasses(classes.image, classes.blur)
+                                            : classes.image
+                                    }
+                                    src={content}
+                                    alt="TBA"
+                                />
                             ) : (
                                 <span>{content}</span>
                             )}
