@@ -470,8 +470,8 @@ public class ChatSkill
             return context;
         }
 
-        // Extract semantic memory
-        await this.ExtractSemanticMemoryAsync(chatId, chatContext); //memoryName, format
+        // Extract semantic memory - Instead of awaiting the task, run it in the background
+        _ = Task.Run(async () => await this.ExtractSemanticMemoryAsync(chatId, chatContext)); //memoryName, format
 
         context.Variables.Update(chatContext.Result);
         context.Variables.Set("userId", "Bot");
