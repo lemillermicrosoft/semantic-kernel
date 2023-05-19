@@ -4,7 +4,7 @@ import { useMsal } from '@azure/msal-react';
 import { ContentModerationService } from './services/ContentModerationService';
 import { useAppDispatch } from '../redux/app/hooks';
 import { AuthHelper } from './auth/AuthHelper';
-import { addAlert } from '../redux/features/app/appSlice';
+import { addAlert, setFeatures } from '../redux/features/app/appSlice';
 import { AlertType } from './models/AlertType';
 
 const riskThreshold = 4;
@@ -42,7 +42,20 @@ export const useContentModerator = () => {
         }
     };
 
+    const getContentModerationStatus = async () => {
+        try {
+            const result = await contentModeratorService.getContentModerationStatusAsync(
+                await AuthHelper.getSKaaSAccessToken(instance),
+            );
+
+            if (result && result === true) {
+                dispatch(setFeatures(['contentModeration']));
+            }
+        } catch (error) {}
+    };
+
     return {
         analyzeImage,
+        getContentModerationStatus,
     };
 };

@@ -21,6 +21,7 @@ import { useAppDispatch, useAppSelector } from './redux/app/hooks';
 import { RootState } from './redux/app/store';
 import { removeAlert } from './redux/features/app/appSlice';
 import { CopilotChatTokens } from './styles';
+import { useContentModerator } from './libs/useContentModerator';
 
 const useClasses = makeStyles({
     container: {
@@ -73,6 +74,7 @@ const App: FC = () => {
     const isAuthenticated = useIsAuthenticated();
 
     const chat = useChat();
+    const contentModerator = useContentModerator();
 
     useEffect(() => {
         if (isAuthenticated && account && appState === AppState.LoadingChats) {
@@ -86,6 +88,7 @@ const App: FC = () => {
             }
 
             loadChats();
+            contentModerator.getContentModerationStatus();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [instance, inProgress, isAuthenticated, appState]);
