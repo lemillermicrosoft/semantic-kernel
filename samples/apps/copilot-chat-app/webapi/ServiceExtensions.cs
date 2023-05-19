@@ -217,13 +217,11 @@ internal static class ServicesExtensions
         IConfiguration configuration = services.BuildServiceProvider().GetRequiredService<IConfiguration>();
         ContentModerationOptions settings = configuration.GetSection(ContentModerationOptions.PropertyName).Get<ContentModerationOptions>();
 
-        if (settings.Enabled)
-        {
-            // HACK. TODO: Get the URI from configuration
+        // HACK. If register service conditionally, the depenency injection will failed when the feature is OOF. Therefore we still register the service without checkout the feature flag.
 #pragma warning disable CA2000 // Dispose objects before losing scope - objects are singletons for the duration of the process and disposed when the process exits.
-            services.AddSingleton<AzureContentModerator>(new AzureContentModerator(new Uri(settings.Endpoint), settings.Key));
+        services.AddSingleton<AzureContentModerator>(new AzureContentModerator(new Uri(settings.Endpoint), settings.Key));
 #pragma warning restore CA2000 // Dispose objects before losing scope
-        }
+
 
         return services;
     }
