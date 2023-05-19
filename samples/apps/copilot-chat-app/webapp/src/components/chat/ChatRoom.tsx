@@ -9,7 +9,11 @@ import { AuthorRoles } from '../../libs/models/ChatMessage';
 import { useChat } from '../../libs/useChat';
 import { useAppDispatch, useAppSelector } from '../../redux/app/hooks';
 import { RootState } from '../../redux/app/store';
-import { updateConversation } from '../../redux/features/conversations/conversationsSlice';
+import {
+    removeChatSessionModeratingMessage,
+    setChatSessionModeratingMessage,
+    updateConversation,
+} from '../../redux/features/conversations/conversationsSlice';
 import { ChatHistory } from './ChatHistory';
 import { ChatInput } from './ChatInput';
 
@@ -94,6 +98,8 @@ export const ChatRoom: React.FC = () => {
     ) => {
         log('submitting user chat message');
 
+        const isInputImage = value.startsWith('data:image');
+
         const chatInput = {
             timestamp: new Date().getTime(),
             userId: account?.homeAccountId,
@@ -104,11 +110,17 @@ export const ChatRoom: React.FC = () => {
 
         if (!!!userSavedPlan) {
             setIsBotTyping(true);
+
+            // HACK
+            if (isInputImage) {
+                dispatch(setChatSessionModeratingMessage({ message: chatInput }));
+            }
+
             dispatch(updateConversation({ message: chatInput }));
         }
 
         try {
-            await chat.getResponse(
+            var response = await chat.getResponse(
                 value,
                 selectedId,
                 nextAction ?? approvedPlanJson,
@@ -118,6 +130,11 @@ export const ChatRoom: React.FC = () => {
                 userSavedPlan,
                 userInvokePlanViaChat,
             );
+
+            // HACK
+            if (isInputImage && response.content !== "It seems the content isn't appropriate.") {
+                dispatch(removeChatSessionModeratingMessage({ message: chatInput }));
+            }
         } finally {
             setIsBotTyping(false);
         }

@@ -12,6 +12,8 @@ export interface ChatState {
     botTypingTimestamp: number;
     botProfilePicture: string;
     botBadge?: ChatBadge;
+    // HACK. Since the client insert user input without waiting for the id from the backend. We hack the solution to create a temporary id = userid + timestamp. If the message id is presented, it means it's under content moderation analysis.
+    moderatingMessages: string[];
 }
 
 export enum ChatBadge {
