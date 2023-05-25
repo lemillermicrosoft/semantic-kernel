@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft. All rights reserved.
 
-import { useMsal } from '@azure/msal-react';
+import { useAccount, useMsal } from '@azure/msal-react';
 import { Button, Spinner, Textarea, makeStyles, shorthands, tokens } from '@fluentui/react-components';
 import { AttachRegular, ImageRegular, MicRegular, SendRegular } from '@fluentui/react-icons';
 import debug from 'debug';
@@ -10,12 +10,13 @@ import { Constants } from '../../Constants';
 import { AuthHelper } from '../../libs/auth/AuthHelper';
 import { AlertType } from '../../libs/models/AlertType';
 import { useDocumentImportService } from '../../libs/semantic-kernel/useDocumentImport';
-import { useAppDispatch } from '../../redux/app/hooks';
+import { useAppDispatch, useAppSelector } from '../../redux/app/hooks';
 import { addAlert } from '../../redux/features/app/appSlice';
 import { useSKSpeechService } from './../../libs/semantic-kernel/useSKSpeech';
 import { TypingIndicatorRenderer } from './typing-indicator/TypingIndicatorRenderer';
 import { FileUploader } from '../FileUploader';
 import { useFile } from '../../libs/useFile';
+import { RootState } from '../../redux/app/store';
 
 const log = debug(Constants.debug.root).extend('chat-input');
 
@@ -66,7 +67,7 @@ interface ChatInputProps {
 export const ChatInput: React.FC<ChatInputProps> = (props) => {
     const { isTyping, onSubmit } = props;
     const classes = useClasses();
-    const { instance } = useMsal();
+    const { instance, accounts } = useMsal();
     const dispatch = useAppDispatch();
     const [value, setValue] = React.useState('');
     const [image, setImage] = React.useState(''); // we only support single image in the input file.
@@ -79,6 +80,8 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
     const documentFileRef = useRef<HTMLInputElement | null>(null);
     const imageUploaderRef = useRef<HTMLInputElement>(null);
     const fileHandler = useFile();
+    const account = useAccount(accounts[0] || {});
+    const { selectedId } = useAppSelector((state: RootState) => state.conversations);
 
     React.useEffect(() => {
         if (recognizer) return;
@@ -109,12 +112,17 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
     };
 
     const importDocument = async () => {
+        const chatSessionId = selectedId;
+        const userDisplayName = account?.username || '';
+
         const documentFile = documentFileRef.current?.files?.[0];
         if (documentFile) {
             try {
                 SetDocumentImporting(true);
                 await documentImportService.importDocumentAsync(
                     documentFile,
+                    chatSessionId,
+                    userDisplayName,
                     await AuthHelper.getSKaaSAccessToken(instance),
                 );
                 dispatch(addAlert({ message: 'Document uploaded successfully', type: AlertType.Success }));

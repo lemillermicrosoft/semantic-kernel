@@ -30,6 +30,7 @@ import botIcon3 from '../assets/bot-icons/bot-icon-3.png';
 import botIcon4 from '../assets/bot-icons/bot-icon-4.png';
 import botIcon5 from '../assets/bot-icons/bot-icon-5.png';
 import { useFile } from './useFile';
+import { ChatMemorySource } from './models/ChatMemorySource';
 
 export const useChat = () => {
     const dispatch = useAppDispatch();
@@ -282,6 +283,10 @@ export const useChat = () => {
             });
     };
 
+    const getChatMemorySources = async (chatId: string): Promise<ChatMemorySource[]> => {
+        return await chatService.getChatMemorySourcesAsync(chatId, await AuthHelper.getSKaaSAccessToken(instance));
+    };
+
     return {
         getAudienceMemberForId,
         createChat,
@@ -289,5 +294,6 @@ export const useChat = () => {
         getResponse,
         downloadBot,
         uploadBot,
+        getChatMemorySources,
     };
 };

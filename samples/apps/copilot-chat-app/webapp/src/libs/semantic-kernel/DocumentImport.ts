@@ -1,15 +1,19 @@
 // Copyright (c) Microsoft. All rights reserved.
 
 export class DocumentImportService {
-    constructor(private readonly serviceUrl: string) { }
+    constructor(private readonly serviceUrl: string) {}
 
     importDocumentAsync = async (
         document: File,
+        chatSessionId: string,
+        userDisplayName: string,
         accessToken: string,
     ) => {
         const formData = new FormData();
         formData.append('formFile', document);
-        
+        formData.append('UserDisplayName', userDisplayName);
+        formData.append('ChatSessionId', chatSessionId);
+
         const commandPath = `importDocument`;
         const requestUrl = new URL(commandPath, this.serviceUrl);
 

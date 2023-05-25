@@ -152,6 +152,7 @@ internal static class ServicesExtensions
     {
         IStorageContext<ChatSession> chatSessionInMemoryContext;
         IStorageContext<ChatMessage> chatMessageInMemoryContext;
+        IStorageContext<MemorySource> chatMemorySourceContext;
 
         ChatStoreOptions chatStoreConfig = services.BuildServiceProvider().GetRequiredService<IOptions<ChatStoreOptions>>().Value;
 
@@ -161,6 +162,7 @@ internal static class ServicesExtensions
             {
                 chatSessionInMemoryContext = new VolatileContext<ChatSession>();
                 chatMessageInMemoryContext = new VolatileContext<ChatMessage>();
+                chatMemorySourceContext = new VolatileContext<MemorySource>();
                 break;
             }
 
@@ -177,6 +179,8 @@ internal static class ServicesExtensions
                     new FileInfo(Path.Combine(directory, $"{Path.GetFileNameWithoutExtension(fullPath)}_sessions{Path.GetExtension(fullPath)}")));
                 chatMessageInMemoryContext = new FileSystemContext<ChatMessage>(
                     new FileInfo(Path.Combine(directory, $"{Path.GetFileNameWithoutExtension(fullPath)}_messages{Path.GetExtension(fullPath)}")));
+                chatMemorySourceContext = new FileSystemContext<MemorySource>(
+                    new FileInfo(Path.Combine(directory, $"{Path.GetFileNameWithoutExtension(fullPath)}_memorysources{Path.GetExtension(fullPath)}")));
 
                 break;
             }
@@ -192,6 +196,8 @@ internal static class ServicesExtensions
                     chatStoreConfig.Cosmos.ConnectionString, chatStoreConfig.Cosmos.Database, chatStoreConfig.Cosmos.ChatSessionsContainer);
                 chatMessageInMemoryContext = new CosmosDbContext<ChatMessage>(
                     chatStoreConfig.Cosmos.ConnectionString, chatStoreConfig.Cosmos.Database, chatStoreConfig.Cosmos.ChatMessagesContainer);
+                chatMemorySourceContext = new CosmosDbContext<MemorySource>(
+                    chatStoreConfig.Cosmos.ConnectionString, chatStoreConfig.Cosmos.Database, chatStoreConfig.Cosmos.ChatMemorySourcesContainer);
 #pragma warning restore CA2000 // Dispose objects before losing scope
                 break;
             }
@@ -205,6 +211,7 @@ internal static class ServicesExtensions
 
         services.AddSingleton<ChatSessionRepository>(new ChatSessionRepository(chatSessionInMemoryContext));
         services.AddSingleton<ChatMessageRepository>(new ChatMessageRepository(chatMessageInMemoryContext));
+        services.AddSingleton<ChatMemorySourceRepository>(new ChatMemorySourceRepository(chatMemorySourceContext));
 
         return services;
     }

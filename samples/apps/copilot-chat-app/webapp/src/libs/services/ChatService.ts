@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft. All rights reserved.
 
+import { ChatMemorySource } from '../models/ChatMemorySource';
 import { IChatMessage } from '../models/ChatMessage';
 import { IChatSession } from '../models/ChatSession';
 import { BaseService } from './BaseService';
@@ -81,6 +82,18 @@ export class ChatService extends BaseService {
                 commandPath: `chatSession/edit`,
                 method: 'POST',
                 body: body,
+            },
+            accessToken,
+        );
+
+        return result;
+    };
+
+    public getChatMemorySourcesAsync = async (chatId: string, accessToken: string): Promise<ChatMemorySource[]> => {
+        const result = await this.getResponseAsync<ChatMemorySource[]>(
+            {
+                commandPath: `chatSession/${chatId}/documents`,
+                method: 'GET',
             },
             accessToken,
         );
