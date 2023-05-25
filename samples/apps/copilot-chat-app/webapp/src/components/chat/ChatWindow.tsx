@@ -18,7 +18,7 @@ import {
     Tooltip,
 } from '@fluentui/react-components';
 import { EditRegular, Save24Regular } from '@fluentui/react-icons';
-import React, { memo, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AuthHelper } from '../../libs/auth/AuthHelper';
 import { AlertType } from '../../libs/models/AlertType';
 import { ChatService } from '../../libs/services/ChatService';
@@ -104,8 +104,6 @@ export const ChatWindow: React.FC = () => {
         setSelectedValue(data.value);
     };
 
-    const ChatExternalResourcesComponent = memo(() => <ChatResourceList />);
-
     const onEdit = async () => {
         if (isEditing) {
             if (chatName !== title) {
@@ -183,7 +181,7 @@ export const ChatWindow: React.FC = () => {
                 <div className={classes.contentOuter}>
                     <div className={classes.contentInner}>
                         {selectedValue === 'chat' && <ChatRoom />}
-                        {selectedValue === 'sources' && <ChatExternalResourcesComponent />}
+                        {selectedValue === 'sources' && <ChatResourceList chatSessionId={selectedId} />}
                     </div>
                 </div>
             </div>

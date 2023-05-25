@@ -2,6 +2,7 @@
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.SemanticKernel;
 using SemanticKernel.Service.Model;
 using SemanticKernel.Service.Skills;
 using SemanticKernel.Service.Storage;
@@ -20,6 +21,7 @@ public class ChatHistoryController : ControllerBase
     private readonly ILogger<ChatHistoryController> _logger;
     private readonly ChatSessionRepository _chatSessionRepository;
     private readonly ChatMessageRepository _chatMessageRepository;
+    private readonly ChatMemorySourceRepository _chatMemorySourceRepository;
     private readonly PromptSettings _promptSettings;
 
     /// <summary>
@@ -28,16 +30,19 @@ public class ChatHistoryController : ControllerBase
     /// <param name="logger">The logger.</param>
     /// <param name="chatSessionRepository">The chat session repository.</param>
     /// <param name="chatMessageRepository">The chat message repository.</param>
+    /// <param name="chatMemorySourceRepository">The chat memory resource repository.</param>
     /// <param name="promptSettings">The prompt settings.</param>
     public ChatHistoryController(
         ILogger<ChatHistoryController> logger,
         ChatSessionRepository chatSessionRepository,
         ChatMessageRepository chatMessageRepository,
+        ChatMemorySourceRepository chatMemorySourceRepository,
         PromptSettings promptSettings)
     {
         this._logger = logger;
         this._chatSessionRepository = chatSessionRepository;
         this._chatMessageRepository = chatMessageRepository;
+        this._chatMemorySourceRepository = chatMemorySourceRepository;
         this._promptSettings = promptSettings;
     }
 
@@ -162,6 +167,24 @@ public class ChatHistoryController : ControllerBase
         await this._chatSessionRepository.UpdateAsync(chat);
 
         return this.Ok(chat);
+    }
+
+    /// <summary>
+    /// Service API to get a list of imported documents.
+    /// </summary>
+    [Authorize]
+    [Route("chatSession/{chatId:guid}/documents")]
+    [HttpGet]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IEnumerable<MemorySource>>> GetDocumentsAsync(
+        [FromServices] IKernel kernel,
+        Guid chatId)
+    {
+        this._logger.LogInformation("Get imported documents of chat session {0}", chatId);
+
+        return this.Ok(await this._chatMemorySourceRepository.FindByChatSessionIdAsync(chatId.ToString()));
     }
 
     # region Private

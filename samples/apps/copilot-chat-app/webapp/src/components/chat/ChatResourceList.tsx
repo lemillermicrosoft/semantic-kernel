@@ -16,6 +16,8 @@ import {
 } from '@fluentui/react-components';
 import * as React from 'react';
 import { DocumentPdfRegular } from '@fluentui/react-icons';
+import { useChat } from '../../libs/useChat';
+import { ChatMemorySource } from '../../libs/models/ChatMemorySource';
 
 const useClasses = makeStyles({
     root: {
@@ -27,26 +29,37 @@ const useClasses = makeStyles({
     },
 });
 
-export const ChatResourceList: React.FC = () => {
-    const classes = useClasses();
+interface ChatResourceListProps {
+    chatSessionId: string;
+}
 
-    const items = [
-        {
-            name: { label: 'Adventure Works Operating Manual.pdf', icon: <DocumentPdfRegular /> },
-            updatedOn: { label: '7h ago', timestamp: 1 },
-            sharedBy: { label: 'Blake Mustermann', status: 'available' },
+export const ChatResourceList: React.FC<ChatResourceListProps> = ({ chatSessionId }) => {
+    const classes = useClasses();
+    const chat = useChat();
+    const [resources, setResources] = React.useState<ChatMemorySource[]>([]);
+
+    React.useEffect(() => {
+        chat.getChatMemorySources(chatSessionId).then((sources) => {
+            setResources(sources);
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [chatSessionId]);
+
+    const items = resources.map((item) => ({
+        name: {
+            label: item.name,
+            icon: <DocumentPdfRegular /> /* TODO: change icon based on file extension */,
+            url: item.hyperlink,
         },
-        /*{
-            name: { label: 'Training recording', icon: <VideoRegular /> },
-            updatedOn: { label: 'Yesterday at 1:45 PM', timestamp: 2 },
-            sharedBy: { label: 'John Doe', status: 'away' },
+        updatedOn: {
+            label: new Date(item.updatedOn).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+            }),
+            timestamp: item.updatedOn,
         },
-        {
-            name: { label: 'Purchase order', icon: <DocumentRegular /> },
-            updatedOn: { label: 'Tue at 9:30 AM', timestamp: 3 },
-            sharedBy: { label: 'Jane Doe', status: 'offline' },
-        },*/
-    ];
+        sharedBy: { label: item.sharedBy, status: 'available' },
+    }));
 
     const columns = [
         { columnKey: 'name', label: 'Name' },
@@ -70,7 +83,7 @@ export const ChatResourceList: React.FC = () => {
                     <TableRow key={item.name.label}>
                         <TableCell>
                             <TableCellLayout media={item.name.icon}>
-                                <a href=";">{item.name.label}</a>
+                                <a href={item.name.url}>{item.name.label}</a>
                             </TableCellLayout>
                         </TableCell>
                         <TableCell>{item.updatedOn.label}</TableCell>

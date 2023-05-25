@@ -8,6 +8,7 @@ using Microsoft.SemanticKernel.Text;
 using SemanticKernel.Service.Config;
 using SemanticKernel.Service.Model;
 using SemanticKernel.Service.Skills;
+using SemanticKernel.Service.Storage;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 
@@ -39,6 +40,7 @@ public class DocumentImportController : ControllerBase
     private readonly ILogger<DocumentImportController> _logger;
     private readonly PromptSettings _promptSettings; // TODO: unused
     private readonly DocumentMemoryOptions _options;
+    private readonly ChatMemorySourceRepository _chatMemorySourceRepository;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DocumentImportController"/> class.
@@ -47,11 +49,13 @@ public class DocumentImportController : ControllerBase
         IServiceProvider serviceProvider,
         PromptSettings promptSettings,
         IOptions<DocumentMemoryOptions> documentMemoryOptions,
+        ChatMemorySourceRepository chatMemorySourceRepository,
         ILogger<DocumentImportController> logger)
     {
         this._serviceProvider = serviceProvider;
         this._options = documentMemoryOptions.Value;
         this._promptSettings = promptSettings;
+        this._chatMemorySourceRepository = chatMemorySourceRepository;
         this._logger = logger;
     }
 
@@ -102,6 +106,15 @@ public class DocumentImportController : ControllerBase
             }
 
             await this.ParseDocumentContentToMemoryAsync(kernel, fileContent, documentImportForm);
+
+            // add the document info to storage
+            // TODO: Do upsert instead of create.
+            var _ = this._chatMemorySourceRepository.CreateAsync(new MemorySource(
+                documentImportForm.ChatSessionId,
+                formFile.FileName,
+                documentImportForm.UserDisplayName,
+                SourceType.File,
+                null));
         }
         catch (Exception ex) when (ex is ArgumentOutOfRangeException)
         {
@@ -184,7 +197,7 @@ public class DocumentImportController : ControllerBase
             await kernel.Memory.SaveInformationAsync(
                 collection: targetCollectionName,
                 text: paragraph,
-                id: Guid.NewGuid().ToString(),
+                id: Guid.NewGuid().ToString(), // TODO: We can link the memory record with the MemorySource item.
                 description: $"Document: {documentName}");
         }
 
