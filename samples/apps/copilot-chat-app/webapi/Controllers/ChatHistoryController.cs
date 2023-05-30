@@ -164,7 +164,7 @@ public class ChatHistoryController : ControllerBase
         }
 
         chat.Title = chatParameters.Title;
-        await this._chatSessionRepository.UpdateAsync(chat);
+        await this._chatSessionRepository.UpsertAsync(chat);
 
         return this.Ok(chat);
     }

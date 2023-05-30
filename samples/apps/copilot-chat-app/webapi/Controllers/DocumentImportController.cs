@@ -105,16 +105,22 @@ public class DocumentImportController : ControllerBase
                     return this.BadRequest($"Unsupported file type: {fileType}");
             }
 
-            await this.ParseDocumentContentToMemoryAsync(kernel, fileContent, documentImportForm);
-
-            // add the document info to storage
-            // TODO: Do upsert instead of create.
-            var _ = this._chatMemorySourceRepository.CreateAsync(new MemorySource(
+            var existingMemorySource = (await this._chatMemorySourceRepository.FindByNameAsync(formFile.FileName)).FirstOrDefault();
+            var newMemorySource = new MemorySource(
                 documentImportForm.ChatSessionId,
                 formFile.FileName,
                 documentImportForm.UserDisplayName,
                 SourceType.File,
-                null));
+                existingMemorySource?.Id,
+                null);
+
+            await this._chatMemorySourceRepository.UpsertAsync(newMemorySource);
+
+            if (existingMemorySource != null)
+            {
+                await this.RemoveOldDocumentContentFromMemoryAsync(kernel, documentImportForm, existingMemorySource.Id);
+            }
+            await this.ParseDocumentContentToMemoryAsync(kernel, fileContent, documentImportForm, newMemorySource.Id);
         }
         catch (Exception ex) when (ex is ArgumentOutOfRangeException)
         {
@@ -177,34 +183,70 @@ public class DocumentImportController : ControllerBase
     /// <param name="kernel">The kernel instance from the service</param>
     /// <param name="content">The file content read from the uploaded document</param>
     /// <param name="documentImportForm">The document upload form that contains additional necessary info</param>
-    /// <returns></returns>
-    private async Task ParseDocumentContentToMemoryAsync(IKernel kernel, string content, DocumentImportForm documentImportForm)
+    /// <param name="memorySourceId">The ID of the MemorySource that the document content is linked to</param>
+    private async Task ParseDocumentContentToMemoryAsync(IKernel kernel, string content, DocumentImportForm documentImportForm, string memorySourceId)
     {
         var documentName = Path.GetFileName(documentImportForm.FormFile?.FileName);
-        var targetCollectionName = documentImportForm.DocumentScope == DocumentImportForm.DocumentScopes.Global
-            ? this._options.GlobalDocumentCollectionName
-            : string.IsNullOrEmpty(documentImportForm.UserId)
-                ? this._options.GlobalDocumentCollectionName
-                : this._options.UserDocumentCollectionNamePrefix + documentImportForm.UserId;
+        var targetCollectionName = this.GetDocumentCollectionName(documentImportForm);
 
         // Split the document into lines of text and then combine them into paragraphs.
         // NOTE that this is only one of the strategies to chunk documents. Feel free to experiment with other strategies.
         var lines = TextChunker.SplitPlainTextLines(content, 128 /*this._options.DocumentLineSplitMaxTokens*/);
         var paragraphs = TextChunker.SplitPlainTextParagraphs(lines, 512 /*this._options.DocumentParagraphSplitMaxLines*/);
 
-        foreach (var paragraph in paragraphs)
+        for (var i = 0; i < paragraphs.Count; i++)
         {
+            var paragraph = paragraphs[i];
             await kernel.Memory.SaveInformationAsync(
                 collection: targetCollectionName,
                 text: paragraph,
-                id: Guid.NewGuid().ToString(), // TODO: We can link the memory record with the MemorySource item.
+                id: GetSemanticMemoryId(memorySourceId, i),
                 description: $"Document: {documentName}");
         }
 
         this._logger.LogInformation(
             "Parsed {0} paragraphs from local file {1}",
             paragraphs.Count,
-            Path.GetFileName(documentImportForm.FormFile?.FileName)
+            documentName
         );
+    }
+
+    /// <summary>
+    /// Remove the existing memories linked to the MemorySource.
+    /// </summary>
+    /// <param name="kernel">The kernel instance from the service</param>
+    /// <param name="documentImportForm">The document upload form that contains additional necessary info</param>
+    /// <param name="memorySourceId">The ID of the MemorySource that the document content is linked to</param>
+    private async Task RemoveOldDocumentContentFromMemoryAsync(IKernel kernel, DocumentImportForm documentImportForm, string memorySourceId)
+    {
+        var i = 0;
+        var hasExistingMemory = false;
+        var targetCollectionName = this.GetDocumentCollectionName(documentImportForm);
+
+        do
+        {
+            var existingMemoryId = GetSemanticMemoryId(memorySourceId, i);
+            var existingMemory = await kernel.Memory.GetAsync(targetCollectionName, existingMemoryId);
+            if (hasExistingMemory = existingMemory != null)
+            {
+                await kernel.Memory.RemoveAsync(targetCollectionName, existingMemoryId);
+            }
+            i++;
+        }
+        while (hasExistingMemory);
+    }
+
+    private string GetDocumentCollectionName(DocumentImportForm documentImportForm)
+    {
+        return documentImportForm.DocumentScope == DocumentImportForm.DocumentScopes.Global
+            ? this._options.GlobalDocumentCollectionName
+            : string.IsNullOrEmpty(documentImportForm.UserId)
+                ? this._options.GlobalDocumentCollectionName
+                : this._options.UserDocumentCollectionNamePrefix + documentImportForm.UserId;
+    }
+
+    private string GetSemanticMemoryId(string memorySourceId, int index)
+    {
+        return $"{memorySourceId}-{index}";
     }
 }

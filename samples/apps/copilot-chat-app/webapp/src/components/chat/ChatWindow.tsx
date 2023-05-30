@@ -26,9 +26,9 @@ import { useAppDispatch, useAppSelector } from '../../redux/app/hooks';
 import { RootState } from '../../redux/app/store';
 import { addAlert } from '../../redux/features/app/appSlice';
 import { editConversationTitle } from '../../redux/features/conversations/conversationsSlice';
+import { ChatResourceList } from './ChatResourceList';
 import { ChatRoom } from './ChatRoom';
 import { ShareBotMenu } from './ShareBotMenu';
-import { ChatResourceList } from './ChatResourceList';
 
 const useClasses = makeStyles({
     root: {
@@ -167,8 +167,8 @@ export const ChatWindow: React.FC = () => {
                             <Tab id="chat" value="chat">
                                 Chat
                             </Tab>
-                            <Tab id="sources" value="sources">
-                                Sources
+                            <Tab id="files" value="files">
+                                Files
                             </Tab>
                         </TabList>
                     </div>
@@ -181,7 +181,7 @@ export const ChatWindow: React.FC = () => {
                 <div className={classes.contentOuter}>
                     <div className={classes.contentInner}>
                         {selectedValue === 'chat' && <ChatRoom />}
-                        {selectedValue === 'sources' && <ChatResourceList chatSessionId={selectedId} />}
+                        {selectedValue === 'files' && <ChatResourceList chatSessionId={selectedId} />}
                     </div>
                 </div>
             </div>
