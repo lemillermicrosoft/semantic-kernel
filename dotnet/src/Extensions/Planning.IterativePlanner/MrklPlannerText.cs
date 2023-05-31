@@ -44,8 +44,10 @@ public class MrklPlannerText
         string? embeddedResourceName = "iterative-planer-text.txt",
         ILogger? logger = null)
     {
-        this.MaxIterations = maxIterations;
         Verify.NotNull(kernel);
+
+        // TODO Config object
+        this.MaxIterations = maxIterations;
 
         if (!string.IsNullOrEmpty(embeddedResourceName))
         {
@@ -59,15 +61,19 @@ public class MrklPlannerText
 
         this._context = kernel.CreateNewContext();
         this.Kernel = kernel;
-        this.Steps = new List<AgentStep>();
+        this.StepsTaken = new List<AgentStep>();
         this._logger = logger;
+
+        this._semanticFunction = this.InitiateSemanticFunction(this.Kernel, this._promptTemplate, "Observation:");
+
+        this._nativeFunctions = this.Kernel.ImportSkill(this, "MrklPlannerText");
     }
 
     private ISKFunction InitiateSemanticFunction(IKernel kernel, string promptTemplate, string stopSequence)
     {
         return kernel.CreateSemanticFunction(
             promptTemplate: promptTemplate,
-            //skillName: RestrictedSkillName,
+            skillName: RestrictedSkillName,
             description: "Given a request or command or goal generate multi-step plan to reach the goal, " +
                          "after each step LLM is called to perform the reasoning for the nxt step",
             maxTokens: this.MaxTokens,
@@ -78,53 +84,68 @@ public class MrklPlannerText
 
     public int MaxTokens { get; set; } = 256;
 
-    /// <summary>
-    /// Create a plan for a goal.
-    /// </summary>
-    /// <param name="goal">The goal to create a plan for.</param>
-    /// <returns>The plan.</returns>
-    public virtual async Task<string> ExecutePlanAsync(string goal)
+    public Plan CreatePlan(string goal)
     {
         if (string.IsNullOrEmpty(goal))
         {
             throw new PlanningException(PlanningException.ErrorCodes.InvalidGoal, "The goal specified is empty");
         }
 
-        var functionFlowFunction = this.InitiateSemanticFunction(this.Kernel, this._promptTemplate, "Observation:");
-
         (string toolNames, string toolDescriptions) = this.GetToolNamesAndDescriptions();
+        var context = this.Kernel.CreateNewContext();
 
-        this._context.Variables.Set("toolNames", toolNames);
-        this._context.Variables.Set("toolDescriptions", toolDescriptions);
-        this._context.Variables.Set("question", goal);
+        Plan plan = new(goal);
+        plan.AddSteps(this._nativeFunctions["ExecutePlan"]);
+        plan.State.Set("toolNames", toolNames);
+        plan.State.Set("toolDescriptions", toolDescriptions);
+        plan.State.Set("question", goal);
 
-        for (int i = 0; i < this.MaxIterations; i++)
+        return plan;
+    }
+
+    [SKFunctionName("ExecutePlan")]
+    [SKFunction("Execute a plan")]
+    [SKFunctionContextParameter(Name = "toolNames", Description = "List of tool names.")]
+    [SKFunctionContextParameter(Name = "toolDescriptions", Description = "List of tool descriptions.")]
+    [SKFunctionContextParameter(Name = "question", Description = "The question to answer.")]
+    public async Task<SKContext> ExecutePlanAsync(SKContext context)
+    {
+        if (context.Variables.Get("question", out var goal))
         {
-            var scratchPad = this.CreateScratchPad(goal);
-            this.Trace("Scratchpad: " + scratchPad);
-            this._context.Variables.Set("agentScratchPad", scratchPad);
-            var llmResponse = await functionFlowFunction.InvokeAsync(this._context).ConfigureAwait(false);
-            string actionText = llmResponse.Result.Trim();
-            this.Trace("Response : " + actionText);
-
-            var nextStep = this.ParseResult(actionText);
-            this.Steps.Add(nextStep);
-
-            if (!string.IsNullOrEmpty(nextStep.FinalAnswer))
+            for (int i = 0; i < this.MaxIterations; i++)
             {
-                return nextStep.FinalAnswer;
-            }
+                var scratchPad = this.CreateScratchPad(goal);
+                this.Trace("Scratchpad: " + scratchPad);
+                context.Variables.Set("agentScratchPad", scratchPad);
+                var llmResponse = await this._semanticFunction.InvokeAsync(context).ConfigureAwait(false);
+                string actionText = llmResponse.Result.Trim();
+                this.Trace("Response : " + actionText);
 
-            nextStep.Observation = await this.InvokeActionAsync(nextStep!.Action!, nextStep!.ActionInput!).ConfigureAwait(false);
-            this.Trace("Observation : " + nextStep.Observation);
+                var nextStep = this.ParseResult(actionText);
+                this.StepsTaken.Add(nextStep);
+
+                if (!string.IsNullOrEmpty(nextStep.FinalAnswer))
+                {
+                    context.Variables.Update(nextStep.FinalAnswer);
+                    return context;
+                }
+
+                nextStep.Observation = await this.InvokeActionAsync(nextStep!.Action!, nextStep!.ActionInput!).ConfigureAwait(false);
+                this.Trace("Observation : " + nextStep.Observation);
+            }
+            context.Variables.Update($"Result Not found, check out the StepsTaken to see what happen\n{JsonSerializer.Serialize(this.StepsTaken)}");
+        }
+        else
+        {
+            context.Variables.Update("Question Not found.");
         }
 
-        return "Result Not found, check out the steps to see what happen";
+        return context;
     }
 
     protected virtual string CreateScratchPad(string goal)
     {
-        if (this.Steps.Count == 0)
+        if (this.StepsTaken.Count == 0)
         {
             return string.Empty;
         }
@@ -134,7 +155,7 @@ public class MrklPlannerText
 
         //in the longer conversations without this it forgets the question on gpt-3.5
         result.AppendLine("Question: " + goal);
-        foreach (var step in this.Steps)
+        foreach (var step in this.StepsTaken)
         {
             result.AppendLine("Thought: " + step.OriginalResponse);
             //result.AppendLine("Action: " + step.Action);
@@ -148,31 +169,32 @@ public class MrklPlannerText
     protected virtual async Task<string> InvokeActionAsync(string actionName, string actionActionInput)
     {
         //var availableFunctions = await this.Context.GetAvailableFunctionsAsync(this.Config).ConfigureAwait(false);
-        List<FunctionView> availableFunctions = this.GetAvailableFunctions();
+        List<FunctionView> availableFunctions = this.GetAvailableFunctions().ToList();
 
         var theFunction = availableFunctions.FirstOrDefault(f => f.Name == actionName);
 
         if (theFunction == null)
         {
-            throw new ApplicationException("no such function" + actionName);
+            throw new PlanningException(PlanningException.ErrorCodes.UnknownError, "The function " + actionName + " was not found");
         }
 
         var func = this.Kernel.Func(theFunction.SkillName, theFunction.Name);
         var result = await func.InvokeAsync(actionActionInput).ConfigureAwait(false);
         this.Trace("invoking " + theFunction.Name, result.Result);
+
+        // TODO Should other variables from result be included?
         return result.Result;
     }
 
-    private List<FunctionView> GetAvailableFunctions()
+    private IEnumerable<FunctionView> GetAvailableFunctions()
     {
         FunctionsView functionsView = this._context.Skills.GetFunctionsView();
 
         var availableFunctions =
             functionsView.NativeFunctions
-                //.Concat(functionsView.SemanticFunctions) // for now semantic functions are not needed
+                .Concat(functionsView.SemanticFunctions)
                 .SelectMany(x => x.Value)
-                //.Where(s => !excludedSkills.Contains(s.SkillName) && !excludedFunctions.Contains(s.Name))
-                .ToList();
+                .Where(s => s.SkillName != RestrictedSkillName);
         return availableFunctions;
     }
 
@@ -258,12 +280,20 @@ public class MrklPlannerText
 
     private readonly SKContext _context;
 
-    //private ISKFunction _functionFlowFunction;
+    private ISKFunction _semanticFunction;
 
     protected readonly IKernel Kernel;
     private readonly string _promptTemplate;
     private readonly ILogger? _logger;
-    public List<AgentStep> Steps { get; set; }
+
+    /// <summary>
+    /// The name to use when creating semantic functions that are restricted from plan creation
+    /// </summary>
+    private const string RestrictedSkillName = "MrklPlanner_Excluded";
+
+    private IDictionary<string, ISKFunction> _nativeFunctions = new Dictionary<string, ISKFunction>();
+
+    public List<AgentStep> StepsTaken { get; set; }
 }
 
 public class ActionDetails

@@ -1,9 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Microsoft.Extensions.Logging;
-using Microsoft.SemanticKernel.AI.ChatCompletion;
-using Microsoft.SemanticKernel.Connectors.AI.OpenAI.ChatCompletion;
-using Microsoft.SemanticKernel.TemplateEngine;
 using Planning.IterativePlanner;
 
 #pragma warning disable IDE0130
@@ -45,56 +42,5 @@ public class MrklPlannerChat : MrklPlannerText
         {
             this._userPromptTemplate = userPrompt;
         }
-    }
-
-    public override async Task<string> ExecutePlanAsync(string goal)
-    {
-        IChatCompletion chat = this.Kernel.GetService<IChatCompletion>();
-
-        var promptRenderer = new PromptTemplateEngine();
-        var context = this.Kernel.CreateNewContext();
-
-        (string toolNames, string toolDescriptions) = this.GetToolNamesAndDescriptions();
-
-        context.Variables.Set("toolNames", toolNames);
-        context.Variables.Set("toolDescriptions", toolDescriptions);
-        context.Variables.Set("question", goal);
-
-        var chatRequestSettings = new ChatRequestSettings
-        {
-            MaxTokens = this.MaxTokens,
-            StopSequences = new List<string>() { "Observation:" },
-            Temperature = 0
-        };
-
-        var systemPrompt = await promptRenderer.RenderAsync(this._systemPromptTemplate, context).ConfigureAwait(false);
-
-        for (int i = 0; i < this.MaxIterations; i++)
-        {
-            var chatHistory = (OpenAIChatHistory)chat.CreateNewChat(systemPrompt);
-            var scratchPad = this.CreateScratchPad(goal);
-            context.Variables.Set("agentScratchPad", scratchPad);
-
-            var userMessage = await promptRenderer.RenderAsync(this._userPromptTemplate, context).ConfigureAwait(false);
-            this.Trace("UserMessage", userMessage);
-            chatHistory.AddUserMessage(userMessage);
-
-            string reply = await chat.GenerateMessageAsync(chatHistory, chatRequestSettings).ConfigureAwait(false);
-            this.Trace("Reply", reply);
-            var nextStep = this.ParseResult(reply);
-            this.Steps.Add(nextStep);
-
-            if (!string.IsNullOrEmpty(nextStep.FinalAnswer))
-            {
-                return nextStep.FinalAnswer;
-            }
-
-            nextStep.Observation = await this.InvokeActionAsync(nextStep!.Action!, nextStep!.ActionInput!).ConfigureAwait(false);
-            this.Trace("Observation", nextStep.Observation);
-        }
-
-        return "zebra";
-
-        //return base.ExecutePlanAsync(goal);
     }
 }
