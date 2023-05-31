@@ -2,7 +2,7 @@
 
 namespace Planning.IterativePlanner;
 
-public class AgentStep   
+public class AgentStep
 {
     public string? Thought { get; set; }
     public string? Action { get; set; }

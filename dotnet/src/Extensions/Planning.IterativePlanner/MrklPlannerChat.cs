@@ -84,12 +84,12 @@ public class MrklPlannerChat : MrklPlannerText
             var nextStep = this.ParseResult(reply);
             this.Steps.Add(nextStep);
 
-            if (!String.IsNullOrEmpty(nextStep.FinalAnswer))
+            if (!string.IsNullOrEmpty(nextStep.FinalAnswer))
             {
                 return nextStep.FinalAnswer;
             }
 
-            nextStep.Observation = await this.InvokeActionAsync(nextStep.Action, nextStep.ActionInput).ConfigureAwait(false);
+            nextStep.Observation = await this.InvokeActionAsync(nextStep!.Action!, nextStep!.ActionInput!).ConfigureAwait(false);
             this.Trace("Observation", nextStep.Observation);
         }
 

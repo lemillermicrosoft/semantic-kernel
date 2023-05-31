@@ -1,4 +1,6 @@
-﻿using System.Text.RegularExpressions;
+﻿// Copyright (c) Microsoft. All rights reserved.
+
+using System.Text.RegularExpressions;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.SkillDefinition;
@@ -7,14 +9,14 @@ using NCalc;
 namespace Planning.IterativePlanner;
 
 // usage :
-    //var kernel = new KernelBuilder().WithLogger(ConsoleLogger.Log).Build();
-    //var question = "what is the square root of 625";
-    //IDictionary<string, ISKFunction> calculatorSkill = kernel.ImportSkill(new LanguageCalculatorSkill(kernel));
-    //SKContext summary = await kernel.RunAsync(questions, calculatorSkill["Calculate"]);
-    //Console.WriteLine("Result :");
-    //Console.WriteLine(summary.Result);
+//var kernel = new KernelBuilder().WithLogger(ConsoleLogger.Log).Build();
+//var question = "what is the square root of 625";
+//IDictionary<string, ISKFunction> calculatorSkill = kernel.ImportSkill(new LanguageCalculatorSkill(kernel));
+//SKContext summary = await kernel.RunAsync(questions, calculatorSkill["Calculate"]);
+//Console.WriteLine("Result :");
+//Console.WriteLine(summary.Result);
 
-    public class LanguageCalculatorSkill
+public class LanguageCalculatorSkill
 {
     private readonly ISKFunction _mathTranslator;
 
@@ -22,7 +24,7 @@ namespace Planning.IterativePlanner;
         @"Translate a math problem into a expression that can be executed using .net NCalc library. Use the output of running this code to answer the question.
 
 Question: $((Question with math problem.))
-expression:``` $((single line mathematical expression that solves the ))``` 
+expression:``` $((single line mathematical expression that solves the ))```
 
 [Examples]
 Question: What is 37593 * 67?
@@ -67,14 +69,14 @@ Question: {{ $input }}.
 
     [SKFunction(ToolDescription)]
     [SKFunctionName("Calculator")]
-    public async Task<String> CalculateAsync(string input, SKContext context)
+    public async Task<string> CalculateAsync(string input, SKContext context)
     {
         //this._mathTranslator.RequestSettings.ResultsPerPrompt = 0;
         var answer = await this._mathTranslator.InvokeAsync(input).ConfigureAwait(false);
         //Console.WriteLine(answer.Result);
         if (answer.ErrorOccurred)
         {
-            throw new ApplicationException("error in calculator for input "+ input +" " + answer.LastErrorDescription);
+            throw new ApplicationException("error in calculator for input " + input + " " + answer.LastErrorDescription);
         }
 
         string pattern = @"```\s*(.*?)\s*```";
@@ -85,22 +87,20 @@ Question: {{ $input }}.
             var result = EvaluateMathExpression(match);
             return result;
         }
-        else
-        {
-            Console.WriteLine(input);
-            var e = new ArgumentException(
-                $"Input value [{input}] could not be understood, received following {answer.Result} ", nameof(input));
-            return await Task.FromException<string>(e).ConfigureAwait(false);
-        }
+        Console.WriteLine(input);
+        var e = new ArgumentException(
+            $"Input value [{input}] could not be understood, received following {answer.Result} ", nameof(input));
+
+        return await Task.FromException<string>(e).ConfigureAwait(false);
     }
 
     private static string EvaluateMathExpression(Match match)
     {
         var textExpressions = match.Groups[1].Value;
         var expr = new Expression(textExpressions, EvaluateOptions.IgnoreCase);
-        expr.EvaluateParameter += delegate(string name, ParameterArgs args)
+        expr.EvaluateParameter += delegate (string name, ParameterArgs args)
         {
-            args.Result = name.ToLower() switch
+            args.Result = name.ToLower(System.Globalization.CultureInfo.CurrentCulture) switch
             {
                 "pi" => Math.PI,
                 "e" => Math.E,

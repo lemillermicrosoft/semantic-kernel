@@ -1,6 +1,4 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
-// Attempt to implement MRKL systems as described in https://arxiv.org/pdf/2205.00445.pdf
-// strongly inspired by https://github.com/hwchase17/langchain/tree/master/langchain/agents/mrkl
 
 using System.Diagnostics;
 using System.Text;
@@ -19,9 +17,13 @@ namespace Microsoft.SemanticKernel.Planning;
 #pragma warning restore IDE0130
 
 /// <summary>
-    /// A planner that uses semantic function to create a sequential plan.
-    /// </summary>
-    public class MrklPlannerText
+/// A planner that uses semantic function to create a sequential plan.
+/// </summary>
+/// <remark>
+/// Attempt to implement MRKL systems as described in https://arxiv.org/pdf/2205.00445.pdf
+/// strongly inspired by https://github.com/hwchase17/langchain/tree/master/langchain/agents/mrkl
+/// </remark>
+public class MrklPlannerText
 {
     protected readonly int MaxIterations;
 
@@ -32,7 +34,6 @@ namespace Microsoft.SemanticKernel.Planning;
     /// </summary>
     /// <param name="kernel">The semantic kernel instance.</param>
     /// <param name="maxIterations"></param>
-    /// <param name="config">The planner configuration.</param>
     /// <param name="prompt">Optional prompt override</param>
     /// <param name="embeddedResourceName"></param>
     /// <param name="logger"></param>
@@ -109,12 +110,12 @@ namespace Microsoft.SemanticKernel.Planning;
             var nextStep = this.ParseResult(actionText);
             this.Steps.Add(nextStep);
 
-            if (!String.IsNullOrEmpty(nextStep.FinalAnswer))
+            if (!string.IsNullOrEmpty(nextStep.FinalAnswer))
             {
                 return nextStep.FinalAnswer;
             }
 
-            nextStep.Observation = await this.InvokeActionAsync(nextStep.Action, nextStep.ActionInput).ConfigureAwait(false);
+            nextStep.Observation = await this.InvokeActionAsync(nextStep!.Action!, nextStep!.ActionInput!).ConfigureAwait(false);
             this.Trace("Observation : " + nextStep.Observation);
         }
 
@@ -158,7 +159,7 @@ namespace Microsoft.SemanticKernel.Planning;
 
         var func = this.Kernel.Func(theFunction.SkillName, theFunction.Name);
         var result = await func.InvokeAsync(actionActionInput).ConfigureAwait(false);
-        this.Trace("invoking " +theFunction.Name, result.Result);
+        this.Trace("invoking " + theFunction.Name, result.Result);
         return result.Result;
     }
 
@@ -193,7 +194,7 @@ namespace Microsoft.SemanticKernel.Planning;
         //var color = Console.ForegroundColor;
         //Console.ForegroundColor = ConsoleColor.Yellow;
         //Console.WriteLine(planResultString);
-        this._logger?.LogTrace("############  "+ title + "  ########" + Environment.NewLine + message + Environment.NewLine + "############");
+        this._logger?.LogTrace("############  " + title + "  ########" + Environment.NewLine + message + Environment.NewLine + "############");
 
         //this._logger?.Log(
         //    LogLevel.Trace,
@@ -208,7 +209,7 @@ namespace Microsoft.SemanticKernel.Planning;
             OriginalResponse = input
         };
         //until Action:
-        Regex untilAction = new Regex(@"(.*)(?=Action:)", RegexOptions.Singleline);
+        Regex untilAction = new("(.*)(?=Action:)", RegexOptions.Singleline);
         Match untilActionMatch = untilAction.Match(input);
 
         if (input.StartsWith("Final Answer:"))
@@ -222,7 +223,7 @@ namespace Microsoft.SemanticKernel.Planning;
             result.Thought = untilActionMatch.Value.Trim();
         }
 
-        Regex actionRegex = new Regex(@"```(.*?)```", RegexOptions.Singleline);
+        Regex actionRegex = new("```(.*?)```", RegexOptions.Singleline);
 
         Match actionMatch = actionRegex.Match(input);
         if (actionMatch.Success)
@@ -237,7 +238,7 @@ namespace Microsoft.SemanticKernel.Planning;
         {
             throw new ApplicationException("no action found");
         }
-        
+
         if (result.Action == "Final Answer")
         {
             result.FinalAnswer = result.ActionInput;
@@ -249,9 +250,9 @@ namespace Microsoft.SemanticKernel.Planning;
     protected (string, string) GetToolNamesAndDescriptions()
     {
         var availableFunctions = this.GetAvailableFunctions();
-       
-        string toolNames = String.Join(", ", availableFunctions.Select(x => x.Name));
-        string toolDescriptions = ">" + String.Join("\n>", availableFunctions.Select(x => x.Name + ": " + x.Description)); 
+
+        string toolNames = string.Join(", ", availableFunctions.Select(x => x.Name));
+        string toolDescriptions = ">" + string.Join("\n>", availableFunctions.Select(x => x.Name + ": " + x.Description));
         return (toolNames, toolDescriptions);
     }
 

@@ -3,12 +3,9 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.Planning;
-using Microsoft.SemanticKernel.Skills.Grpc.Extensions;
-using Microsoft.SemanticKernel.Skills.Web.Bing;
-using Microsoft.SemanticKernel.Skills.Web.Google;
 using Microsoft.SemanticKernel.Skills.Web;
+using Microsoft.SemanticKernel.Skills.Web.Bing;
 using Planning.IterativePlanner;
 using RepoUtils;
 
@@ -38,7 +35,7 @@ public static class ExampleX_IterativePlanner
         //using bing :)
         //Result :Joe Biden's age divided by 2 is 39, which is the same as the number of years he has been in politics!
 
-        MrklPlannerText planer = new MrklPlannerText(kernel, 5);
+        MrklPlannerText planer = new(kernel, 5);
         var result = await planer.ExecutePlanAsync(goal);
 
         Console.WriteLine("Result :" + result);
@@ -49,14 +46,12 @@ public static class ExampleX_IterativePlanner
     private static IKernel GetKernel()
     {
         var kernel = new KernelBuilder()
-            //.WithLogger(ConsoleLogger.Log)
-            .Build();
-
-        kernel.Config.AddAzureTextCompletionService(
+        .WithAzureTextCompletionService(
             Env.Var("AZURE_OPENAI_DEPLOYMENT_NAME"),
             Env.Var("AZURE_OPENAI_ENDPOINT"),
-            Env.Var("AZURE_OPENAI_KEY")
-        );
+            Env.Var("AZURE_OPENAI_KEY"))
+            //.WithLogger(ConsoleLogger.Log)
+            .Build();
 
         return kernel;
     }
