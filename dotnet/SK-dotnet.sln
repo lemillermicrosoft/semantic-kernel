@@ -109,7 +109,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OpenApiSkillsExample", "..\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Connectors.Memory.DuckDB", "src\Connectors\Connectors.Memory.DuckDB\Connectors.Memory.DuckDB.csproj", "{50FAE231-6F24-4779-9D02-12ABBC9A49E2}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Planning.IterativePlanner", "src\Extensions\Planning.IterativePlanner\Planning.IterativePlanner.csproj", "{15DE246F-3E4E-49A1-BD82-D1CAFAFC7ED9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Planning.MrklSystemPlanner", "src\Extensions\Planning.MrklSystemPlanner\Planning.MrklSystemPlanner.csproj", "{15DE246F-3E4E-49A1-BD82-D1CAFAFC7ED9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

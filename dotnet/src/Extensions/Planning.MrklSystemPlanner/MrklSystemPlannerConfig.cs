@@ -2,12 +2,12 @@
 
 using System.Collections.Generic;
 
-namespace Microsoft.SemanticKernel.Planning.Sequential;
+namespace Microsoft.SemanticKernel.Planning.MrklSystem;
 
 /// <summary>
-/// Configuration for sequential planner instances.
+/// Configuration for MRKL system planner instances.
 /// </summary>
-public sealed class SequentialPlannerConfig
+public sealed class MrklSystemPlannerConfig
 {
     /// <summary>
     /// The minimum relevancy score for a function to be considered
@@ -49,4 +49,9 @@ public sealed class SequentialPlannerConfig
     /// The maximum number of tokens to allow in a plan.
     /// </summary>
     public int MaxTokens { get; set; } = 1024;
+
+    /// <summary>
+    /// The maximum number of iterations to allow in a plan.
+    /// </summary>
+    public int MaxIterations { get; set; } = 100;
 }
