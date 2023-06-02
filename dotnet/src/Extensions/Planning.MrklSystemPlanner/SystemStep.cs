@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace Microsoft.SemanticKernel.Planning.MrklSystem;
@@ -26,6 +27,12 @@ public class SystemStep
     /// </summary>
     [JsonPropertyName("action_input")]
     public string? ActionInput { get; set; }
+
+    /// <summary>
+    /// Gets or sets the variables for the action
+    /// </summary>
+    [JsonPropertyName("action_variables")]
+    public Dictionary<string, string>? ActionVariables { get; set; }
 
     /// <summary>
     /// Gets or sets the output of the action

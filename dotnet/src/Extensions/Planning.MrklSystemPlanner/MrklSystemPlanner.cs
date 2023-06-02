@@ -76,15 +76,15 @@ public class MrklSystemPlanner
             throw new PlanningException(PlanningException.ErrorCodes.InvalidGoal, "The goal specified is empty");
         }
 
-        (string toolNames, string toolDescriptions) = this.GetToolNamesAndDescriptions();
+        (string functionNames, string functionDescriptions) = this.GetFunctionNamesAndDescriptions();
         var context = this._kernel.CreateNewContext();
 
         Plan plan = new(goal);
 
         // TODO -- or do we add the number of steps from the config so it's easy to step still? Yes, I like that.
         plan.AddSteps(this._nativeFunctions["ExecutePlan"]);
-        plan.State.Set("toolNames", toolNames);
-        plan.State.Set("toolDescriptions", toolDescriptions);
+        plan.State.Set("functionNames", functionNames);
+        plan.State.Set("functionDescriptions", functionDescriptions);
         plan.State.Set("question", goal);
 
         return plan;
@@ -92,8 +92,8 @@ public class MrklSystemPlanner
 
     [SKFunctionName("ExecutePlan")]
     [SKFunction("Execute a plan")]
-    [SKFunctionContextParameter(Name = "toolNames", Description = "List of tool names.")]
-    [SKFunctionContextParameter(Name = "toolDescriptions", Description = "List of tool descriptions.")]
+    [SKFunctionContextParameter(Name = "functionNames", Description = "List of tool names.")]
+    [SKFunctionContextParameter(Name = "functionDescriptions", Description = "List of tool descriptions.")]
     [SKFunctionContextParameter(Name = "question", Description = "The question to answer.")]
     public async Task<SKContext> ExecutePlanAsync(SKContext context)
     {
@@ -119,7 +119,7 @@ public class MrklSystemPlanner
 
                 if (!string.IsNullOrEmpty(nextStep!.Action!))
                 {
-                    nextStep.Observation = await this.InvokeActionAsync(nextStep.Action!, nextStep!.ActionInput!).ConfigureAwait(false);
+                    nextStep.Observation = await this.InvokeActionAsync(nextStep.Action!, nextStep!.ActionInput!, nextStep!.ActionVariables!).ConfigureAwait(false);
                     this._logger?.LogTrace("Observation : {Observation}", nextStep.Observation);
                 }
             }
@@ -159,13 +159,11 @@ public class MrklSystemPlanner
         return result.ToString();
     }
 
-    protected virtual async Task<string> InvokeActionAsync(string actionName, string actionInput)
+    protected virtual async Task<string> InvokeActionAsync(string actionName, string actionInput, Dictionary<string, string> actionVariables)
     {
-        //var availableFunctions = await this.Context.GetAvailableFunctionsAsync(this.Config).ConfigureAwait(false);
         var availableFunctions = this.GetAvailableFunctions();
 
-        // TODO - Include SkillName in the FunctionView
-        var theFunction = availableFunctions.FirstOrDefault(f => f.Name == actionName);
+        var theFunction = availableFunctions.FirstOrDefault(f => ToManualString(f) == actionName);
 
         if (theFunction == null)
         {
@@ -173,18 +171,32 @@ public class MrklSystemPlanner
         }
 
         var func = this._kernel.Func(theFunction.SkillName, theFunction.Name);
-        var result = await func.InvokeAsync(actionInput).ConfigureAwait(false);
-
-        if (result.ErrorOccurred)
+        try
         {
-            this._logger?.LogError("Error occurred: {ErrorMessage}.", result.LastErrorDescription);
-            return $"Error occurred: {result.LastErrorDescription}. Result: {result.Result}";
+            var actionContext = this._kernel.CreateNewContext();
+            actionContext.Variables.Update(actionInput);
+            foreach (var kvp in actionVariables)
+            {
+                actionContext.Variables.Set(kvp.Key, kvp.Value);
+            }
+            var result = await func.InvokeAsync(actionContext).ConfigureAwait(false);
+
+            if (result.ErrorOccurred)
+            {
+                this._logger?.LogWarning("Error occurred: {ErrorMessage}.", result.LastErrorDescription);
+                return $"Error occurred: {result.LastErrorDescription}";
+            }
+
+            this._logger?.LogTrace("Invoked {FunctionName}. Result: {Result}", theFunction.Name, result.Result);
+
+            // TODO Should other variables from result be included?
+            return result.Result;
         }
-
-        this._logger?.LogTrace("Invoked {FunctionName}. Result: {Result}", theFunction.Name, result.Result);
-
-        // TODO Should other variables from result be included?
-        return result.Result;
+        catch (Exception e) when (!e.IsCriticalException())
+        {
+            this._logger?.LogWarning(e, "Something went wrong in system step: {0}.{1}. Error: {2}", theFunction.SkillName, theFunction.Name, e.Message);
+            return $"Something went wrong in system step: {theFunction.SkillName}.{theFunction.Name}. Error: {e.Message}";
+        }
     }
 
     private IEnumerable<FunctionView> GetAvailableFunctions()
@@ -216,6 +228,16 @@ public class MrklSystemPlanner
         if (input.StartsWith("Final Answer:", StringComparison.OrdinalIgnoreCase))
         {
             result.FinalAnswer = input;
+            return result;
+        }
+
+        // Otherwise look for "Final Answer:" with the text after captured
+        Regex finalAnswer = new("Final Answer:(.*)", RegexOptions.Singleline);
+        Match finalAnswerMatch = finalAnswer.Match(input);
+
+        if (finalAnswerMatch.Success)
+        {
+            result.FinalAnswer = finalAnswerMatch.Groups[1].Value.Trim();
             return result;
         }
 
@@ -275,14 +297,30 @@ public class MrklSystemPlanner
         return result;
     }
 
-    protected (string, string) GetToolNamesAndDescriptions()
+    protected (string, string) GetFunctionNamesAndDescriptions()
     {
         var availableFunctions = this.GetAvailableFunctions();
 
         // Mrkl doc describes these are 'expert modules' or 'experts'
-        string toolNames = string.Join(", ", availableFunctions.Select(x => x.Name));
-        string toolDescriptions = ">" + string.Join("\n>", availableFunctions.Select(x => x.Name + ": " + x.Description));
-        return (toolNames, toolDescriptions);
+        string functionNames = string.Join(", ", availableFunctions.Select(x => ToFullyQualifiedName(x)));
+        string functionDescriptions = ">" + string.Join("\n>", availableFunctions.Select(x => ToManualString(x)));
+        return (functionNames, functionDescriptions);
+    }
+
+    internal static string ToManualString(FunctionView function)
+    {
+        var inputs = string.Join(",", function.Parameters.Select(parameter =>
+        {
+            var defaultValueString = string.IsNullOrEmpty(parameter.DefaultValue) ? string.Empty : $" (default value: {parameter.DefaultValue})";
+            return $"'{parameter.Name}': {parameter.Description}{defaultValueString}";
+        }));
+
+        return $"{ToFullyQualifiedName(function)} Description({function.Description}) Parameters({inputs})";
+    }
+
+    internal static string ToFullyQualifiedName(FunctionView function)
+    {
+        return $"{function.SkillName}.{function.Name}";
     }
 
     private MrklSystemPlannerConfig Config { get; }
