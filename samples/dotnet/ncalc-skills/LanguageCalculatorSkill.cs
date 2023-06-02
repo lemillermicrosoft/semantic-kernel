@@ -28,6 +28,7 @@ public class LanguageCalculatorSkill
 
     private const string MathTranslatorPrompt =
         @"Translate a math problem into a expression that can be executed using .net NCalc library. Use the output of running this code to answer the question.
+Available functions: Abs, Acos, Asin, Atan, Ceiling, Cos, Exp, Floor, IEEERemainder, Log, Log10, Max, Min, Pow, Round, Sign, Sin, Sqrt, Tan, and Truncate. in and if are also supported.
 
 Question: $((Question with math problem.))
 expression:``` $((single line mathematical expression that solves the ))```
@@ -59,15 +60,16 @@ expression:```Asin(1)```
 Question: {{ $input }}.
 ";
 
-    private const string ToolDescription = "Translate a math problem into a expression that can be executed using .net NCalc library and then evaluate it. Useful for when you need to answer questions about math. ";
+    private const string ToolDescription = "Evaluate natural language math problems. Can not reference external data. Useful for when you need to answer questions about math.";
 
     public LanguageCalculatorSkill(IKernel kernel)
     {
+        // TODO it'd be great to create this in a cloned kernel so that we don't have to worry about it being consumed by planners.
         this._mathTranslator = kernel.CreateSemanticFunction(
             MathTranslatorPrompt,
             skillName: nameof(LanguageCalculatorSkill),
             functionName: "TranslateMathProblem",
-            description: "Used by 'Calculator'. DO NOT use this.",
+            description: "Used by 'Calculator' function.",
             maxTokens: 50,
             temperature: 0.0,
             topP: 1);
@@ -75,7 +77,7 @@ Question: {{ $input }}.
 
     [SKFunction(ToolDescription)]
     [SKFunctionName("Calculator")]
-    [SKFunctionInput(Description = "A math problem in English")]
+    [SKFunctionInput(Description = "A math problem in English.")]
     public async Task<string> CalculateAsync(string input, SKContext context)
     {
         //this._mathTranslator.RequestSettings.ResultsPerPrompt = 0;

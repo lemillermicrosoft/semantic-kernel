@@ -42,12 +42,24 @@ public static class Example41_MrklSystemPlanner
 
         foreach (var goal in goals)
         {
-            MrklSystemPlanner planner = new(kernel);
+            Console.WriteLine("*****************************************************");
+            Console.WriteLine("Goal :" + goal);
+            Console.WriteLine("*****************************************************");
+
+            var config = new Microsoft.SemanticKernel.Planning.MrklSystem.MrklSystemPlannerConfig();
+            config.ExcludedFunctions.Add("TranslateMathProblem");
+
+            MrklSystemPlanner planner = new(kernel, config);
             var plan = planner.CreatePlan(goal);
 
             var result = await plan.InvokeAsync(kernel.CreateNewContext());
-
+            Console.WriteLine("*****************************************************");
             Console.WriteLine("Result :" + result);
+            if (result.Variables.Get("stepCount", out var stepCount))
+            {
+                Console.WriteLine("Steps Taken: " + stepCount);
+            }
+            Console.WriteLine("*****************************************************");
         }
     }
 

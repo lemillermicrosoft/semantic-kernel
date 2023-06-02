@@ -86,6 +86,8 @@ public class MrklSystemPlanner
         plan.State.Set("functionNames", functionNames);
         plan.State.Set("functionDescriptions", functionDescriptions);
         plan.State.Set("question", goal);
+        plan.Steps[0].Outputs.Add("agentScratchPad");
+        plan.Steps[0].Outputs.Add("stepCount");
 
         return plan;
     }
@@ -108,19 +110,38 @@ public class MrklSystemPlanner
                 string actionText = llmResponse.Result.Trim();
                 this._logger?.LogTrace("Response : {ActionText}", actionText);
 
-                var nextStep = this.ParseResult(actionText);
-                this._stepsTaken.Add(nextStep);
+                var nextStep = this.ParseResult(actionText); this._stepsTaken.Add(nextStep);
 
                 if (!string.IsNullOrEmpty(nextStep.FinalAnswer))
                 {
+                    this._logger?.LogDebug("Final Answer: {FinalAnswer}", nextStep.FinalAnswer);
                     context.Variables.Update(nextStep.FinalAnswer);
+                    var updatedScratchPlan = this.CreateScratchPad(goal);
+                    context.Variables.Set("agentScratchPad", updatedScratchPlan);
+                    context.Variables.Set("stepCount", this._stepsTaken.Count.ToString());
                     return context;
                 }
 
+                this._logger?.LogDebug("Thought: {Thought}", nextStep.Thought);
+
                 if (!string.IsNullOrEmpty(nextStep!.Action!))
                 {
-                    nextStep.Observation = await this.InvokeActionAsync(nextStep.Action!, nextStep!.ActionInput!, nextStep!.ActionVariables!).ConfigureAwait(false);
-                    this._logger?.LogTrace("Observation : {Observation}", nextStep.Observation);
+                    this._logger?.LogDebug("Action: {Action}({ActionVariables})", nextStep.Action, JsonSerializer.Serialize(nextStep.ActionVariables));
+                    try
+                    {
+                        nextStep.Observation = await this.InvokeActionAsync(nextStep.Action!, nextStep!.ActionVariables!).ConfigureAwait(false);
+                        this._logger?.LogWarning("Observation : {Observation}", nextStep.Observation);
+                    }
+                    catch (Exception ex)
+                    {
+                        nextStep.Observation = ($"Error invoking action {nextStep.Action} : {ex.Message}");
+                        this._logger?.LogError(ex, "Error invoking action {Action}", nextStep.Action);
+                        this._logger?.LogWarning("Observation : {Observation}", nextStep.Observation);
+                    }
+                }
+                else
+                {
+                    this._logger?.LogDebug("No action to take");
                 }
             }
 
@@ -134,7 +155,7 @@ public class MrklSystemPlanner
         return context;
     }
 
-    protected virtual string CreateScratchPad(string goal)
+    internal string CreateScratchPad(string goal)
     {
         if (this._stepsTaken.Count == 0)
         {
@@ -142,48 +163,65 @@ public class MrklSystemPlanner
         }
 
         var result = new StringBuilder();
-        result.AppendLine("This was your previous work (but I haven't seen any of it! I only see what you return as final answer):");
+        // This is important
+        result.Append("This was your previous work (but I haven't seen any of it! I only see what you return as final answer):\n");
 
         //in the longer conversations without this it forgets the question on gpt-3.5
-        result.AppendLine("Question: " + goal);
+        result.Append($"Question: {goal}\n");
 
-        // TODO: What happens steps are large. How many tokens should we limit this to?
-        foreach (var step in this._stepsTaken)
+        var insertPoint = result.Length;
+
+        for (var i = this._stepsTaken.Count - 1; i >= 0; i--)
         {
-            result.AppendLine("Thought: " + step.OriginalResponse);
-            //result.AppendLine("Action: " + step.Action);
-            //result.AppendLine("Input: " + step.ActionInput);
-            result.AppendLine("Observation: " + step.Observation);
+            if (result.Length / 4.0 > (this.Config.MaxTokens * 0.8))
+            {
+                this._logger.LogError($"Scratchpad is too long, truncating. Skipping {i + 1} steps.");
+                break;
+            }
+
+            var s = this._stepsTaken[i];
+            var observation = string.IsNullOrEmpty(s.Observation) ? "No observation made." : s.Observation;
+            result.Insert(insertPoint, $"Observation: {observation}\n");
+            // result.Insert(insertPoint, $"Thought: {s.OriginalResponse}\n");
+            if (!string.IsNullOrEmpty(s.Action))
+            {
+                result.Insert(insertPoint, $"Action:\n{{\"action\": \"{s.Action}\",\n\"action_variables\": {JsonSerializer.Serialize(s.ActionVariables)}\n}}\n");
+            }
+            result.Insert(insertPoint, $"Thought: {s.Thought}\n");
+
         }
 
         return result.ToString();
     }
 
-    protected virtual async Task<string> InvokeActionAsync(string actionName, string actionInput, Dictionary<string, string> actionVariables)
+    protected virtual async Task<string> InvokeActionAsync(string actionName, Dictionary<string, string> actionVariables)
     {
         var availableFunctions = this.GetAvailableFunctions();
 
-        var theFunction = availableFunctions.FirstOrDefault(f => ToManualString(f) == actionName);
+        var theFunction = availableFunctions.FirstOrDefault(f => ToFullyQualifiedName(f) == actionName);
 
         if (theFunction == null)
         {
-            throw new PlanningException(PlanningException.ErrorCodes.UnknownError, $"The function '{actionName}' was not found. actionInput: {actionInput}");
+            throw new PlanningException(PlanningException.ErrorCodes.UnknownError, $"The function '{actionName}' was not found.");
         }
 
         var func = this._kernel.Func(theFunction.SkillName, theFunction.Name);
         try
         {
             var actionContext = this._kernel.CreateNewContext();
-            actionContext.Variables.Update(actionInput);
-            foreach (var kvp in actionVariables)
+            if (actionVariables != null)
             {
-                actionContext.Variables.Set(kvp.Key, kvp.Value);
+                foreach (var kvp in actionVariables)
+                {
+                    actionContext.Variables.Set(kvp.Key, kvp.Value);
+                }
             }
+
             var result = await func.InvokeAsync(actionContext).ConfigureAwait(false);
 
             if (result.ErrorOccurred)
             {
-                this._logger?.LogWarning("Error occurred: {ErrorMessage}.", result.LastErrorDescription);
+                this._logger?.LogError("Error occurred: {ErrorMessage}.", result.LastErrorDescription);
                 return $"Error occurred: {result.LastErrorDescription}";
             }
 
@@ -194,12 +232,12 @@ public class MrklSystemPlanner
         }
         catch (Exception e) when (!e.IsCriticalException())
         {
-            this._logger?.LogWarning(e, "Something went wrong in system step: {0}.{1}. Error: {2}", theFunction.SkillName, theFunction.Name, e.Message);
+            this._logger?.LogError(e, "Something went wrong in system step: {0}.{1}. Error: {2}", theFunction.SkillName, theFunction.Name, e.Message);
             return $"Something went wrong in system step: {theFunction.SkillName}.{theFunction.Name}. Error: {e.Message}";
         }
     }
 
-    private IEnumerable<FunctionView> GetAvailableFunctions()
+    IEnumerable<FunctionView> GetAvailableFunctions()
     {
         FunctionsView functionsView = this._context.Skills!.GetFunctionsView();
 
@@ -215,7 +253,7 @@ public class MrklSystemPlanner
     }
 
     // TODO This could be simplified.
-    protected virtual SystemStep ParseResult(string input)
+    internal virtual SystemStep ParseResult(string input)
     {
         var result = new SystemStep
         {
@@ -227,7 +265,7 @@ public class MrklSystemPlanner
 
         if (input.StartsWith("Final Answer:", StringComparison.OrdinalIgnoreCase))
         {
-            result.FinalAnswer = input;
+            result.FinalAnswer = input.Replace("Final Answer:", string.Empty).Trim();
             return result;
         }
 
@@ -237,7 +275,7 @@ public class MrklSystemPlanner
 
         if (finalAnswerMatch.Success)
         {
-            result.FinalAnswer = finalAnswerMatch.Groups[1].Value.Trim();
+            result.FinalAnswer = $"{finalAnswerMatch.Groups[1].Value.Trim()}";
             return result;
         }
 
@@ -245,23 +283,22 @@ public class MrklSystemPlanner
         {
             result.Thought = untilActionMatch.Value.Trim();
         }
+        else if (!input.Contains("Action:"))
+        {
+            result.Thought = input;
+        }
+        else
+        {
+            throw new InvalidOperationException("This should never happen");
+        }
 
-        // input: "To answer the first part of the question, I need to search for Leo DiCaprio's\nAction: {\"Action\":\"GetAnswer\",\"ActionInput\":\"What is the answer to life, the universe and everything?\"}"
-        // capture: "{\"Action\":\"GetAnswer\",\"ActionInput\":\"What is the answer to life, the universe and everything?\"}"
-        // input: "To answer the first part of the question, I need to search for Leo DiCaprio's Action: ```\n{\"Action\":\"GetAnswer\",\"ActionInput\":\"What is the answer to life, the universe and everything?\"}\n```"
-        // capture: "{\"Action\":\"GetAnswer\",\"ActionInput\":\"What is the answer to life, the universe and everything?\"}"
-        // input: "To answer the first part of the question, I need to search for Leo DiCaprio's girlfriend on the web. To answer the second part, I need to find her current age and use a calculator to raise it to the 0.43 power.\nAction:\n{\n  \"action\": \"Search\",\n  \"action_input\": \"Leo DiCaprio's girlfriend\"\n}"
-        // capture: "{\n  \"action\": \"Search\",\n  \"action_input\": \"Leo DiCaprio's girlfriend\"\n}"
-        // input: "To answer the first part of the question, I need to search the web for Leo DiCaprio's girlfriend. To answer the second part, I need to find her current age and use the calculator tool to raise it to the 0.43 power.\nAction:\n```\n{\n  \"action\": \"Search\",\n  \"action_input\": \"Leo DiCaprio's girlfriend\"\n}\n```"
-        // capture: "{\n  \"action\": \"Search\",\n  \"action_input\": \"Leo DiCaprio's girlfriend\"\n}"
-        // Capture everything After first 'Action:' and in between optional ``` and ``` that come after that 'Action:', with whitespace/newlines allowed.
-        // There also may be text before the first 'Action:' that we want to capture.
-        Regex actionRegex = new("Action:(.*?)(?:```)(.*?)?(.*?)(?:```)?$", RegexOptions.Singleline);
-
+        Regex actionRegex = new Regex("Action:[^{}]*({(?:[^{}]*{[^{}]*})*[^{}]*})", RegexOptions.Singleline);
         Match actionMatch = actionRegex.Match(input);
+
         if (actionMatch.Success)
         {
-            var json = actionMatch.Groups[3].Value.Trim();
+            var json = actionMatch.Groups[1].Value.Trim();
+
             try
             {
                 var systemStepResults = JsonSerializer.Deserialize<SystemStep>(json);
@@ -273,7 +310,7 @@ public class MrklSystemPlanner
                 }
 
                 result.Action = systemStepResults.Action;
-                result.ActionInput = systemStepResults.ActionInput;
+                result.ActionVariables = systemStepResults.ActionVariables;
             }
             catch (Exception e)
             {
@@ -287,17 +324,19 @@ public class MrklSystemPlanner
             // throw new PlanningException(PlanningException.ErrorCodes.InvalidPlan, $"no action found in response: {input}");
 
             // Actually, this just means there was only a thought, so we should just carry on.
+            // result.Action = "DEBUG: No action found in response: " + input;
         }
 
         if (result.Action == "Final Answer")
         {
-            result.FinalAnswer = result.ActionInput;
+            result.FinalAnswer = JsonSerializer.Serialize(result.ActionVariables);
+            this._logger?.LogError("Final answer: {FinalAnswer}", result.FinalAnswer); // Does this ever happen?
         }
 
         return result;
     }
 
-    protected (string, string) GetFunctionNamesAndDescriptions()
+    (string, string) GetFunctionNamesAndDescriptions()
     {
         var availableFunctions = this.GetAvailableFunctions();
 
@@ -307,7 +346,7 @@ public class MrklSystemPlanner
         return (functionNames, functionDescriptions);
     }
 
-    internal static string ToManualString(FunctionView function)
+    static string ToManualString(FunctionView function)
     {
         var inputs = string.Join(",", function.Parameters.Select(parameter =>
         {
@@ -315,10 +354,10 @@ public class MrklSystemPlanner
             return $"'{parameter.Name}': {parameter.Description}{defaultValueString}";
         }));
 
-        return $"{ToFullyQualifiedName(function)} Description({function.Description}) Parameters({inputs})";
+        return $"[NAME]{ToFullyQualifiedName(function)} [DESCRIPTION]{function.Description} [PARAMETERS]{inputs}";
     }
 
-    internal static string ToFullyQualifiedName(FunctionView function)
+    static string ToFullyQualifiedName(FunctionView function)
     {
         return $"{function.SkillName}.{function.Name}";
     }

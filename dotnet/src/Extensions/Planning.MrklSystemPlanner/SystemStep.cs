@@ -23,12 +23,6 @@ public class SystemStep
     public string? Action { get; set; }
 
     /// <summary>
-    /// Gets or sets the input for the action
-    /// </summary>
-    [JsonPropertyName("action_input")]
-    public string? ActionInput { get; set; }
-
-    /// <summary>
     /// Gets or sets the variables for the action
     /// </summary>
     [JsonPropertyName("action_variables")]

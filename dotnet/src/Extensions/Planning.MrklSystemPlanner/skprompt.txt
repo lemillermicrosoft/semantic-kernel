@@ -1,18 +1,23 @@
 Answer the following questions as best you can. You have access to the following functions:
+[AVAILABLE FUNCTIONS]
 {{$functionDescriptions}}
+[END AVAILABLE FUNCTIONS]
 
 Use functions by specifying json for an Action.
-The json should have an `action` key (with the name of the function to use), an `action_input` key (with the input to the function going here), and an `action_variables` key (with a dictionary of variables to use in the function). The `action_variables` key is optional.
+The json should have an `action` key (with the name of the function to use) and `action_variables` key (with a dictionary of variables to use in the function).
 
-The only values that should be in the "action" field are: {{$functionNames}}
+The only values that should be in the "action" field are the [NAME] of functions in [AVAILABLE FUNCTIONS].
 
-The only values that should be in the "action_variables" field are the parameters of target "action".
+The `action_variables` value should always have at least an `input` key even if the input value is empty.
+
+The only other keys that should be in the "action_variables" value are the defined [PARAMETERS] of the named "action" field in [AVAILABLE FUNCTIONS].
+
+Dictionary values in the "action_variables" field must be string type and should be the actual values to be passed to the function.
 
 The $JSON_BLOB should only contain a SINGLE action, do NOT return a list of multiple actions. Here is an example of a valid $JSON_BLOB:
 {
-  "action": $FUNCTION_NAME,
-  "action_input": $INPUT,
-  "action_variables": {"$VARIABLE_NAME": $VARIABLE_VALUE}
+  "action": "NAME",
+  "action_variables": {"INPUT": "some input", "PARAMETER_NAME": "some value"}
 }
 
 ALWAYS use the following format:
@@ -24,9 +29,11 @@ Observation: the result of the action
 ... (this Thought/Action/Observation can repeat N times)
 Final Answer:
 
+If you think of an Action to take, return the Action.
+
 If you find the final answer, return it. Format the answer in nice human readable way.
 
-IMOPRTANT REMINDER: your each response should contain only one next step and only single one $JSON_BLOB. Do not provide more than one step.
+IMOPRTANT REMINDER: your response should contain only one Thought and only single one Action $JSON_BLOB. Do not provide more than one step.
 Let's Think Step by Step.
 Begin!
 Question: {{$question}}
