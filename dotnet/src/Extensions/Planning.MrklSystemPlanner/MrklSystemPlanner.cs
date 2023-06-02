@@ -88,6 +88,7 @@ public class MrklSystemPlanner
         plan.State.Set("question", goal);
         plan.Steps[0].Outputs.Add("agentScratchPad");
         plan.Steps[0].Outputs.Add("stepCount");
+        plan.Steps[0].Outputs.Add("skillCount");
 
         return plan;
     }
@@ -110,7 +111,8 @@ public class MrklSystemPlanner
                 string actionText = llmResponse.Result.Trim();
                 this._logger?.LogTrace("Response : {ActionText}", actionText);
 
-                var nextStep = this.ParseResult(actionText); this._stepsTaken.Add(nextStep);
+                var nextStep = this.ParseResult(actionText);
+                this._stepsTaken.Add(nextStep);
 
                 if (!string.IsNullOrEmpty(nextStep.FinalAnswer))
                 {
@@ -119,6 +121,12 @@ public class MrklSystemPlanner
                     var updatedScratchPlan = this.CreateScratchPad(goal);
                     context.Variables.Set("agentScratchPad", updatedScratchPlan);
                     context.Variables.Set("stepCount", this._stepsTaken.Count.ToString());
+
+                    var skillCallCount = this._stepsTaken.Where(s => !string.IsNullOrEmpty(s.Action)).Count().ToString();
+                    var skillsCalled = this._stepsTaken.Where(s => !string.IsNullOrEmpty(s.Action)).Select(s => s.Action).Distinct().ToList();
+                    var skillCallList = string.Join(", ", skillsCalled);
+                    var skillCallListWithCounts = string.Join(", ", skillsCalled.Select(s => $"{s}({this._stepsTaken.Where(s2 => s2.Action == s).Count()})").ToList());
+                    context.Variables.Set("skillCount", $"Total Skills Called: {skillCallCount} ({skillCallListWithCounts})");
                     return context;
                 }
 
@@ -135,7 +143,7 @@ public class MrklSystemPlanner
                     catch (Exception ex)
                     {
                         nextStep.Observation = ($"Error invoking action {nextStep.Action} : {ex.Message}");
-                        this._logger?.LogError(ex, "Error invoking action {Action}", nextStep.Action);
+                        this._logger?.LogDebug(ex, "Error invoking action {Action}", nextStep.Action);
                         this._logger?.LogWarning("Observation : {Observation}", nextStep.Observation);
                     }
                 }
@@ -171,11 +179,12 @@ public class MrklSystemPlanner
 
         var insertPoint = result.Length;
 
+        // Instead of most recent, we could use semantic relevance to keep important pieces and deduplicate
         for (var i = this._stepsTaken.Count - 1; i >= 0; i--)
         {
             if (result.Length / 4.0 > (this.Config.MaxTokens * 0.8))
             {
-                this._logger.LogError($"Scratchpad is too long, truncating. Skipping {i + 1} steps.");
+                this._logger.LogDebug("Scratchpad is too long, truncating. Skipping {countSkipped} steps.", i + 1);
                 break;
             }
 
@@ -185,10 +194,11 @@ public class MrklSystemPlanner
             // result.Insert(insertPoint, $"Thought: {s.OriginalResponse}\n");
             if (!string.IsNullOrEmpty(s.Action))
             {
-                result.Insert(insertPoint, $"Action:\n{{\"action\": \"{s.Action}\",\n\"action_variables\": {JsonSerializer.Serialize(s.ActionVariables)}\n}}\n");
+                // result.Insert(insertPoint, $"Action:\n{{\"action\": \"{s.Action}\",\n\"action_variables\": {JsonSerializer.Serialize(s.ActionVariables)}\n}}\n");
+                // result.Insert(insertPoint, $"Action:\"{s.Action}\"\n");
             }
-            result.Insert(insertPoint, $"Thought: {s.Thought}\n");
 
+            result.Insert(insertPoint, $"Thought: {s.Thought}\n");
         }
 
         return result.ToString();
@@ -312,10 +322,11 @@ public class MrklSystemPlanner
                 result.Action = systemStepResults.Action;
                 result.ActionVariables = systemStepResults.ActionVariables;
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 // TODO New error code maybe?
-                throw new PlanningException(PlanningException.ErrorCodes.InvalidPlan, $"System step parsing error, invalid JSON: {json}", e);
+                // throw new PlanningException(PlanningException.ErrorCodes.InvalidPlan, $"System step parsing error, invalid JSON: {json}", e);
+                result.Observation = $"System step parsing error, invalid JSON: {json}";
             }
         }
         else

@@ -1,29 +1,31 @@
-Answer the following questions as best you can. You have access to the following functions:
+Answer the following questions as best you can.
+You can use the following functions to help you:
 [AVAILABLE FUNCTIONS]
 {{$functionDescriptions}}
 [END AVAILABLE FUNCTIONS]
 
 Use functions by specifying json for an Action.
-The json should have an `action` key (with the name of the function to use) and `action_variables` key (with a dictionary of variables to use in the function).
+Functions cannot be called directly, they must be called through an Action.
+The JSON_BLOB to specify an Action should have an `action` key (with the NAME of the function to use) and `action_variables` key (with a json object of string values to use when calling the function).
 
-The only values that should be in the "action" field are the [NAME] of functions in [AVAILABLE FUNCTIONS].
+The only values that should be in the "action" field are the NAME of the defined functions in [AVAILABLE FUNCTIONS].
 
 The `action_variables` value should always have at least an `input` key even if the input value is empty.
 
 The only other keys that should be in the "action_variables" value are the defined [PARAMETERS] of the named "action" field in [AVAILABLE FUNCTIONS].
 
-Dictionary values in the "action_variables" field must be string type and should be the actual values to be passed to the function.
+Dictionary values in the "action_variables" field must be type string and should be the actual values to be passed to the function.
 
 The $JSON_BLOB should only contain a SINGLE action, do NOT return a list of multiple actions. Here is an example of a valid $JSON_BLOB:
 {
-  "action": "NAME",
-  "action_variables": {"INPUT": "some input", "PARAMETER_NAME": "some value"}
+  "action": "FUNCTION.NAME",
+  "action_variables": {"INPUT": "some input", "PARAMETER_NAME": "some value", "PARAMETER_NAME_2": "42"}
 }
 
 ALWAYS use the following format:
 
 Question: the input question you must answer
-Thought: you should always think about what to do
+Thought: you should always think about what to do, repeat important details in your thoughts
 Action: $JSON_BLOB
 Observation: the result of the action
 ... (this Thought/Action/Observation can repeat N times)
