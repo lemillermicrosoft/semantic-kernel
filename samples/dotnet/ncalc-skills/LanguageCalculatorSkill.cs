@@ -59,7 +59,7 @@ expression:```Asin(1)```
 Question: {{ $input }}.
 ";
 
-    private const string ToolDescription = "Useful for when you need to answer questions about math.";
+    private const string ToolDescription = "Translate a math problem into a expression that can be executed using .net NCalc library and then evaluate it. Useful for when you need to answer questions about math. ";
 
     public LanguageCalculatorSkill(IKernel kernel)
     {
@@ -67,7 +67,7 @@ Question: {{ $input }}.
             MathTranslatorPrompt,
             skillName: nameof(LanguageCalculatorSkill),
             functionName: "TranslateMathProblem",
-            description: "Used by 'Calculator'. DO NOT use this.", //Translate a math problem into a expression that can be executed using .net NCalc library.
+            description: "Used by 'Calculator'. DO NOT use this.",
             maxTokens: 50,
             temperature: 0.0,
             topP: 1);
@@ -75,6 +75,7 @@ Question: {{ $input }}.
 
     [SKFunction(ToolDescription)]
     [SKFunctionName("Calculator")]
+    [SKFunctionInput(Description = "A math problem in English")]
     public async Task<string> CalculateAsync(string input, SKContext context)
     {
         //this._mathTranslator.RequestSettings.ResultsPerPrompt = 0;
