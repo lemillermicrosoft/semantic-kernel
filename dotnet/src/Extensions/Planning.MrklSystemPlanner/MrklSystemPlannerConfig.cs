@@ -54,4 +54,9 @@ public sealed class MrklSystemPlannerConfig
     /// The maximum number of iterations to allow in a plan.
     /// </summary>
     public int MaxIterations { get; set; } = 100;
+
+    /// <summary>
+    /// The minimum time to wait between iterations in milliseconds.
+    /// </summary>
+    public int MinIterationTimeMs { get; set; } = 0;
 }

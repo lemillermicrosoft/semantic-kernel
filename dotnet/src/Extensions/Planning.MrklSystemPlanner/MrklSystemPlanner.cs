@@ -353,7 +353,7 @@ public class MrklSystemPlanner
 
         // Mrkl doc describes these are 'expert modules' or 'experts'
         string functionNames = string.Join(", ", availableFunctions.Select(x => ToFullyQualifiedName(x)));
-        string functionDescriptions = ">" + string.Join("\n>", availableFunctions.Select(x => ToManualString(x)));
+        string functionDescriptions = string.Join("\n", availableFunctions.Select(x => ToManualString(x)));
         return (functionNames, functionDescriptions);
     }
 
@@ -365,7 +365,7 @@ public class MrklSystemPlanner
             return $"'{parameter.Name}': {parameter.Description}{defaultValueString}";
         }));
 
-        return $"[NAME]{ToFullyQualifiedName(function)} [DESCRIPTION]{function.Description} [PARAMETERS]{inputs}";
+        return $"Name: {ToFullyQualifiedName(function)}\n\tDescription: {function.Description}\n\tParameters: {inputs}";
     }
 
     static string ToFullyQualifiedName(FunctionView function)

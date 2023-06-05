@@ -37,30 +37,30 @@ expression:``` $((single line mathematical expression that solves the ))```
 Question: What is 37593 * 67?
 expression:```37593 * 67```
 
-Question: what is  3 to the 2nd  power?
+Question: what is 3 to the 2nd power?
 expression:```Pow(3, 2)```
 
-Question: what is  sinus of 0 radians?
+Question: what is sine of 0 radians?
 expression:```Sin(0)```
 
-Question: what is  sinus of 45 degrees?
+Question: what is sine of 45 degrees?
 expression:```Sin(45 * Pi /180 )```
 
 Question: how many radians is 45 degrees?
 expression:``` 45 * Pi / 180 ```
 
-Question: what  is t square root of 81?
+Question: what is the square root of 81?
 expression:```Sqrt(81)```
 
-Question: what is the angle whose sine is the 1 number?
+Question: what is the angle whose sine is the number 1?
 expression:```Asin(1)```
 
 [End of Examples]
 
-Question: {{ $input }}.
+Question: {{ $input }}
 ";
 
-    private const string ToolDescription = "Evaluate natural language math problems. Can not reference external data. Useful for when you need to answer questions about math. Uses .net NCalc library.";
+    private const string ToolDescription = "Evaluate natural language math question that requires mathematical operations like sin/cosine/floor. Can not reference external data or variables. Useful for when you need to answer questions about math.";
 
     public LanguageCalculatorSkill(IKernel kernel)
     {
@@ -70,14 +70,14 @@ Question: {{ $input }}.
             skillName: nameof(LanguageCalculatorSkill),
             functionName: "TranslateMathProblem",
             description: "Used by 'Calculator' function.",
-            maxTokens: 50,
+            maxTokens: 256,
             temperature: 0.0,
             topP: 1);
     }
 
-    [SKFunction(ToolDescription)]
+    [SKFunction("Useful for getting the result of a non-trivial math expression.")]
     [SKFunctionName("Calculator")]
-    [SKFunctionInput(Description = "A math problem in English.")]
+    [SKFunctionInput(Description = "A valid mathematical expression that could be executed by a calculator capable of more advanced math functions like sin/cosine/floor.")]
     public async Task<string> CalculateAsync(string input, SKContext context)
     {
         //this._mathTranslator.RequestSettings.ResultsPerPrompt = 0;

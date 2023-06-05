@@ -28,7 +28,9 @@ public static class Example41_MrklSystemPlanner
 
         kernel.ImportSkill(webSearchEngineSkill, "WebSearch");
 
-        kernel.ImportSkill(new LanguageCalculatorSkill(kernel), "calculator");
+        kernel.ImportSkill(new LanguageCalculatorSkill(kernel), "advancedCalculator");
+
+        kernel.ImportSkill(new SimpleCalculatorSkill(kernel), "basicCalculator");
 
         kernel.ImportSkill(new TimeSkill(), "time");
 
@@ -36,11 +38,13 @@ public static class Example41_MrklSystemPlanner
             "Who is Leo DiCaprio's girlfriend? What is her current age raised to the 0.43 power?",
             "Who is the current president of the United States? What is his current age divided by 2",
             "What is the capital of France? Who is that cities current mayor? What percentage of their life has been in the 21st century as of today?",
+            "What is the current day of the calendar year? Using that as an angle in degrees, what is the area of a unit circle with that angle?"
         };
 
         // Result :Leo DiCaprio's girlfriend is Camila Morrone, and her current age raised to the 0.43 power is about 4.06.
         // Result :The current president of the United States is Joe Biden and his current age divided by 2 is 39.
         // Result :The capital of France is Paris. The current mayor of Paris is Anne Hidalgo. 33.87% of her life has been in the 21st century as of today.
+        // Result :The area of the sector of the unit circle with the angle of 156 degrees is 1.36 square units.
 
         foreach (var goal in goals)
         {
@@ -50,6 +54,7 @@ public static class Example41_MrklSystemPlanner
 
             var config = new Microsoft.SemanticKernel.Planning.MrklSystem.MrklSystemPlannerConfig();
             config.ExcludedFunctions.Add("TranslateMathProblem");
+            config.MinIterationTimeMs = 2500;
 
             MrklSystemPlanner planner = new(kernel, config);
             var plan = planner.CreatePlan(goal);
@@ -121,5 +126,19 @@ public static class Example41_MrklSystemPlanner
 // *****************************************************
 // Result :The capital of France is Paris. The current mayor of Paris is Anne Hidalgo. As of 2023, 35.9375 percent of her life has been in the 21st century.
 // Steps Taken: 8
+// *****************************************************
+// *****************************************************
+// Goal :What is the current day of the calendar year? Using that as an angle in degrees, what is the area of a unit circle with that angle?
+// *****************************************************
+// 10:51:27 warn: object[0] Observation : Error invoking action time.DayOfYear : Unknown error (UnknownError): The function 'time.DayOfYear' was not found.
+// 10:51:36 warn: object[0] Observation : 05
+// 10:51:38 warn: object[0] Observation : 06
+// 10:51:50 warn: object[0] Observation : 2023
+// 10:52:02 warn: object[0] Observation : Answer:3
+// 10:53:06 warn: object[0] Observation : Answer:1.361356816555577
+// *****************************************************
+// Result :The area of the sector of the unit circle with the angle of 156 degrees is 1.36 square units.
+// Steps Taken: 24
+// Skills Used: Total Skills Called: 6 (time.DayOfYear(1), time.Day(1), time.MonthNumber(1), time.Year(1), calculator.Calculator(2))
 // *****************************************************
 // == DONE ==
