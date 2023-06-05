@@ -44,7 +44,7 @@ public class MrklSystemPlanner
         this.Config.ExcludedSkills.Add(RestrictedSkillName);
 
         string promptTemplate = prompt ?? EmbeddedResource.Read("skprompt.txt");
-        this._systemStepFunction = this.ImportSemanticFunction(this._kernel, promptTemplate, "Observation:");
+        this._systemStepFunction = this.ImportSemanticFunction(this._kernel, promptTemplate);
         this._nativeFunctions = this._kernel.ImportSkill(this, RestrictedSkillName);
 
         this._stepsTaken = new List<SystemStep>();
@@ -53,7 +53,7 @@ public class MrklSystemPlanner
         this._logger = this._kernel.Log;
     }
 
-    private ISKFunction ImportSemanticFunction(IKernel kernel, string promptTemplate, string stopSequence)
+    private ISKFunction ImportSemanticFunction(IKernel kernel, string promptTemplate)
     {
         return kernel.CreateSemanticFunction(
             promptTemplate: promptTemplate,
@@ -61,13 +61,11 @@ public class MrklSystemPlanner
             functionName: "MrklSystemStep",
             description: "Given a request or command or goal generate multi-step plan to reach the goal, " +
                          "after each step LLM is called to perform the reasoning for the next step",
-            maxTokens: this.MaxTokens,
+            maxTokens: this.Config.MaxTokens,
             temperature: 0.0,
-            stopSequences: new[] { stopSequence }
+            stopSequences: new[] { "[OBSERVATION]", "[THOUGHT]" }
         );
     }
-
-    public int MaxTokens { get; set; } = 256; // todo configuration object
 
     public Plan CreatePlan(string goal)
     {
@@ -116,7 +114,7 @@ public class MrklSystemPlanner
 
                 if (!string.IsNullOrEmpty(nextStep.FinalAnswer))
                 {
-                    this._logger?.LogDebug("Final Answer: {FinalAnswer}", nextStep.FinalAnswer);
+                    this._logger?.LogDebug("[FINAL ANSWER] {FinalAnswer}", nextStep.FinalAnswer);
                     context.Variables.Update(nextStep.FinalAnswer);
                     var updatedScratchPlan = this.CreateScratchPad(goal);
                     context.Variables.Set("agentScratchPad", updatedScratchPlan);
@@ -130,11 +128,11 @@ public class MrklSystemPlanner
                     return context;
                 }
 
-                this._logger?.LogDebug("Thought: {Thought}", nextStep.Thought);
+                this._logger?.LogDebug("[THOUGHT] {Thought}", nextStep.Thought);
 
                 if (!string.IsNullOrEmpty(nextStep!.Action!))
                 {
-                    this._logger?.LogDebug("Action: {Action}({ActionVariables})", nextStep.Action, JsonSerializer.Serialize(nextStep.ActionVariables));
+                    this._logger?.LogDebug("[ACTION] {Action}({ActionVariables})", nextStep.Action, JsonSerializer.Serialize(nextStep.ActionVariables));
                     try
                     {
                         nextStep.Observation = await this.InvokeActionAsync(nextStep.Action!, nextStep!.ActionVariables!).ConfigureAwait(false);
@@ -175,7 +173,7 @@ public class MrklSystemPlanner
         result.Append("This was your previous work (but I haven't seen any of it! I only see what you return as final answer):\n");
 
         //in the longer conversations without this it forgets the question on gpt-3.5
-        result.Append($"Question: {goal}\n");
+        result.Append($"[QUESTION] {goal}\n");
 
         var insertPoint = result.Length;
 
@@ -184,21 +182,21 @@ public class MrklSystemPlanner
         {
             if (result.Length / 4.0 > (this.Config.MaxTokens * 0.8))
             {
-                this._logger.LogDebug("Scratchpad is too long, truncating. Skipping {countSkipped} steps.", i + 1);
+                this._logger.LogDebug("Scratchpad is too long, truncating. Skipping {CountSkipped} steps.", i + 1);
                 break;
             }
 
             var s = this._stepsTaken[i];
             var observation = string.IsNullOrEmpty(s.Observation) ? "No observation made." : s.Observation;
-            result.Insert(insertPoint, $"Observation: {observation}\n");
-            // result.Insert(insertPoint, $"Thought: {s.OriginalResponse}\n");
+            result.Insert(insertPoint, $"[OBSERVATION] {observation}\n");
+            // result.Insert(insertPoint, $"[THOUGHT] {s.OriginalResponse}\n");
             if (!string.IsNullOrEmpty(s.Action))
             {
-                // result.Insert(insertPoint, $"Action:\n{{\"action\": \"{s.Action}\",\n\"action_variables\": {JsonSerializer.Serialize(s.ActionVariables)}\n}}\n");
-                // result.Insert(insertPoint, $"Action:\"{s.Action}\"\n");
+                // result.Insert(insertPoint, $"[ACTION]\n{{\"action\": \"{s.Action}\",\n\"action_variables\": {JsonSerializer.Serialize(s.ActionVariables)}\n}}\n");
+                // result.Insert(insertPoint, $"[ACTION]\"{s.Action}\"\n");
             }
 
-            result.Insert(insertPoint, $"Thought: {s.Thought}\n");
+            result.Insert(insertPoint, $"[THOUGHT] {s.Thought}\n");
         }
 
         return result.ToString();
@@ -258,7 +256,9 @@ public class MrklSystemPlanner
             functionsView.NativeFunctions
                 .Concat(functionsView.SemanticFunctions)
                 .SelectMany(x => x.Value)
-                .Where(s => !excludedSkills.Contains(s.SkillName) && !excludedFunctions.Contains(s.Name));
+                .Where(s => !excludedSkills.Contains(s.SkillName) && !excludedFunctions.Contains(s.Name))
+            .OrderBy(x => x.SkillName)
+            .ThenBy(x => x.Name);
         return availableFunctions;
     }
 
@@ -270,17 +270,17 @@ public class MrklSystemPlanner
             OriginalResponse = input
         };
 
-        Regex untilAction = new("(.*)(?=Action:)", RegexOptions.Singleline);
+        Regex untilAction = new("(.*)(?=\\[ACTION\\])", RegexOptions.Singleline);
         Match untilActionMatch = untilAction.Match(input);
 
-        if (input.StartsWith("Final Answer:", StringComparison.OrdinalIgnoreCase))
+        if (input.StartsWith("[FINAL ANSWER]", StringComparison.OrdinalIgnoreCase))
         {
-            result.FinalAnswer = input.Replace("Final Answer:", string.Empty).Trim();
+            result.FinalAnswer = input.Replace("[FINAL ANSWER]", string.Empty).Trim();
             return result;
         }
 
-        // Otherwise look for "Final Answer:" with the text after captured
-        Regex finalAnswer = new("Final Answer:(.*)", RegexOptions.Singleline);
+        // Otherwise look for "[FINAL ANSWER]" with the text after captured
+        Regex finalAnswer = new("\\[FINAL ANSWER\\](.*)", RegexOptions.Singleline);
         Match finalAnswerMatch = finalAnswer.Match(input);
 
         if (finalAnswerMatch.Success)
@@ -293,7 +293,7 @@ public class MrklSystemPlanner
         {
             result.Thought = untilActionMatch.Value.Trim();
         }
-        else if (!input.Contains("Action:"))
+        else if (!input.Contains("[ACTION]"))
         {
             result.Thought = input;
         }
@@ -302,7 +302,7 @@ public class MrklSystemPlanner
             throw new InvalidOperationException("This should never happen");
         }
 
-        Regex actionRegex = new Regex("Action:[^{}]*({(?:[^{}]*{[^{}]*})*[^{}]*})", RegexOptions.Singleline);
+        Regex actionRegex = new Regex("\\[ACTION\\][^{}]*({(?:[^{}]*{[^{}]*})*[^{}]*})", RegexOptions.Singleline);
         Match actionMatch = actionRegex.Match(input);
 
         if (actionMatch.Success)
@@ -341,7 +341,7 @@ public class MrklSystemPlanner
         if (result.Action == "Final Answer")
         {
             result.FinalAnswer = JsonSerializer.Serialize(result.ActionVariables);
-            this._logger?.LogError("Final answer: {FinalAnswer}", result.FinalAnswer); // Does this ever happen?
+            this._logger?.LogError("[FINAL ANSWER] {FinalAnswer}", result.FinalAnswer); // Does this ever happen?
         }
 
         return result;

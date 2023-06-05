@@ -1,43 +1,47 @@
-Answer the following questions as best you can.
-You can use the following functions to help you:
+[INSTRUCTION]
+Answer the following questions as accurately as possible using the provided functions.
+
 [AVAILABLE FUNCTIONS]
 {{$functionDescriptions}}
 [END AVAILABLE FUNCTIONS]
 
-Use functions by specifying json for an Action.
-Functions cannot be called directly, they must be called through an Action.
-The JSON_BLOB to specify an Action should have an `action` key (with the NAME of the function to use) and `action_variables` key (with a json object of string values to use when calling the function).
+[USAGE INSTRUCTIONS]
+To use the functions, specify a JSON blob representing an action. The JSON blob should contain an "action" key with the name of the function to use, and an "action_variables" key with a JSON object of string values to use when calling the function.
 
-The only values that should be in the "action" field are the NAME of the defined functions in [AVAILABLE FUNCTIONS].
+Do not call functions directly; they must be invoked through an action.
 
-The `action_variables` value should always have at least an `input` key even if the input value is empty.
+The "action_variables" value should always include an "input" key, even if the input value is empty. Additional keys in the "action_variables" value should match the defined [PARAMETERS] of the named "action" in [AVAILABLE FUNCTIONS].
 
-The only other keys that should be in the "action_variables" value are the defined [PARAMETERS] of the named "action" field in [AVAILABLE FUNCTIONS].
+Dictionary values in "action_variables" must be strings and represent the actual values to be passed to the function.
 
-Dictionary values in the "action_variables" field must be type string and should be the actual values to be passed to the function.
+Ensure that the $JSON_BLOB contains only a SINGLE action; do NOT return multiple actions.
 
-The $JSON_BLOB should only contain a SINGLE action, do NOT return a list of multiple actions. Here is an example of a valid $JSON_BLOB:
+Here is an example of a valid $JSON_BLOB:
 {
   "action": "FUNCTION.NAME",
   "action_variables": {"INPUT": "some input", "PARAMETER_NAME": "some value", "PARAMETER_NAME_2": "42"}
 }
+[END INSTRUCTION]
 
-ALWAYS use the following format:
+[THOUGHT PROCESS]
+[QUESTION]
+the input question you must answer
+[THOUGHT]
+To solve this problem, I should carefully analyze the given question and identify the necessary steps.
+[ACTION]
+$JSON_BLOB
+[OBSERVATION]
+The result of the action will be provided here.
+... (These Thought/Action/Observation can repeat until the final answer is reached.)
+[FINAL ANSWER]
+Once I have gathered all the necessary observations and performed any required actions, I can provide the final answer in a clear and human-readable format.
+[END THOUGHT PROCESS]
 
-Question: the input question you must answer
-Thought: you should always think about what to do, repeat important details in your thoughts
-Action: $JSON_BLOB
-Observation: the result of the action
-... (this Thought/Action/Observation can repeat N times)
-Final Answer:
+Let's break down the problem step by step and think about the best approach. Questions and observations should be followed by a single thought and an optional single action to take.
 
-If you think of an Action to take, return the Action.
-
-If you find the final answer, return it. Format the answer in nice human readable way.
-
-IMOPRTANT REMINDER: your response should contain only one Thought and only single one Action $JSON_BLOB. Do not provide more than one step.
-Let's Think Step by Step.
 Begin!
-Question: {{$question}}
+
+[QUESTION]
+{{$question}}
 {{$agentScratchPad}}
-Thought:
+[THOUGHT]

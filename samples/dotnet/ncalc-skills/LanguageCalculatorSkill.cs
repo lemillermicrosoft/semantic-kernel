@@ -60,7 +60,7 @@ expression:```Asin(1)```
 Question: {{ $input }}.
 ";
 
-    private const string ToolDescription = "Evaluate natural language math problems. Can not reference external data. Useful for when you need to answer questions about math.";
+    private const string ToolDescription = "Evaluate natural language math problems. Can not reference external data. Useful for when you need to answer questions about math. Uses .net NCalc library.";
 
     public LanguageCalculatorSkill(IKernel kernel)
     {
