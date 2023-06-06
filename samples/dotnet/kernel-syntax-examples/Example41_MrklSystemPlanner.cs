@@ -34,7 +34,8 @@ public static class Example41_MrklSystemPlanner
 
         kernel.ImportSkill(new TimeSkill(), "time");
 
-        string[] goals = new string[] {
+        string[] goals = new string[]
+        {
             "Who is Leo DiCaprio's girlfriend? What is her current age raised to the (his current age)/100 power?",
             "Who is the current president of the United States? What is his current age divided by 2",
             "What is the capital of France? Who is that cities current mayor? What percentage of their life has been in the 21st century as of today?",
@@ -50,7 +51,6 @@ public static class Example41_MrklSystemPlanner
         // 40
         // Anne Hidalgo 36.5%
         // .4333*pi = 1.36 square units
-
 
         foreach (var goal in goals)
         {
@@ -71,10 +71,12 @@ public static class Example41_MrklSystemPlanner
             {
                 Console.WriteLine("Steps Taken: " + stepCount);
             }
+
             if (result.Variables.Get("skillCount", out var skillCount))
             {
                 Console.WriteLine("Skills Used: " + skillCount);
             }
+
             Console.WriteLine("*****************************************************");
         }
     }
@@ -82,10 +84,14 @@ public static class Example41_MrklSystemPlanner
     private static IKernel GetKernel()
     {
         var kernel = new KernelBuilder()
-        .WithAzureTextCompletionService(
-            Env.Var("AZURE_OPENAI_DEPLOYMENT_NAME"),
-            Env.Var("AZURE_OPENAI_ENDPOINT"),
-            Env.Var("AZURE_OPENAI_KEY"))
+            .WithAzureTextCompletionService(
+                Env.Var("AZURE_OPENAI_DEPLOYMENT_NAME"),
+                Env.Var("AZURE_OPENAI_ENDPOINT"),
+                Env.Var("AZURE_OPENAI_KEY"))
+            // .WithAzureChatCompletionService(
+            //     Env.Var("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"),
+            //     Env.Var("AZURE_OPENAI_ENDPOINT"),
+            //     Env.Var("AZURE_OPENAI_KEY"),) // Add your chat completion service
             .WithLogger(ConsoleLogger.Log)
             .Configure(c => c.SetDefaultHttpRetryConfig(new HttpRetryConfig
             {
