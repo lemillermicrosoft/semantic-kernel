@@ -69,14 +69,12 @@ public class MrklSystemPlanner
 
     public Plan CreatePlan(string goal)
     {
-        // this._logger?.BeginScope("MrklSystemPlanner.CreatePlan");
         if (string.IsNullOrEmpty(goal))
         {
             throw new PlanningException(PlanningException.ErrorCodes.InvalidGoal, "The goal specified is empty");
         }
 
         (string functionNames, string functionDescriptions) = this.GetFunctionNamesAndDescriptions();
-        var context = this._kernel.CreateNewContext();
 
         Plan plan = new(goal);
 
@@ -178,7 +176,6 @@ public class MrklSystemPlanner
 
     internal string CreateScratchPad(string goal)
     {
-        // this._logger?.BeginScope("MrklSystemPlanner.CreateScratchPad");
         if (this._stepsTaken.Count == 0)
         {
             return string.Empty;
@@ -187,9 +184,6 @@ public class MrklSystemPlanner
         var result = new StringBuilder();
         // This is important
         result.Append("This was your previous work (but I haven't seen any of it! I only see what you return as final answer):\n");
-
-        //in the longer conversations without this it forgets the question on gpt-3.5
-        // result.Append($"[QUESTION] {goal}\n");
 
         // add the original first thought
         result.Append($"[THOUGHT] {this._stepsTaken[0].Thought}\n");
@@ -206,18 +200,15 @@ public class MrklSystemPlanner
             }
 
             var s = this._stepsTaken[i];
-            // var observation = string.IsNullOrEmpty(s.Observation) ? "No observation made." : s.Observation;
-            // result.Insert(insertPoint, $"[OBSERVATION] {observation}\n");
+
             if (!string.IsNullOrEmpty(s.Observation))
             {
                 result.Insert(insertPoint, $"[OBSERVATION] {s.Observation}\n");
             }
 
-            // result.Insert(insertPoint, $"[THOUGHT] {s.OriginalResponse}\n");
             if (!string.IsNullOrEmpty(s.Action))
             {
                 result.Insert(insertPoint, $"[ACTION] {{\"action\": \"{s.Action}\",\"action_variables\": {JsonSerializer.Serialize(s.ActionVariables)}}}\n");
-                // result.Insert(insertPoint, $"[ACTION]\"{s.Action}\"\n");
             }
 
             if (i != 0)
@@ -231,19 +222,16 @@ public class MrklSystemPlanner
 
     protected virtual async Task<string> InvokeActionAsync(string actionName, Dictionary<string, string> actionVariables)
     {
-        // this._logger?.BeginScope("MrklSystemPlanner.InvokeActionAsync");
         var availableFunctions = this.GetAvailableFunctions();
-
         var theFunction = availableFunctions.FirstOrDefault(f => ToFullyQualifiedName(f) == actionName);
-
         if (theFunction == null)
         {
             throw new PlanningException(PlanningException.ErrorCodes.UnknownError, $"The function '{actionName}' was not found.");
         }
 
-        var func = this._kernel.Func(theFunction.SkillName, theFunction.Name);
         try
         {
+            var func = this._kernel.Func(theFunction.SkillName, theFunction.Name);
             var actionContext = this._kernel.CreateNewContext();
             if (actionVariables != null)
             {
@@ -273,7 +261,7 @@ public class MrklSystemPlanner
         }
     }
 
-    IEnumerable<FunctionView> GetAvailableFunctions()
+    private IEnumerable<FunctionView> GetAvailableFunctions()
     {
         FunctionsView functionsView = this._context.Skills!.GetFunctionsView();
 
@@ -285,15 +273,14 @@ public class MrklSystemPlanner
                 .Concat(functionsView.SemanticFunctions)
                 .SelectMany(x => x.Value)
                 .Where(s => !excludedSkills.Contains(s.SkillName) && !excludedFunctions.Contains(s.Name))
-            .OrderBy(x => x.SkillName)
-            .ThenBy(x => x.Name);
+                .OrderBy(x => x.SkillName)
+                .ThenBy(x => x.Name);
         return availableFunctions;
     }
 
     // TODO This could be simplified.
     internal virtual SystemStep ParseResult(string input)
     {
-        // this._logger?.BeginScope("MrklSystemPlanner.ParseResult");
         var result = new SystemStep
         {
             OriginalResponse = input
@@ -331,7 +318,7 @@ public class MrklSystemPlanner
             throw new InvalidOperationException("This should never happen");
         }
 
-        Regex actionRegex = new Regex("\\[ACTION\\][^{}]*({(?:[^{}]*{[^{}]*})*[^{}]*})", RegexOptions.Singleline);
+        Regex actionRegex = new("\\[ACTION\\][^{}]*({(?:[^{}]*{[^{}]*})*[^{}]*})", RegexOptions.Singleline);
         Match actionMatch = actionRegex.Match(input);
 
         if (actionMatch.Success)
@@ -376,7 +363,7 @@ public class MrklSystemPlanner
         return result;
     }
 
-    (string, string) GetFunctionNamesAndDescriptions()
+    private (string, string) GetFunctionNamesAndDescriptions()
     {
         var availableFunctions = this.GetAvailableFunctions();
 
@@ -386,11 +373,7 @@ public class MrklSystemPlanner
         return (functionNames, functionDescriptions);
     }
 
-    // The function definitions below are in the following format:
-    // <functionName>: <description>
-    //  - <parameterName>: <parameterDescription>
-    //  - ...
-    static string ToManualString(FunctionView function)
+    private static string ToManualString(FunctionView function)
     {
         var inputs = string.Join("\n", function.Parameters.Select(parameter =>
         {
@@ -404,10 +387,11 @@ public class MrklSystemPlanner
         {
             return $"{ToFullyQualifiedName(function)}: {functionDescription}\n";
         }
+
         return $"{ToFullyQualifiedName(function)}: {functionDescription}\n{inputs}\n";
     }
 
-    static string ToFullyQualifiedName(FunctionView function)
+    private static string ToFullyQualifiedName(FunctionView function)
     {
         return $"{function.SkillName}.{function.Name}";
     }
