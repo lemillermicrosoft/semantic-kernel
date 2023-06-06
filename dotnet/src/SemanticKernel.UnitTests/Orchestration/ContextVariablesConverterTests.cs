@@ -17,7 +17,7 @@ public class ContextVariablesConverterTests
     public void ReadFromJsonSucceeds()
     {
         // Arrange
-        string json = /*lang=json,strict*/ @"[{""Key"":""a"", ""Value"":""b""}]";
+        string json = /*lang=json,strict*/ @"[{ ""Key"": ""a"", ""Value"": ""b"" }]";
         var options = new JsonSerializerOptions();
         options.Converters.Add(new ContextVariablesConverter());
 
@@ -33,7 +33,7 @@ public class ContextVariablesConverterTests
     public void ReadFromJsonWrongTypeThrows()
     {
         // Arrange
-        string json = /*lang=json,strict*/ @"[{""Key"":""a"", ""Value"":""b""}]";
+        string json = /*lang=json,strict*/ @"[{ ""Key"": ""a"", ""Value"": ""b"" }]";
         var options = new JsonSerializerOptions();
         options.Converters.Add(new ContextVariablesConverter());
 
@@ -45,7 +45,7 @@ public class ContextVariablesConverterTests
     public void ReadFromJsonSucceedsWithInput()
     {
         // Arrange
-        string json = /*lang=json,strict*/ @"[{""Key"":""INPUT"", ""Value"":""c""}, {""Key"":""a"", ""Value"":""b""}]";
+        string json = /*lang=json,strict*/ @"[{ ""Key"": ""INPUT"", ""Value"": ""c"" }, { ""Key"": ""a"", ""Value"": ""b"" }]";
         var options = new JsonSerializerOptions();
         options.Converters.Add(new ContextVariablesConverter());
 
@@ -62,20 +62,20 @@ public class ContextVariablesConverterTests
     [Theory]
     [InlineData(null, new[] { "a", "b" }, new[]
     {
-        /*lang=json,strict*/ @"{""Key"":""INPUT"",""Value"":""""}", /*lang=json,strict*/ @"{""Key"":""a"",""Value"":""b""}"
+        /*lang=json,strict*/ @"{ ""Key"": ""INPUT"", ""Value"": """" }", /*lang=json,strict*/ @"{ ""Key"": ""a"", ""Value"": ""b"" }"
     })]
     [InlineData("", new[] { "a", "b" }, new[]
     {
-        /*lang=json,strict*/ @"{""Key"":""INPUT"",""Value"":""""}", /*lang=json,strict*/ @"{""Key"":""a"",""Value"":""b""}"
+        /*lang=json,strict*/ @"{ ""Key"": ""INPUT"", ""Value"": """" }", /*lang=json,strict*/ @"{ ""Key"": ""a"", ""Value"": ""b"" }"
     })]
     [InlineData("c", new[] { "a", "b" }, new[]
     {
-        /*lang=json,strict*/ @"{""Key"":""INPUT"",""Value"":""c""}", /*lang=json,strict*/ @"{""Key"":""a"",""Value"":""b""}"
+        /*lang=json,strict*/ @"{ ""Key"": ""INPUT"", ""Value"": ""c"" }", /*lang=json,strict*/ @"{ ""Key"": ""a"", ""Value"": ""b"" }"
     })]
     [InlineData("c", new[] { "a", "b", "d", "e" }, new[]
     {
-        /*lang=json,strict*/ @"{""Key"":""INPUT"",""Value"":""c""}", /*lang=json,strict*/ @"{""Key"":""a"",""Value"":""b""}", /*lang=json,strict*/
-        @"{""Key"":""d"",""Value"":""e""}"
+        /*lang=json,strict*/ @"{ ""Key"": ""INPUT"", ""Value"": ""c"" }", /*lang=json,strict*/ @"{ ""Key"": ""a"", ""Value"": ""b"" }", /*lang=json,strict*/
+        @"{ ""Key"": ""d"", ""Value"": ""e"" }"
     })]
     public void WriteToJsonSucceeds(string inputValue, IList<string> contextToSet, IList<string> expectedJson)
     {
@@ -121,11 +121,11 @@ public class ContextVariablesConverterTests
         string result = JsonSerializer.Serialize(context, options);
 
         // Assert
-        Assert.Contains( /*lang=json,strict*/ @"{""Key"":""INPUT"",""Value"":""c""}", result, StringComparison.Ordinal);
-        Assert.Contains( /*lang=json,strict*/ @"{""Key"":""a"",""Value"":""b""}", result, StringComparison.Ordinal);
-        Assert.Contains( /*lang=json,strict*/ @"{""Key"":""d"",""Value"":""e""}", result, StringComparison.Ordinal);
+        Assert.Contains( /*lang=json,strict*/ @"{ ""Key"": ""INPUT"", ""Value"": ""c"" }", result, StringComparison.Ordinal);
+        Assert.Contains( /*lang=json,strict*/ @"{ ""Key"": ""a"", ""Value"": ""b"" }", result, StringComparison.Ordinal);
+        Assert.Contains( /*lang=json,strict*/ @"{ ""Key"": ""d"", ""Value"": ""e"" }", result, StringComparison.Ordinal);
         Assert.DoesNotContain(@"""Key"":""f""", result, StringComparison.Ordinal);
-        Assert.Contains( /*lang=json,strict*/ @"{""Key"":""g"",""Value"":""""}", result, StringComparison.Ordinal);
+        Assert.Contains( /*lang=json,strict*/ @"{ ""Key"": ""g"", ""Value"": """" }", result, StringComparison.Ordinal);
     }
 
     // Error Tests
@@ -165,7 +165,7 @@ public class ContextVariablesConverterTests
     {
         // Arrange
 #pragma warning disable JSON001 // Invalid JSON pattern
-        string json = /*lang=json,strict*/ @"[{""Key"":""a"", ""Value"":""b""";
+        string json = /*lang=json,strict*/ @"[{ ""Key"": ""a"", ""Value"": ""b""";
 #pragma warning restore JSON001 // Invalid JSON pattern
         var options = new JsonSerializerOptions();
         options.Converters.Add(new ContextVariablesConverter());
@@ -178,7 +178,7 @@ public class ContextVariablesConverterTests
     public void ReadFromJsonThrowsWithInvalidJson2()
     {
         // Arrange
-        string json = /*lang=json,strict*/ @"[{""Keys"":""a"", ""Value"":""b""}]";
+        string json = /*lang=json,strict*/ @"[{ ""Keys"": ""a"", ""Value"": ""b"" }]";
         var options = new JsonSerializerOptions();
         options.Converters.Add(new ContextVariablesConverter());
 
