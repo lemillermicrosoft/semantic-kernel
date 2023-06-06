@@ -20,12 +20,13 @@ public class SimpleCalculatorSkill
     public SimpleCalculatorSkill(IKernel kernel)
     {
         this._mathTranslator = kernel.CreateSemanticFunction(
-            "{{$input}}",
+            "Task: Give the final solution for the problem. Be as concise as possible.\nProblem:4+4\nSolution:8\nProblem:{{$input}}\nSolution:\n",
             skillName: nameof(SimpleCalculatorSkill),
             functionName: "Calculator",
-            description: "A valid mathematical expression that could be executed by a simple calculator.",
+            description: "Evaluate a mathematical expression. Input is a valid mathematical expression that could be executed by a simple calculator i.e. add, subtract, multiply and divide. Cannot use variables.",
             maxTokens: 256,
             temperature: 0.0,
-            topP: 1);
+            topP: 1,
+            stopSequences: new[] { "Problem:", "Solution:" });
     }
 }

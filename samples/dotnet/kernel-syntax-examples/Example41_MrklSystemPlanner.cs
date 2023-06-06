@@ -30,12 +30,12 @@ public static class Example41_MrklSystemPlanner
 
         kernel.ImportSkill(new LanguageCalculatorSkill(kernel), "advancedCalculator");
 
-        kernel.ImportSkill(new SimpleCalculatorSkill(kernel), "basicCalculator");
+        // kernel.ImportSkill(new SimpleCalculatorSkill(kernel), "basicCalculator");
 
         kernel.ImportSkill(new TimeSkill(), "time");
 
         string[] goals = new string[] {
-            "Who is Leo DiCaprio's girlfriend? What is her current age raised to the 0.43 power?",
+            "Who is Leo DiCaprio's girlfriend? What is her current age raised to the (his current age)/100 power?",
             "Who is the current president of the United States? What is his current age divided by 2",
             "What is the capital of France? Who is that cities current mayor? What percentage of their life has been in the 21st century as of today?",
             "What is the current day of the calendar year? Using that as an angle in degrees, what is the area of a unit circle with that angle?"
@@ -46,21 +46,26 @@ public static class Example41_MrklSystemPlanner
         // Result :The capital of France is Paris. The current mayor of Paris is Anne Hidalgo. 33.87% of her life has been in the 21st century as of today.
         // Result :The area of the sector of the unit circle with the angle of 156 degrees is 1.36 square units.
 
+        // 4.68 for Camila Morrone or 4.95 Neelam Gill
+        // 40
+        // Anne Hidalgo 36.5%
+        // .4333*pi = 1.36 square units
+
+
         foreach (var goal in goals)
         {
             Console.WriteLine("*****************************************************");
             Console.WriteLine("Goal :" + goal);
-            Console.WriteLine("*****************************************************");
 
             var config = new Microsoft.SemanticKernel.Planning.MrklSystem.MrklSystemPlannerConfig();
             config.ExcludedFunctions.Add("TranslateMathProblem");
             config.MinIterationTimeMs = 2500;
+            config.MaxTokens = 4000;
 
             MrklSystemPlanner planner = new(kernel, config);
             var plan = planner.CreatePlan(goal);
 
             var result = await plan.InvokeAsync(kernel.CreateNewContext());
-            Console.WriteLine("*****************************************************");
             Console.WriteLine("Result :" + result);
             if (result.Variables.Get("stepCount", out var stepCount))
             {

@@ -69,6 +69,7 @@ public class MrklSystemPlanner
 
     public Plan CreatePlan(string goal)
     {
+        // this._logger?.BeginScope("MrklSystemPlanner.CreatePlan");
         if (string.IsNullOrEmpty(goal))
         {
             throw new PlanningException(PlanningException.ErrorCodes.InvalidGoal, "The goal specified is empty");
@@ -98,27 +99,29 @@ public class MrklSystemPlanner
     [SKFunctionContextParameter(Name = "question", Description = "The question to answer.")]
     public async Task<SKContext> ExecutePlanAsync(SKContext context)
     {
+        this._logger?.BeginScope("MrklSystemPlanner");
         if (context.Variables.Get("question", out var goal))
         {
+            this._logger?.LogInformation("Goal: {Goal}", goal);
             for (int i = 0; i < this.Config.MaxIterations; i++)
             {
                 var scratchPad = this.CreateScratchPad(goal);
-                this._logger?.LogTrace("Scratchpad: {ScratchPad}", scratchPad);
+                this._logger?.LogDebug("Scratchpad: {ScratchPad}", scratchPad);
                 context.Variables.Set("agentScratchPad", scratchPad);
                 var llmResponse = await this._systemStepFunction.InvokeAsync(context).ConfigureAwait(false);
                 string actionText = llmResponse.Result.Trim();
-                this._logger?.LogTrace("Response : {ActionText}", actionText);
+                this._logger?.LogDebug("Response : {ActionText}", actionText);
 
                 var nextStep = this.ParseResult(actionText);
                 this._stepsTaken.Add(nextStep);
 
                 if (!string.IsNullOrEmpty(nextStep.FinalAnswer))
                 {
-                    this._logger?.LogDebug("[FINAL ANSWER] {FinalAnswer}", nextStep.FinalAnswer);
+                    this._logger?.LogInformation("Final Answer: {FinalAnswer}", nextStep.FinalAnswer);
                     context.Variables.Update(nextStep.FinalAnswer);
                     var updatedScratchPlan = this.CreateScratchPad(goal);
                     context.Variables.Set("agentScratchPad", updatedScratchPlan);
-                    context.Variables.Set("stepCount", this._stepsTaken.Count.ToString());
+                    context.Variables.Set("stepCount", this._stepsTaken.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
                     var skillCallCount = this._stepsTaken.Where(s => !string.IsNullOrEmpty(s.Action)).Count().ToString();
                     var skillsCalled = this._stepsTaken.Where(s => !string.IsNullOrEmpty(s.Action)).Select(s => s.Action).Distinct().ToList();
@@ -128,26 +131,38 @@ public class MrklSystemPlanner
                     return context;
                 }
 
-                this._logger?.LogDebug("[THOUGHT] {Thought}", nextStep.Thought);
+                this._logger?.LogWarning("Thought: {Thought}", nextStep.Thought);
 
                 if (!string.IsNullOrEmpty(nextStep!.Action!))
                 {
-                    this._logger?.LogDebug("[ACTION] {Action}({ActionVariables})", nextStep.Action, JsonSerializer.Serialize(nextStep.ActionVariables));
+                    this._logger?.LogInformation("Action: {Action}({ActionVariables})", nextStep.Action, JsonSerializer.Serialize(nextStep.ActionVariables));
                     try
                     {
-                        nextStep.Observation = await this.InvokeActionAsync(nextStep.Action!, nextStep!.ActionVariables!).ConfigureAwait(false);
-                        this._logger?.LogWarning("Observation : {Observation}", nextStep.Observation);
+                        var result = await this.InvokeActionAsync(nextStep.Action!, nextStep!.ActionVariables!).ConfigureAwait(false);
+
+                        if (string.IsNullOrEmpty(result))
+                        {
+                            nextStep.Observation = "Got no result from action";
+                        }
+                        else
+                        {
+                            nextStep.Observation = result;
+                        }
+
+                        this._logger?.LogInformation("Observation : {Observation}", nextStep.Observation);
                     }
                     catch (Exception ex)
                     {
-                        nextStep.Observation = ($"Error invoking action {nextStep.Action} : {ex.Message}");
+                        nextStep.Observation = $"Error invoking action {nextStep.Action} : {ex.Message}";
                         this._logger?.LogDebug(ex, "Error invoking action {Action}", nextStep.Action);
-                        this._logger?.LogWarning("Observation : {Observation}", nextStep.Observation);
+                        this._logger?.LogInformation("*Observation : {Observation}", nextStep.Observation);
+
+                        // TODO -- Let's try and detect if we get stuck in a loop.
                     }
                 }
                 else
                 {
-                    this._logger?.LogDebug("No action to take");
+                    this._logger?.LogInformation("No action to take");
                 }
             }
 
@@ -163,6 +178,7 @@ public class MrklSystemPlanner
 
     internal string CreateScratchPad(string goal)
     {
+        // this._logger?.BeginScope("MrklSystemPlanner.CreateScratchPad");
         if (this._stepsTaken.Count == 0)
         {
             return string.Empty;
@@ -173,7 +189,10 @@ public class MrklSystemPlanner
         result.Append("This was your previous work (but I haven't seen any of it! I only see what you return as final answer):\n");
 
         //in the longer conversations without this it forgets the question on gpt-3.5
-        result.Append($"[QUESTION] {goal}\n");
+        // result.Append($"[QUESTION] {goal}\n");
+
+        // add the original first thought
+        result.Append($"[THOUGHT] {this._stepsTaken[0].Thought}\n");
 
         var insertPoint = result.Length;
 
@@ -187,23 +206,32 @@ public class MrklSystemPlanner
             }
 
             var s = this._stepsTaken[i];
-            var observation = string.IsNullOrEmpty(s.Observation) ? "No observation made." : s.Observation;
-            result.Insert(insertPoint, $"[OBSERVATION] {observation}\n");
+            // var observation = string.IsNullOrEmpty(s.Observation) ? "No observation made." : s.Observation;
+            // result.Insert(insertPoint, $"[OBSERVATION] {observation}\n");
+            if (!string.IsNullOrEmpty(s.Observation))
+            {
+                result.Insert(insertPoint, $"[OBSERVATION] {s.Observation}\n");
+            }
+
             // result.Insert(insertPoint, $"[THOUGHT] {s.OriginalResponse}\n");
             if (!string.IsNullOrEmpty(s.Action))
             {
-                // result.Insert(insertPoint, $"[ACTION]\n{{\"action\": \"{s.Action}\",\n\"action_variables\": {JsonSerializer.Serialize(s.ActionVariables)}\n}}\n");
+                result.Insert(insertPoint, $"[ACTION] {{\"action\": \"{s.Action}\",\"action_variables\": {JsonSerializer.Serialize(s.ActionVariables)}}}\n");
                 // result.Insert(insertPoint, $"[ACTION]\"{s.Action}\"\n");
             }
 
-            result.Insert(insertPoint, $"[THOUGHT] {s.Thought}\n");
+            if (i != 0)
+            {
+                result.Insert(insertPoint, $"[THOUGHT] {s.Thought}\n");
+            }
         }
 
-        return result.ToString();
+        return result.ToString().Trim();
     }
 
     protected virtual async Task<string> InvokeActionAsync(string actionName, Dictionary<string, string> actionVariables)
     {
+        // this._logger?.BeginScope("MrklSystemPlanner.InvokeActionAsync");
         var availableFunctions = this.GetAvailableFunctions();
 
         var theFunction = availableFunctions.FirstOrDefault(f => ToFullyQualifiedName(f) == actionName);
@@ -233,7 +261,7 @@ public class MrklSystemPlanner
                 return $"Error occurred: {result.LastErrorDescription}";
             }
 
-            this._logger?.LogTrace("Invoked {FunctionName}. Result: {Result}", theFunction.Name, result.Result);
+            this._logger?.LogDebug("Invoked {FunctionName}. Result: {Result}", theFunction.Name, result.Result);
 
             // TODO Should other variables from result be included?
             return result.Result;
@@ -241,7 +269,7 @@ public class MrklSystemPlanner
         catch (Exception e) when (!e.IsCriticalException())
         {
             this._logger?.LogError(e, "Something went wrong in system step: {0}.{1}. Error: {2}", theFunction.SkillName, theFunction.Name, e.Message);
-            return $"Something went wrong in system step: {theFunction.SkillName}.{theFunction.Name}. Error: {e.Message}";
+            return $"Something went wrong in system step: {theFunction.SkillName}.{theFunction.Name}. Error: {e.Message} {e.InnerException.Message}";
         }
     }
 
@@ -265,6 +293,7 @@ public class MrklSystemPlanner
     // TODO This could be simplified.
     internal virtual SystemStep ParseResult(string input)
     {
+        // this._logger?.BeginScope("MrklSystemPlanner.ParseResult");
         var result = new SystemStep
         {
             OriginalResponse = input
@@ -357,15 +386,25 @@ public class MrklSystemPlanner
         return (functionNames, functionDescriptions);
     }
 
+    // The function definitions below are in the following format:
+    // <functionName>: <description>
+    //  - <parameterName>: <parameterDescription>
+    //  - ...
     static string ToManualString(FunctionView function)
     {
-        var inputs = string.Join(",", function.Parameters.Select(parameter =>
+        var inputs = string.Join("\n", function.Parameters.Select(parameter =>
         {
-            var defaultValueString = string.IsNullOrEmpty(parameter.DefaultValue) ? string.Empty : $" (default value: {parameter.DefaultValue})";
-            return $"'{parameter.Name}': {parameter.Description}{defaultValueString}";
+            var defaultValueString = string.IsNullOrEmpty(parameter.DefaultValue) ? string.Empty : $"(default='{parameter.DefaultValue}')";
+            return $"  - {parameter.Name}: {parameter.Description} {defaultValueString}";
         }));
 
-        return $"Name: {ToFullyQualifiedName(function)}\n\tDescription: {function.Description}\n\tParameters: {inputs}";
+        var functionDescription = function.Description.Trim();
+
+        if (string.IsNullOrEmpty(inputs))
+        {
+            return $"{ToFullyQualifiedName(function)}: {functionDescription}\n";
+        }
+        return $"{ToFullyQualifiedName(function)}: {functionDescription}\n{inputs}\n";
     }
 
     static string ToFullyQualifiedName(FunctionView function)

@@ -60,8 +60,6 @@ expression:```Asin(1)```
 Question: {{ $input }}
 ";
 
-    private const string ToolDescription = "Evaluate natural language math question that requires mathematical operations like sin/cosine/floor. Can not reference external data or variables. Useful for when you need to answer questions about math.";
-
     public LanguageCalculatorSkill(IKernel kernel)
     {
         // TODO it'd be great to create this in a cloned kernel so that we don't have to worry about it being consumed by planners.

@@ -2,6 +2,11 @@
 Answer the following questions as accurately as possible using the provided functions.
 
 [AVAILABLE FUNCTIONS]
+The function definitions below are in the following format:
+<functionName>: <description>
+ - <parameterName>: <parameterDescription>
+ - ...
+
 {{$functionDescriptions}}
 [END AVAILABLE FUNCTIONS]
 
@@ -23,9 +28,9 @@ Here is an example of a valid $JSON_BLOB:
 
 [THOUGHT PROCESS]
 [QUESTION]
-the input question you must answer
+the input question I must answer
 [THOUGHT]
-To solve this problem, I should carefully analyze the given question and identify the necessary steps.
+To solve this problem, I should carefully analyze the given question and identify the necessary steps. Any facts I discover earlier in my thought process should be repeated here to keep them readily available.
 [ACTION]
 $JSON_BLOB
 [OBSERVATION]
