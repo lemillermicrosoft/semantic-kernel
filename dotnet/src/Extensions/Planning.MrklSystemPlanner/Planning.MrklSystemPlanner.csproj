@@ -26,9 +26,15 @@
     <InternalsVisibleTo Include="SemanticKernel.Extensions.UnitTests" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- <ItemGroup>
     <None Remove="skprompt.txt" />
     <EmbeddedResource Include="skprompt.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup> -->
+  <ItemGroup>
+    <None Remove="Skills/**/*" />
+    <EmbeddedResource Include="Skills/**/*">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>

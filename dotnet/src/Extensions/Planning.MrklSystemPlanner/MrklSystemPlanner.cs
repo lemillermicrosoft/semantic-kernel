@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel.Diagnostics;
 using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.Planning.MrklSystem;
+using Microsoft.SemanticKernel.SemanticFunctions;
 using Microsoft.SemanticKernel.SkillDefinition;
 
 #pragma warning disable IDE0130
@@ -43,28 +44,22 @@ public class MrklSystemPlanner
         this.Config = config ?? new();
         this.Config.ExcludedSkills.Add(RestrictedSkillName);
 
-        string promptTemplate = prompt ?? EmbeddedResource.Read("skprompt.txt");
-        this._systemStepFunction = this.ImportSemanticFunction(this._kernel, promptTemplate);
+        var promptConfig = new PromptTemplateConfig();
+        string promptTemplate = prompt ?? EmbeddedResource.Read("Skills.MrklSystemStep.skprompt.txt");
+        string promptConfigString = EmbeddedResource.Read("Skills.MrklSystemStep.config.json");
+        if (!string.IsNullOrEmpty(promptConfigString))
+        {
+            promptConfig = PromptTemplateConfig.FromJson(promptConfigString);
+        }
+        promptConfig.Completion.MaxTokens = this.Config.MaxTokens;
+
+        this._systemStepFunction = this.ImportSemanticFunction(this._kernel, "MrklSystemStep", promptTemplate, promptConfig);
         this._nativeFunctions = this._kernel.ImportSkill(this, RestrictedSkillName);
 
         this._stepsTaken = new List<SystemStep>();
 
         this._context = this._kernel.CreateNewContext();
         this._logger = this._kernel.Log;
-    }
-
-    private ISKFunction ImportSemanticFunction(IKernel kernel, string promptTemplate)
-    {
-        return kernel.CreateSemanticFunction(
-            promptTemplate: promptTemplate,
-            skillName: RestrictedSkillName,
-            functionName: "MrklSystemStep",
-            description: "Given a request or command or goal generate multi-step plan to reach the goal, " +
-                         "after each step LLM is called to perform the reasoning for the next step",
-            maxTokens: this.Config.MaxTokens,
-            temperature: 0.0,
-            stopSequences: new[] { "[OBSERVATION]", "[THOUGHT]" }
-        );
     }
 
     public Plan CreatePlan(string goal)
@@ -125,7 +120,7 @@ public class MrklSystemPlanner
                     var skillsCalled = this._stepsTaken.Where(s => !string.IsNullOrEmpty(s.Action)).Select(s => s.Action).Distinct().ToList();
                     var skillCallList = string.Join(", ", skillsCalled);
                     var skillCallListWithCounts = string.Join(", ", skillsCalled.Select(s => $"{s}({this._stepsTaken.Where(s2 => s2.Action == s).Count()})").ToList());
-                    context.Variables.Set("skillCount", $"Total Skills Called: {skillCallCount} ({skillCallListWithCounts})");
+                    context.Variables.Set("skillCount", $"{skillCallCount} ({skillCallListWithCounts})");
                     return context;
                 }
 
@@ -371,6 +366,14 @@ public class MrklSystemPlanner
         string functionNames = string.Join(", ", availableFunctions.Select(x => ToFullyQualifiedName(x)));
         string functionDescriptions = string.Join("\n", availableFunctions.Select(x => ToManualString(x)));
         return (functionNames, functionDescriptions);
+    }
+
+    private ISKFunction ImportSemanticFunction(IKernel kernel, string functionName, string promptTemplate, PromptTemplateConfig config)
+    {
+        var template = new PromptTemplate(promptTemplate, config, kernel.PromptTemplateEngine);
+        var functionConfig = new SemanticFunctionConfig(config, template);
+
+        return kernel.RegisterSemanticFunction(RestrictedSkillName, functionName, functionConfig);
     }
 
     private static string ToManualString(FunctionView function)
