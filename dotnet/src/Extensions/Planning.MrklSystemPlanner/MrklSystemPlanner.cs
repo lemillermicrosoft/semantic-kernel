@@ -8,11 +8,14 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.SemanticKernel.AI.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.AI.OpenAI.ChatCompletion;
 using Microsoft.SemanticKernel.Diagnostics;
 using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.Planning.MrklSystem;
 using Microsoft.SemanticKernel.SemanticFunctions;
 using Microsoft.SemanticKernel.SkillDefinition;
+using Microsoft.SemanticKernel.TemplateEngine;
 
 #pragma warning disable IDE0130
 // ReSharper disable once CheckNamespace - Using NS of Plan
@@ -45,13 +48,16 @@ public class MrklSystemPlanner
         this.Config.ExcludedSkills.Add(RestrictedSkillName);
 
         var promptConfig = new PromptTemplateConfig();
-        string promptTemplate = prompt ?? EmbeddedResource.Read("Skills.MrklSystemStep.skprompt.txt");
+        var promptTemplate = prompt ?? EmbeddedResource.Read("Skills.MrklSystemStep.skprompt.txt");
         string promptConfigString = EmbeddedResource.Read("Skills.MrklSystemStep.config.json");
         if (!string.IsNullOrEmpty(promptConfigString))
         {
             promptConfig = PromptTemplateConfig.FromJson(promptConfigString);
         }
         promptConfig.Completion.MaxTokens = this.Config.MaxTokens;
+
+        this._systemPromptTemplate = EmbeddedResource.Read("Skills.MrklSystemStepSystem.skprompt.txt");
+        this._userPromptTemplate = EmbeddedResource.Read("Skills.MrklSystemStepUser.skprompt.txt");
 
         this._systemStepFunction = this.ImportSemanticFunction(this._kernel, "MrklSystemStep", promptTemplate, promptConfig);
         this._nativeFunctions = this._kernel.ImportSkill(this, RestrictedSkillName);
@@ -90,10 +96,11 @@ public class MrklSystemPlanner
     [SKFunctionContextParameter(Name = "functionNames", Description = "List of tool names.")]
     [SKFunctionContextParameter(Name = "functionDescriptions", Description = "List of tool descriptions.")]
     [SKFunctionContextParameter(Name = "question", Description = "The question to answer.")]
+    [Obsolete]
     public async Task<SKContext> ExecutePlanAsync(SKContext context)
     {
         this._logger?.BeginScope("MrklSystemPlanner");
-        if (context.Variables.Get("question", out var goal))
+        if (context.Variables.Get("question", out string goal))
         {
             this._logger?.LogInformation("Goal: {Goal}", goal);
             for (int i = 0; i < this.Config.MaxIterations; i++)
@@ -101,8 +108,33 @@ public class MrklSystemPlanner
                 var scratchPad = this.CreateScratchPad(goal);
                 this._logger?.LogDebug("Scratchpad: {ScratchPad}", scratchPad);
                 context.Variables.Set("agentScratchPad", scratchPad);
-                var llmResponse = await this._systemStepFunction.InvokeAsync(context).ConfigureAwait(false);
-                string actionText = llmResponse.Result.Trim();
+
+                string llmResponse;
+
+                var chatService = this._kernel.GetService<IChatCompletion>();
+                if (chatService != null)
+                {
+                    var promptRenderer = new PromptTemplateEngine();
+                    var systemPrompt = await promptRenderer.RenderAsync(this._systemPromptTemplate, context).ConfigureAwait(false);
+                    var chatHistory = (OpenAIChatHistory)chatService.CreateNewChat(systemPrompt);
+                    var userMessage = await promptRenderer.RenderAsync(this._userPromptTemplate, context).ConfigureAwait(false);
+                    // this.Trace("UserMessage", userMessage);
+                    chatHistory.AddUserMessage(userMessage);
+
+                    var chatRequestSettings = new ChatRequestSettings
+                    {
+                        MaxTokens = this.Config.MaxTokens,
+                        StopSequences = new List<string>() { "[OBSERVATION]" },
+                        Temperature = 0
+                    };
+
+                    llmResponse = await chatService.GenerateMessageAsync(chatHistory, chatRequestSettings).ConfigureAwait(false);
+                }
+                else
+                {
+                    llmResponse = (await this._systemStepFunction.InvokeAsync(context).ConfigureAwait(false)).Result;
+                }
+                string actionText = llmResponse.Trim();
                 this._logger?.LogDebug("Response : {ActionText}", actionText);
 
                 var nextStep = this.ParseResult(actionText);
@@ -405,6 +437,8 @@ public class MrklSystemPlanner
     private readonly SKContext _context;
     private readonly IKernel _kernel;
     private readonly ILogger _logger;
+    private readonly string _systemPromptTemplate;
+    private readonly string _userPromptTemplate;
 
     /// <summary>
     /// Planner native functions
