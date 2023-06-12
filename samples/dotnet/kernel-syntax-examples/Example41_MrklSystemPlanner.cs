@@ -67,12 +67,12 @@ public static class Example41_MrklSystemPlanner
 
             var result = await plan.InvokeAsync(kernel.CreateNewContext());
             Console.WriteLine("Result :" + result);
-            if (result.Variables.Get("stepCount", out var stepCount))
+            if (result.Variables.TryGetValue("stepCount", out string stepCount))
             {
                 Console.WriteLine("Steps Taken: " + stepCount);
             }
 
-            if (result.Variables.Get("skillCount", out var skillCount))
+            if (result.Variables.TryGetValue("skillCount", out string skillCount))
             {
                 Console.WriteLine("Skills Used: " + skillCount);
             }
@@ -84,21 +84,23 @@ public static class Example41_MrklSystemPlanner
     private static IKernel GetKernel()
     {
         var kernel = new KernelBuilder()
-            .WithAzureTextCompletionService(
-                Env.Var("AZURE_OPENAI_DEPLOYMENT_NAME"),
-                Env.Var("AZURE_OPENAI_ENDPOINT"),
-                Env.Var("AZURE_OPENAI_KEY"))
-            // .WithAzureChatCompletionService(
-            //     Env.Var("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"),
+            // .WithAzureTextCompletionService(
+            //     Env.Var("AZURE_OPENAI_DEPLOYMENT_NAME"),
             //     Env.Var("AZURE_OPENAI_ENDPOINT"),
-            //     Env.Var("AZURE_OPENAI_KEY"),) // Add your chat completion service
+            //     Env.Var("AZURE_OPENAI_KEY"))
+            .WithAzureChatCompletionService(
+                Env.Var("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"),
+                Env.Var("AZURE_OPENAI_ENDPOINT"),
+                Env.Var("AZURE_OPENAI_KEY"),
+                alsoAsTextCompletion: true,
+                setAsDefault: true)
             .WithLogger(ConsoleLogger.Log)
             .Configure(c => c.SetDefaultHttpRetryConfig(new HttpRetryConfig
             {
                 MaxRetryCount = 3,
                 UseExponentialBackoff = true,
                 MinRetryDelay = TimeSpan.FromSeconds(3),
-                //  MaxRetryDelay = TimeSpan.FromSeconds(8),
+                MaxRetryDelay = TimeSpan.FromSeconds(30),
             }))
             .Build();
 
