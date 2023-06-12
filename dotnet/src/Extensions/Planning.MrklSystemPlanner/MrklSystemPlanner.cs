@@ -111,7 +111,7 @@ public class MrklSystemPlanner
 
                 string llmResponse;
 
-                IChatCompletion chatService = null;
+                IChatCompletion? chatService = null;
                 try
                 {
                     chatService = this._kernel.GetService<IChatCompletion>();
@@ -352,6 +352,8 @@ public class MrklSystemPlanner
         {
             throw new InvalidOperationException("This should never happen");
         }
+
+        result.Thought = result.Thought.Replace("[THOUGHT]", string.Empty).Trim();
 
         Regex actionRegex = new("\\[ACTION\\][^{}]*({(?:[^{}]*{[^{}]*})*[^{}]*})", RegexOptions.Singleline);
         Match actionMatch = actionRegex.Match(input);
