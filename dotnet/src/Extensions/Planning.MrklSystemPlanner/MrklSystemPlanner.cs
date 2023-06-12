@@ -111,7 +111,15 @@ public class MrklSystemPlanner
 
                 string llmResponse;
 
-                var chatService = this._kernel.GetService<IChatCompletion>();
+                IChatCompletion chatService = null;
+                try
+                {
+                    chatService = this._kernel.GetService<IChatCompletion>();
+                }
+                catch (Exception)
+                {
+                }
+
                 if (chatService != null)
                 {
                     var promptRenderer = new PromptTemplateEngine();
