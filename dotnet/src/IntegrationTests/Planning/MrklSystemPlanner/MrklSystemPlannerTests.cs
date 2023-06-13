@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
+using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -46,11 +48,15 @@ public sealed class MrklSystemPlannerTests : IDisposable
         var result = await kernel.RunAsync(plan);
 
         // Assert
-        // this.PrintPlan(plan, result);
         //there should be text final in the result
         Assert.Contains("1", result.Result, StringComparison.OrdinalIgnoreCase);
-        //there should be exactly 10 steps -- actually just the 1 right now. How can we create the executed plan object though? TODO
         Assert.Equal(1, plan.Steps.Count);
+
+        Assert.True(result.Variables.TryGetValue("stepsTaken", out string? stepsTakenJson));
+        var stepsTaken = JsonSerializer.Deserialize<List<SystemStep>>(stepsTakenJson);
+        Assert.NotNull(stepsTaken);
+        Assert.True(stepsTaken.Count > 0);
+        Assert.True(stepsTaken.Count <= 10);
     }
 
     [Theory]

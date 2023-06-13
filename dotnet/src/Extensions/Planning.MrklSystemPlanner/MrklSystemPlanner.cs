@@ -8,14 +8,11 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Microsoft.SemanticKernel.AI.ChatCompletion;
-using Microsoft.SemanticKernel.Connectors.AI.OpenAI.ChatCompletion;
 using Microsoft.SemanticKernel.Diagnostics;
 using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.Planning.MrklSystem;
 using Microsoft.SemanticKernel.SemanticFunctions;
 using Microsoft.SemanticKernel.SkillDefinition;
-using Microsoft.SemanticKernel.TemplateEngine;
 
 #pragma warning disable IDE0130
 // ReSharper disable once CheckNamespace - Using NS of Plan
@@ -59,8 +56,6 @@ public class MrklSystemPlanner
         this._systemStepFunction = this.ImportSemanticFunction(this._kernel, "MrklSystemStep", promptTemplate, promptConfig);
         this._nativeFunctions = this._kernel.ImportSkill(this, RestrictedSkillName);
 
-        this._stepsTaken = new List<SystemStep>();
-
         this._context = this._kernel.CreateNewContext();
         this._logger = this._kernel.Log;
     }
@@ -93,16 +88,16 @@ public class MrklSystemPlanner
     [SKFunctionContextParameter(Name = "functionNames", Description = "List of tool names.")]
     [SKFunctionContextParameter(Name = "functionDescriptions", Description = "List of tool descriptions.")]
     [SKFunctionContextParameter(Name = "question", Description = "The question to answer.")]
-    [Obsolete]
     public async Task<SKContext> ExecutePlanAsync(SKContext context)
     {
+        var stepsTaken = new List<SystemStep>();
         this._logger?.BeginScope("MrklSystemPlanner");
-        if (context.Variables.Get("question", out string goal))
+        if (context.Variables.TryGetValue("question", out string? goal))
         {
             this._logger?.LogInformation("Goal: {Goal}", goal);
             for (int i = 0; i < this.Config.MaxIterations; i++)
             {
-                var scratchPad = this.CreateScratchPad(goal);
+                var scratchPad = this.CreateScratchPad(goal, stepsTaken);
                 this._logger?.LogDebug("Scratchpad: {ScratchPad}", scratchPad);
                 context.Variables.Set("agentScratchPad", scratchPad);
 
@@ -112,21 +107,18 @@ public class MrklSystemPlanner
                 this._logger?.LogDebug("Response : {ActionText}", actionText);
 
                 var nextStep = this.ParseResult(actionText);
-                this._stepsTaken.Add(nextStep);
+                stepsTaken.Add(nextStep);
 
                 if (!string.IsNullOrEmpty(nextStep.FinalAnswer))
                 {
                     this._logger?.LogInformation("Final Answer: {FinalAnswer}", nextStep.FinalAnswer);
                     context.Variables.Update(nextStep.FinalAnswer);
-                    var updatedScratchPlan = this.CreateScratchPad(goal);
+                    var updatedScratchPlan = this.CreateScratchPad(goal, stepsTaken);
                     context.Variables.Set("agentScratchPad", updatedScratchPlan);
-                    context.Variables.Set("stepCount", this._stepsTaken.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
-                    var skillCallCount = this._stepsTaken.Where(s => !string.IsNullOrEmpty(s.Action)).Count().ToString();
-                    var skillsCalled = this._stepsTaken.Where(s => !string.IsNullOrEmpty(s.Action)).Select(s => s.Action).Distinct().ToList();
-                    var skillCallList = string.Join(", ", skillsCalled);
-                    var skillCallListWithCounts = string.Join(", ", skillsCalled.Select(s => $"{s}({this._stepsTaken.Where(s2 => s2.Action == s).Count()})").ToList());
-                    context.Variables.Set("skillCount", $"{skillCallCount} ({skillCallListWithCounts})");
+                    // Add additional results to the context
+                    this.AddExecutionStatsToContext(stepsTaken, context);
+
                     return context;
                 }
 
@@ -147,7 +139,6 @@ public class MrklSystemPlanner
                         {
                             nextStep.Observation = result;
                         }
-
                     }
                     catch (Exception ex) when (!ex.IsCriticalException())
                     {
@@ -163,7 +154,7 @@ public class MrklSystemPlanner
                 }
             }
 
-            context.Variables.Update($"Result not found, review _stepsTaken to see what happened.\n{JsonSerializer.Serialize(this._stepsTaken)}");
+            context.Variables.Update($"Result not found, review _stepsTaken to see what happened.\n{JsonSerializer.Serialize(stepsTaken)}");
         }
         else
         {
@@ -173,9 +164,20 @@ public class MrklSystemPlanner
         return context;
     }
 
-    internal string CreateScratchPad(string goal)
+    private void AddExecutionStatsToContext(List<SystemStep> stepsTaken, SKContext context)
     {
-        if (this._stepsTaken.Count == 0)
+        context.Variables.Set("stepCount", stepsTaken.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        context.Variables.Set("stepsTaken", JsonSerializer.Serialize(stepsTaken));
+        var skillCallCount = stepsTaken.Where(s => !string.IsNullOrEmpty(s.Action)).Count().ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var skillsCalled = stepsTaken.Where(s => !string.IsNullOrEmpty(s.Action)).Select(s => s.Action).Distinct().ToList();
+        var skillCallList = string.Join(", ", skillsCalled);
+        var skillCallListWithCounts = string.Join(", ", skillsCalled.Select(s => $"{s}({stepsTaken.Where(s2 => s2.Action == s).Count()})").ToList());
+        context.Variables.Set("skillCount", $"{skillCallCount} ({skillCallListWithCounts})");
+    }
+
+    internal string CreateScratchPad(string goal, List<SystemStep> stepsTaken)
+    {
+        if (stepsTaken.Count == 0)
         {
             return string.Empty;
         }
@@ -183,12 +185,12 @@ public class MrklSystemPlanner
         var result = new StringBuilder();
 
         // add the original first thought
-        result.Append($"[THOUGHT] {this._stepsTaken[0].Thought}\n");
+        result.Append($"[THOUGHT] {stepsTaken[0].Thought}\n");
 
         var insertPoint = result.Length;
 
         // Instead of most recent, we could use semantic relevance to keep important pieces and deduplicate
-        for (var i = this._stepsTaken.Count - 1; i >= 0; i--)
+        for (var i = stepsTaken.Count - 1; i >= 0; i--)
         {
             if (result.Length / 4.0 > (this.Config.MaxTokens * 0.8))
             {
@@ -196,7 +198,7 @@ public class MrklSystemPlanner
                 break;
             }
 
-            var s = this._stepsTaken[i];
+            var s = stepsTaken[i];
 
             if (!string.IsNullOrEmpty(s.Observation))
             {
@@ -330,33 +332,22 @@ public class MrklSystemPlanner
 
                 if (systemStepResults == null)
                 {
-                    // TODO New error code maybe?
-                    throw new PlanningException(PlanningException.ErrorCodes.InvalidPlan, "The system step deserialized to a null object");
+                    result.Observation = $"System step parsing error, empty JSON: {json}";
                 }
-
-                result.Action = systemStepResults.Action;
-                result.ActionVariables = systemStepResults.ActionVariables;
+                else
+                {
+                    result.Action = systemStepResults.Action;
+                    result.ActionVariables = systemStepResults.ActionVariables;
+                }
             }
-            catch (Exception)
+            catch (Exception ex) when (!ex.IsCriticalException())
             {
-                // TODO New error code maybe?
-                // throw new PlanningException(PlanningException.ErrorCodes.InvalidPlan, $"System step parsing error, invalid JSON: {json}", e);
                 result.Observation = $"System step parsing error, invalid JSON: {json}";
             }
         }
         else
         {
-            // TODO New error code maybe?
-            // throw new PlanningException(PlanningException.ErrorCodes.InvalidPlan, $"no action found in response: {input}");
-
-            // Actually, this just means there was only a thought, so we should just carry on.
-            // result.Action = "DEBUG: No action found in response: " + input;
-        }
-
-        if (result.Action == "Final Answer")
-        {
-            result.FinalAnswer = JsonSerializer.Serialize(result.ActionVariables);
-            this._logger?.LogError("[FINAL ANSWER] {FinalAnswer}", result.FinalAnswer); // Does this ever happen?
+            // This just means there was only a thought, so we should just carry on.
         }
 
         return result;
@@ -366,7 +357,6 @@ public class MrklSystemPlanner
     {
         var availableFunctions = this.GetAvailableFunctions();
 
-        // Mrkl doc describes these are 'expert modules' or 'experts'
         string functionNames = string.Join(", ", availableFunctions.Select(x => ToFullyQualifiedName(x)));
         string functionDescriptions = string.Join("\n", availableFunctions.Select(x => ToManualString(x)));
         return (functionNames, functionDescriptions);
@@ -419,11 +409,6 @@ public class MrklSystemPlanner
     /// System step function for Plan execution
     /// </summary>
     private ISKFunction _systemStepFunction;
-
-    /// <summary>
-    /// The steps taken so far
-    /// </summary>
-    private List<SystemStep> _stepsTaken { get; set; }
 
     /// <summary>
     /// The name to use when creating semantic functions that are restricted from plan creation
