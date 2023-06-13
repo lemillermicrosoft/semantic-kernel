@@ -96,6 +96,7 @@ her a beggar. My father came to her aid and two years later they married.
 
         context.Variables.Update(summaryText);
         context.Variables.Set("reference_context", s_groundingText);
+        context.Variables.Set("entities", extractionResult.Result);
 
         var groundingResult = await reference_check.InvokeAsync(context);
 
