@@ -56,9 +56,6 @@ public class MrklSystemPlanner
         }
         promptConfig.Completion.MaxTokens = this.Config.MaxTokens;
 
-        this._systemPromptTemplate = EmbeddedResource.Read("Skills.MrklSystemStepSystem.skprompt.txt");
-        this._userPromptTemplate = EmbeddedResource.Read("Skills.MrklSystemStepUser.skprompt.txt");
-
         this._systemStepFunction = this.ImportSemanticFunction(this._kernel, "MrklSystemStep", promptTemplate, promptConfig);
         this._nativeFunctions = this._kernel.ImportSkill(this, RestrictedSkillName);
 
@@ -151,28 +148,26 @@ public class MrklSystemPlanner
                             nextStep.Observation = result;
                         }
 
-                        this._logger?.LogInformation("Observation : {Observation}", nextStep.Observation);
                     }
-                    catch (Exception ex)
+                    catch (Exception ex) when (!ex.IsCriticalException())
                     {
                         nextStep.Observation = $"Error invoking action {nextStep.Action} : {ex.Message}";
                         this._logger?.LogDebug(ex, "Error invoking action {Action}", nextStep.Action);
-                        this._logger?.LogInformation("*Observation : {Observation}", nextStep.Observation);
-
-                        // TODO -- Let's try and detect if we get stuck in a loop.
                     }
+
+                    this._logger?.LogInformation("Observation: {Observation}", nextStep.Observation);
                 }
                 else
                 {
-                    this._logger?.LogInformation("No action to take");
+                    this._logger?.LogInformation("Action: No action to take");
                 }
             }
 
-            context.Variables.Update($"Result Not found, check out the _stepsTaken to see what happen\n{JsonSerializer.Serialize(this._stepsTaken)}");
+            context.Variables.Update($"Result not found, review _stepsTaken to see what happened.\n{JsonSerializer.Serialize(this._stepsTaken)}");
         }
         else
         {
-            context.Variables.Update("Question Not found.");
+            context.Variables.Update("Question not found.");
         }
 
         return context;
@@ -186,8 +181,6 @@ public class MrklSystemPlanner
         }
 
         var result = new StringBuilder();
-        // This is important
-        result.Append("This was your previous work (but I haven't seen any of it! I only see what you return as final answer):\n");
 
         // add the original first thought
         result.Append($"[THOUGHT] {this._stepsTaken[0].Thought}\n");
@@ -416,8 +409,6 @@ public class MrklSystemPlanner
     private readonly SKContext _context;
     private readonly IKernel _kernel;
     private readonly ILogger _logger;
-    private readonly string _systemPromptTemplate;
-    private readonly string _userPromptTemplate;
 
     /// <summary>
     /// Planner native functions
