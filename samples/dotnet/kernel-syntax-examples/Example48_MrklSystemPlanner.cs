@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.CoreSkills;
@@ -16,91 +17,121 @@ using RepoUtils;
  */
 
 // ReSharper disable once InconsistentNaming
-public static class Example41_MrklSystemPlanner
+public static class Example48_MrklSystemPlanner
 {
     public static async Task RunAsync()
     {
-        var kernel = GetKernel();
-
-        using var bingConnector = new BingConnector(Env.Var("BING_API_KEY"));
-
-        var webSearchEngineSkill = new WebSearchEngineSkill(bingConnector);
-
-        kernel.ImportSkill(webSearchEngineSkill, "WebSearch");
-
-        kernel.ImportSkill(new LanguageCalculatorSkill(kernel), "advancedCalculator");
-
-        // kernel.ImportSkill(new SimpleCalculatorSkill(kernel), "basicCalculator");
-
-        kernel.ImportSkill(new TimeSkill(), "time");
-
-        string[] goals = new string[]
+        string[] questions = new string[]
         {
-            "Who is Leo DiCaprio's girlfriend? What is her current age raised to the (his current age)/100 power?",
             "Who is the current president of the United States? What is his current age divided by 2",
-            "What is the capital of France? Who is that cities current mayor? What percentage of their life has been in the 21st century as of today?",
-            "What is the current day of the calendar year? Using that as an angle in degrees, what is the area of a unit circle with that angle?"
+            // "Who is Leo DiCaprio's girlfriend? What is her current age raised to the (his current age)/100 power?",
+            // "What is the capital of France? Who is that cities current mayor? What percentage of their life has been in the 21st century as of today?",
+            // "What is the current day of the calendar year? Using that as an angle in degrees, what is the area of a unit circle with that angle?"
         };
 
-        // Result :Leo DiCaprio's girlfriend is Camila Morrone, and her current age raised to the 0.43 power is about 4.06.
-        // Result :The current president of the United States is Joe Biden and his current age divided by 2 is 39.
-        // Result :The capital of France is Paris. The current mayor of Paris is Anne Hidalgo. 33.87% of her life has been in the 21st century as of today.
-        // Result :The area of the sector of the unit circle with the angle of 156 degrees is 1.36 square units.
-
-        // 4.68 for Camila Morrone or 4.95 Neelam Gill
-        // 40
-        // Anne Hidalgo 36.5%
-        // .4333*pi = 1.36 square units
-
-        foreach (var goal in goals)
+        foreach (var question in questions)
         {
-            Console.WriteLine("*****************************************************");
-            Console.WriteLine("Goal :" + goal);
-
-            var config = new Microsoft.SemanticKernel.Planning.MrklSystem.MrklSystemPlannerConfig();
-            config.ExcludedFunctions.Add("TranslateMathProblem");
-            config.MinIterationTimeMs = 2500;
-            config.MaxTokens = 4000;
-
-            MrklSystemPlanner planner = new(kernel, config);
-            var plan = planner.CreatePlan(goal);
-
-            var result = await plan.InvokeAsync(kernel.CreateNewContext());
-            Console.WriteLine("Result :" + result);
-            if (result.Variables.TryGetValue("stepCount", out string stepCount))
-            {
-                Console.WriteLine("Steps Taken: " + stepCount);
-            }
-
-            if (result.Variables.TryGetValue("skillCount", out string skillCount))
-            {
-                Console.WriteLine("Skills Used: " + skillCount);
-            }
-
-            Console.WriteLine("*****************************************************");
+            await RunTextCompletion(question);
+            await RunChatCompletion(question);
         }
     }
 
-    private static IKernel GetKernel()
+    // RunTextCompletion
+    // *****************************************************
+    // Result: The current president of the United States is Joe Biden. His current age divided by 2 is 40.
+    // Steps Taken: 6
+    // Skills Used: 5 (WebSearch.Search(1), time.Year(1), time.MonthNumber(1), advancedCalculator.Calculator(2))
+    // Time Taken: 00:00:29.7883820
+    // *****************************************************
+    // RunChatCompletion
+    // *****************************************************
+    // Question: Who is the current president of the United States? What is his current age divided by 2
+    // Result: The current president of the United States is Joseph R. Biden, Jr. His current age divided by 2 is 40.5.
+    // Steps Taken: 8
+    // Skills Used: 7 (WebSearch.Search(4), time.Year(1), advancedCalculator.Calculator(2))
+    // Time Taken: 00:03:13.8966442
+    // *****************************************************
+
+    public static async Task RunTextCompletion(string question)
     {
-        var kernel = new KernelBuilder()
-            // .WithAzureTextCompletionService(
-            //     Env.Var("AZURE_OPENAI_DEPLOYMENT_NAME"),
-            //     Env.Var("AZURE_OPENAI_ENDPOINT"),
-            //     Env.Var("AZURE_OPENAI_KEY"))
-            .WithAzureChatCompletionService(
+        Console.WriteLine("RunTextCompletion");
+        var kernel = GetKernel();
+        await RunWithQuestion(kernel, question);
+    }
+
+    public static async Task RunChatCompletion(string question)
+    {
+        Console.WriteLine("RunChatCompletion");
+        var kernel = GetKernel(true);
+        await RunWithQuestion(kernel, question);
+    }
+
+    public static async Task RunWithQuestion(IKernel kernel, string question)
+    {
+        using var bingConnector = new BingConnector(Env.Var("BING_API_KEY"));
+        var webSearchEngineSkill = new WebSearchEngineSkill(bingConnector);
+
+        kernel.ImportSkill(webSearchEngineSkill, "WebSearch");
+        kernel.ImportSkill(new LanguageCalculatorSkill(kernel), "advancedCalculator");
+        // kernel.ImportSkill(new SimpleCalculatorSkill(kernel), "basicCalculator");
+        kernel.ImportSkill(new TimeSkill(), "time");
+
+        Console.WriteLine("*****************************************************");
+        Stopwatch sw = new();
+        Console.WriteLine("Question: " + question);
+
+        var config = new Microsoft.SemanticKernel.Planning.MrklSystem.MrklSystemPlannerConfig();
+        config.ExcludedFunctions.Add("TranslateMathProblem");
+        config.MinIterationTimeMs = 2500;
+        config.MaxTokens = 4000;
+
+        MrklSystemPlanner planner = new(kernel, config);
+        sw.Start();
+        var plan = planner.CreatePlan(question);
+
+        var result = await plan.InvokeAsync(kernel.CreateNewContext());
+        Console.WriteLine("Result: " + result);
+        if (result.Variables.TryGetValue("stepCount", out string? stepCount))
+        {
+            Console.WriteLine("Steps Taken: " + stepCount);
+        }
+
+        if (result.Variables.TryGetValue("skillCount", out string? skillCount))
+        {
+            Console.WriteLine("Skills Used: " + skillCount);
+        }
+
+        Console.WriteLine("Time Taken: " + sw.Elapsed);
+        Console.WriteLine("*****************************************************");
+    }
+
+    private static IKernel GetKernel(bool useChat = false)
+    {
+        var builder = new KernelBuilder();
+        if (useChat)
+        {
+            builder.WithAzureChatCompletionService(
                 Env.Var("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"),
                 Env.Var("AZURE_OPENAI_ENDPOINT"),
                 Env.Var("AZURE_OPENAI_KEY"),
                 alsoAsTextCompletion: true,
-                setAsDefault: true)
+                setAsDefault: true);
+        }
+        else
+        {
+            builder.WithAzureTextCompletionService(
+                Env.Var("AZURE_OPENAI_DEPLOYMENT_NAME"),
+                Env.Var("AZURE_OPENAI_ENDPOINT"),
+                Env.Var("AZURE_OPENAI_KEY"));
+        }
+
+        var kernel = builder
             .WithLogger(ConsoleLogger.Log)
             .Configure(c => c.SetDefaultHttpRetryConfig(new HttpRetryConfig
             {
                 MaxRetryCount = 3,
                 UseExponentialBackoff = true,
                 MinRetryDelay = TimeSpan.FromSeconds(3),
-                MaxRetryDelay = TimeSpan.FromSeconds(30),
             }))
             .Build();
 
