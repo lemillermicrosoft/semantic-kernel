@@ -76,36 +76,36 @@ after this event Caroline became his wife.""";
         var reference_check = functions["ReferenceCheckEntities"];
         var entity_excision = functions["ExciseEntities"];
 
-        var summaryText = @"""
+        var summaryText = @"
 My father, a respected resident of Milan, was a close friend of a merchant named Beaufort who, after a series of
 misfortunes, moved to Zurich in poverty. My father was upset by his friend's troubles and sought him out,
 finding him in a mean street. Beaufort had saved a small sum of money, but it was not enough to support him and
 his daughter, Mary. Mary procured work to eek out a living, but after ten months her father died, leaving
 her a beggar. My father came to her aid and two years later they married.
-""";
+";
 
         var context = kernel.CreateNewContext();
         context.Variables.Update(summaryText);
         context.Variables.Set("topic", "people and places");
         context.Variables.Set("example_entities", "John, Jane, mother, brother, Paris, Rome");
 
-        var extractionResult = await entityExtraction.InvokeAsync(context);
+        var extractionResult = (await entityExtraction.InvokeAsync(context)).Result;
 
         Console.WriteLine("======== Extract Entities ========");
-        Console.WriteLine(extractionResult.Result);
+        Console.WriteLine(extractionResult);
 
         context.Variables.Update(summaryText);
         context.Variables.Set("reference_context", s_groundingText);
-        context.Variables.Set("entities", extractionResult.Result);
+        context.Variables.Set("entities", extractionResult);
 
-        var groundingResult = await reference_check.InvokeAsync(context);
+        var groundingResult = (await reference_check.InvokeAsync(context)).Result;
 
         Console.WriteLine("======== Reference Check ========");
-        Console.WriteLine(groundingResult.Result);
+        Console.WriteLine(groundingResult);
 
         context.Variables.Update(summaryText);
-        context.Variables.Set("entities", groundingResult.Result);
-        var excisionResult = await entity_excision.InvokeAsync(groundingResult.Result);
+        context.Variables.Set("entities", groundingResult);
+        var excisionResult = await entity_excision.InvokeAsync(context);
 
         Console.WriteLine("======== Excise Entities ========");
         Console.WriteLine(excisionResult.Result);
@@ -122,7 +122,7 @@ grounded in the input. Finally, rewrite your summary to remove the entities
 which are not grounded in the original.
 """;
 
-        Console.WriteLine("======== Groundedness Checks ========");
+        Console.WriteLine("======== Planning - Groundedness Checks ========");
         Console.WriteLine(ask);
 
         var kernel = new KernelBuilder()
