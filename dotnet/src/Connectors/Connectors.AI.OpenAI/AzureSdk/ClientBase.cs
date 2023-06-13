@@ -37,6 +37,8 @@ public abstract class ClientBase
     /// </summary>
     private protected abstract OpenAIClient Client { get; }
 
+    private static readonly string s_TextCompletionSystemText = "Assistant is a large language model.";
+
     /// <summary>
     /// Creates completions for the prompt and settings.
     /// </summary>
@@ -226,7 +228,7 @@ public abstract class ClientBase
         CancellationToken cancellationToken = default)
     {
         textSettings ??= new();
-        ChatHistory chat = PrepareChatHistory(text, textSettings, out ChatRequestSettings chatSettings);
+        ChatHistory chat = PrepareChatHistory(text, s_TextCompletionSystemText, textSettings, out ChatRequestSettings chatSettings);
 
         return (await this.InternalGetChatResultsAsync(chat, chatSettings, cancellationToken).ConfigureAwait(false))
             .OfType<ITextCompletionResult>()
@@ -238,7 +240,7 @@ public abstract class ClientBase
         CompleteRequestSettings? textSettings,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        ChatHistory chat = PrepareChatHistory(text, textSettings, out ChatRequestSettings chatSettings);
+        ChatHistory chat = PrepareChatHistory(text, s_TextCompletionSystemText, textSettings, out ChatRequestSettings chatSettings);
 
         await foreach (var chatCompletionStreamingResult in this.InternalGetChatStreamingResultsAsync(chat, chatSettings, cancellationToken))
         {
@@ -246,10 +248,10 @@ public abstract class ClientBase
         }
     }
 
-    private static OpenAIChatHistory PrepareChatHistory(string text, CompleteRequestSettings? requestSettings, out ChatRequestSettings settings)
+    private static OpenAIChatHistory PrepareChatHistory(string text, string? systemText, CompleteRequestSettings? requestSettings, out ChatRequestSettings settings)
     {
         requestSettings ??= new();
-        var chat = InternalCreateNewChat();
+        var chat = InternalCreateNewChat(systemText);
         chat.AddUserMessage(text);
         settings = new ChatRequestSettings
         {
