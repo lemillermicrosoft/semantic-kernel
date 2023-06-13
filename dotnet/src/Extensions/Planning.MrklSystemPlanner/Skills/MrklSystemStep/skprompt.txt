@@ -47,4 +47,3 @@ Begin!
 [QUESTION]
 {{$question}}
 {{$agentScratchPad}}
-[THOUGHT]

@@ -109,40 +109,9 @@ public class MrklSystemPlanner
                 this._logger?.LogDebug("Scratchpad: {ScratchPad}", scratchPad);
                 context.Variables.Set("agentScratchPad", scratchPad);
 
-                string llmResponse;
+                var llmResponse = (await this._systemStepFunction.InvokeAsync(context).ConfigureAwait(false));
 
-                IChatCompletion? chatService = null;
-                try
-                {
-                    chatService = this._kernel.GetService<IChatCompletion>();
-                }
-                catch (Exception)
-                {
-                }
-
-                if (chatService != null)
-                {
-                    var promptRenderer = new PromptTemplateEngine();
-                    var systemPrompt = await promptRenderer.RenderAsync(this._systemPromptTemplate, context).ConfigureAwait(false);
-                    var chatHistory = (OpenAIChatHistory)chatService.CreateNewChat(systemPrompt);
-                    var userMessage = await promptRenderer.RenderAsync(this._userPromptTemplate, context).ConfigureAwait(false);
-                    // this.Trace("UserMessage", userMessage);
-                    chatHistory.AddUserMessage(userMessage);
-
-                    var chatRequestSettings = new ChatRequestSettings
-                    {
-                        MaxTokens = this.Config.MaxTokens,
-                        StopSequences = new List<string>() { "[OBSERVATION]" },
-                        Temperature = 0
-                    };
-
-                    llmResponse = await chatService.GenerateMessageAsync(chatHistory, chatRequestSettings).ConfigureAwait(false);
-                }
-                else
-                {
-                    llmResponse = (await this._systemStepFunction.InvokeAsync(context).ConfigureAwait(false)).Result;
-                }
-                string actionText = llmResponse.Trim();
+                string actionText = llmResponse.Result.Trim();
                 this._logger?.LogDebug("Response : {ActionText}", actionText);
 
                 var nextStep = this.ParseResult(actionText);
