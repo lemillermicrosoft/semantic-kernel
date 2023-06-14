@@ -43,13 +43,6 @@ Response:
 - dog
 </ungrounded_entities>
 
-<context>
-Belinda lived in a little white house,
-With a little black kitten and a little gray mouse,
-And a little yellow dog and a little red wagon,
-And a realio, trulio, little pet dragon
-</context>
-
 # Task
 
 Below are the reference items, and the context that you need to parse for references to the items.
