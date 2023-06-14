@@ -115,15 +115,14 @@ her a beggar. My father came to her aid and two years later they married.
     {
         var targetTopic = "people and places";
         var samples = "John, Jane, mother, brother, Paris, Rome";
-        var ask = @$"""Make a summary of input text. Then make a list of entities
+        var ask = @$"Make a summary of input text. Then make a list of entities
 related to {targetTopic} (such as {samples}) which are present in the summary.
 Take this list of entities, and from it make another list of those which are not
 grounded in the input. Finally, rewrite your summary to remove the entities
 which are not grounded in the original.
-""";
+";
 
         Console.WriteLine("======== Planning - Groundedness Checks ========");
-        Console.WriteLine(ask);
 
         var kernel = new KernelBuilder()
             .WithLogger(ConsoleLogger.Log)
@@ -149,3 +148,55 @@ which are not grounded in the original.
         Console.WriteLine(results.Result);
     }
 }
+
+/* Example Output:
+======== Groundedness Checks ========
+======== Extract Entities ========
+<entities>
+- My father (a person)
+- Milan (a place)
+- Beaufort (a person)
+- Zurich (a place)
+- Mary (a person)
+</entities>
+======== Reference Check ========
+
+
+Possible response:
+
+<ungrounded_entities>
+- Milan (a place)
+- Mary (a person)
+</ungrounded_entities>
+======== Excise Entities ========
+<context>
+
+My father, a respected resident of a city in Italy, was a close friend of a merchant named Beaufort who, after a series of
+misfortunes, moved to a town in Switzerland in poverty. My father was upset by his friend's troubles and sought him out,
+finding him in a mean street. Beaufort had saved a small sum of money, but it was not enough to support him and
+his daughter, a young woman. The young woman procured work to eek out a living, but after ten months her father died, leaving
+her a beggar. My father came to her aid and two years later they married.
+
+</context>
+
+
+======== Planning - Groundedness Checks ========
+ Goal: Make a summary of input text. Then make a list of entities
+related to people and places (such as John, Jane, mother, brother, Paris, Rome) which are present in the summary.
+Take this list of entities, and from it make another list of those which are not
+grounded in the input. Finally, rewrite your summary to remove the entities
+which are not grounded in the original.
+
+
+ Steps:
+  - _GLOBAL_FUNCTIONS_.Echo INPUT='' => ORIGINAL_INPUT
+  - SummarizeSkill.Summarize INPUT='' => SUMMARY
+  - GroundingSkill.ExtractEntities topic='people and places' INPUT='$SUMMARY' example_entities='John, Jane, mother, brother, Paris, Rome' => ENTITIES
+  - GroundingSkill.ReferenceCheckEntities entities='$ENTITIES' reference_context='$ORIGINAL_INPUT' INPUT='$SUMMARY' => UNGROUND_ENTITIES
+  - GroundingSkill.ExciseEntities entities='$UNGROUND_ENTITIES' INPUT='$SUMMARY' => RESULT__FINAL_SUMMARY
+
+A possible summary is:
+
+A respected politician from a Swiss city helped a poor merchant who hid in another Swiss city. He found him dying and his daughter struggling to live. He felt sorry for the daughter, buried the merchant, and married her two years later.
+== DONE ==
+*/
