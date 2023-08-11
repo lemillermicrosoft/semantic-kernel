@@ -54,7 +54,21 @@ export const PlanStepCard: React.FC<PlanStepCardProps> = ({ index, step }) => {
     const classes = useClasses();
     var stepCount = 1;
 
-    const numbersAsStrings = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+    const numbersAsStrings = [
+        'Zero',
+        'One',
+        'Two',
+        'Three',
+        'Four',
+        'Five',
+        'Six',
+        'Seven',
+        'Eight',
+        'Nine',
+        'Ten',
+        '11',
+        '12',
+    ];
     const stepNumber = numbersAsStrings[index];
 
     const [stepLabel, setStepLabel] = useState<string>('');
