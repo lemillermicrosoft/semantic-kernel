@@ -143,6 +143,49 @@ internal static class SemanticKernelExtensions
             }
         );
 
+        services.AddScoped<ProcessSkill>(sp =>
+            {
+                IKernel chatKernel = sp.GetRequiredService<IKernel>();
+                var aiServiceOptions = sp.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>();
+                IKernel learningSkillKernel = new Kernel(
+                    new SkillCollection(),
+                    chatKernel.PromptTemplateEngine,
+                    chatKernel.Memory,
+                    new KernelConfig()
+                        .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
+                        .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
+                        .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig()
+                        {
+                            MaxRetryCount = 5,
+                            UseExponentialBackoff = true
+                        }),
+                    sp.GetRequiredService<ILogger<ProcessSkill>>());
+
+                return new ProcessSkill(learningSkillKernel);
+            }
+        );
+
+        services.AddScoped<BankAgentPlugin>(sp =>
+            {
+                IKernel chatKernel = sp.GetRequiredService<IKernel>();
+                var aiServiceOptions = sp.GetRequiredService<IOptionsSnapshot<AIServiceOptions>>();
+                IKernel k = new Kernel(
+                    new SkillCollection(),
+                    chatKernel.PromptTemplateEngine,
+                    chatKernel.Memory,
+                    new KernelConfig()
+                        .AddCompletionBackend(aiServiceOptions.Get(AIServiceOptions.CompletionPropertyName))
+                        .AddEmbeddingBackend(aiServiceOptions.Get(AIServiceOptions.EmbeddingPropertyName))
+                        .SetDefaultHttpRetryConfig(new Microsoft.SemanticKernel.Reliability.HttpRetryConfig()
+                        {
+                            MaxRetryCount = 5, UseExponentialBackoff = true
+                        }),
+                    sp.GetRequiredService<ILogger<BankAgentPlugin>>());
+
+                return new BankAgentPlugin(k);
+            }
+        );
+
         // Add the Semantic Kernel
         // TODO - How does the kernelConfig get used?
         services.AddSingleton<IPromptTemplateEngine, PromptTemplateEngine>();

@@ -60,6 +60,8 @@ public class SemanticKernelController : ControllerBase, IDisposable
     /// <param name="learningSkill">Learning skill to use to learn new topics.</param>
     /// <param name="assistantSkill"></param>
     /// <param name="studySkill">Study skill to use to study new topics.</param>
+    /// <param name="bankAgentPlugin">Bank agent plugin to use to interact with the bank.</param>
+    /// <param name="processSkill">Process skill to use to interact with the bank.</param>
     /// <param name="ask">Prompt along with its parameters</param>
     /// <param name="openApiSkillsAuthHeaders">Authentication headers to connect to OpenAPI Skills</param>
     /// <param name="skillName">Skill in which function to invoke resides</param>
@@ -85,6 +87,8 @@ public class SemanticKernelController : ControllerBase, IDisposable
         [FromServices] LearningSkill learningSkill,
         [FromServices] AssistantSkill assistantSkill,
         [FromServices] StudySkill studySkill,
+        [FromServices] BankAgentPlugin bankAgentPlugin,
+        [FromServices] ProcessSkill processSkill,
         [FromServices] AzureContentModerator contentModerator,
         [FromServices] KernelConfig kernelConfig,
         [FromServices] IOptions<ContentModerationOptions> contentModerationOptions,
@@ -129,6 +133,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
         await this.RegisterPlannerSkillsAsync(assistantSkill.Kernel, openApiSkillsAuthHeaders, context.Variables);
 
         kernel.RegisterNamedSemanticSkills(null, null, "StudySkill");
+        kernel.RegisterNamedSemanticSkills(null, null, "BankAgentPlugin");
 
         // Register native skills with the general kernel
         kernel.RegisterNativeSkills(
@@ -143,11 +148,14 @@ public class SemanticKernelController : ControllerBase, IDisposable
             contentModerationOptions: contentModerationOptions.Value,
             contentModerator: contentModerator,
             logger: this._logger);
-        kernel.ImportSkill(learningSkill, "LearningSkill");
-        kernel.ImportSkill(studySkill, "StudySkill");
+        // kernel.ImportSkill(learningSkill, "LearningSkill");
+        kernel.ImportSkill(learningSkill, "ProcessSkill");
+        // kernel.ImportSkill(studySkill, "StudySkill");
+        kernel.ImportSkill(bankAgentPlugin, "BankAgentPlugin");
 
         // Register native skills with the chat's kernel
-        chatBot.Kernel.ImportSkill(learningSkill, "LearningSkill");
+        // chatBot.Kernel.ImportSkill(learningSkill, "LearningSkill");
+        chatBot.Kernel.ImportSkill(processSkill, "ProcessSkill");
         chatBot.Kernel.ImportSkill(assistantSkill, "AssistantSkill");
 
         // Get the function to invoke

@@ -395,7 +395,7 @@ public class ChatSkill
                 chatContextClone.Variables.Update(imageCannedResponse);
                 await this.SaveNewMessageAsync(imageCannedResponse, userId, userName, chatId);
             }
-            
+
             return chatContextClone;
         }
 
@@ -579,7 +579,12 @@ public class ChatSkill
             ISKFunction? functionOrPlan = null;
             try
             {
-                SKContext planContext = action.Contains("StudySession", StringComparison.Ordinal) || action.Contains("LearningSkill", StringComparison.Ordinal)
+                SKContext planContext =
+                    action.Contains("StudySession", StringComparison.Ordinal) ||
+                    action.Contains("LearningSkill", StringComparison.Ordinal) ||
+                    action.Contains("BankAgentPlugin", StringComparison.Ordinal) ||
+                    action.Contains("ProcessSkill", StringComparison.Ordinal) ||
+                    action.Contains("GatherProcessRequirements", StringComparison.Ordinal)
                     ? new SKContext(
                         context.Variables,
                         context.Memory,
@@ -726,7 +731,8 @@ public class ChatSkill
                     }
                 }
                 // Not the plan we want to say is the next action until they start it.
-                else if (!completion.Result.Contains("StudySession", StringComparison.OrdinalIgnoreCase))
+                else if (!completion.Result.Contains("StudySession", StringComparison.OrdinalIgnoreCase) ||
+                    !completion.Result.Contains("GatherProcessRequirements", StringComparison.OrdinalIgnoreCase))
                 {
                     try
                     {
