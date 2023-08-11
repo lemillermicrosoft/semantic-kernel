@@ -1,0 +1,33 @@
+{
+    "schema": 1,
+    "type": "completion",
+    "description": "A function for creating a conversation for gathering requirements.",
+    "completion": {
+        "max_tokens": 512,
+        "temperature": 0,
+        "top_p": 0,
+        "presence_penalty": 0,
+        "frequency_penalty": 0,
+        "stop_sequences": ["[END MESSAGE]"]
+    },
+    "input": {
+        "parameters": [
+            {
+                "name": "input",
+                "description": "Requirements to focus on gathering e.g. 'contact details'",
+                "defaultValue": ""
+            },
+            {
+                "name": "context",
+                "description": "Contextual information for the gathering session.",
+                "defaultValue": ""
+            },
+            {
+                "name": "process",
+                "description": "The process e.g. 'new savings account'",
+                "defaultValue": ""
+            }
+        ]
+    },
+    "default_backends": []
+}
