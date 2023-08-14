@@ -151,7 +151,7 @@ public class SemanticKernelController : ControllerBase, IDisposable
 
         // TODO I don't think these are needed?
         // kernel.ImportSkill(learningSkill, "LearningSkill");
-        kernel.ImportSkill(learningSkill, "ProcessSkill");
+        kernel.ImportSkill(processSkill, "ProcessSkill");
         // kernel.ImportSkill(studySkill, "StudySkill");
         kernel.ImportSkill(bankAgentPlugin, "BankAgentPlugin");
 

@@ -252,6 +252,7 @@ public class ProcessSkill
             var processPlanJson = memories[0].Metadata.AdditionalMetadata;
             var processPlan = Plan.FromJson(processPlanJson, context);
             var processStepIndex = processPlan.Steps[processPlan.NextStepIndex].NextStepIndex;
+            Console.WriteLine($"Plan step index: {processPlan.NextStepIndex}");
             Console.WriteLine($"Process step index: {processStepIndex}");
 
             var processDescription = processPlan.Description;
@@ -288,8 +289,7 @@ public class ProcessSkill
 
             // TODO: Make this better
             context.Variables.Set("context", processContext); // {DocumentMemorySkill.QueryDocuments $INPUT}
-
-            var plan = await processPlan.InvokeNextStepAsync(context); // 11:13am 8/14
+            var plan = await processPlan.InvokeNextStepAsync(context);
             if (plan is not null)
             {
                 var result = plan.State.ToString();
@@ -300,7 +300,8 @@ public class ProcessSkill
                     context.Variables.Set("continuePlan", null);
                     context.Variables.Set("updatePlan", null);
                 }
-                else if (!processPlan.Steps[processPlan.NextStepIndex].Steps[processStepIndex].State.Get("LESSON_STATE", out var lessonState))
+                // NextStepIndex has already been incremented
+                else if (!processPlan.Steps[processPlan.NextStepIndex - 1].Steps[processStepIndex].State.Get("LESSON_STATE", out var lessonState))
                 {
                     Console.WriteLine("LESSON_STATE not found, continue plan");
                     context.Variables.Set("continuePlan", "true");
