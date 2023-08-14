@@ -1,0 +1,16 @@
+You are an assistant for [PROCESS]. Create a list of requirements to gather for a bank agent to be able to complete a process.
+
+[RULES]
+Do not qualify response or message, e.g. "possible requirements:"
+Maximum of 5 requirements.
+[END RULES]
+
+[CONTEXT]
+{{$context}}
+[END CONTEXT]
+
+[PROCESS]
+{{$input}}
+[END PROCESS]
+
+Requirements:

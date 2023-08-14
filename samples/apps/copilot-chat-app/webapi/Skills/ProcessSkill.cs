@@ -203,7 +203,7 @@ public class ProcessSkill
             // todo error handling
             var processPlanJson = memories[0].Metadata.AdditionalMetadata;
             var processPlan = Plan.FromJson(processPlanJson, context);
-            var processStepIndex = processPlan.Steps[processPlan.NextStepIndex].NextStepIndex;
+            var processStepIndex = processPlan.Steps[processPlan.NextStepIndex].NextStepIndex; // i think this is dumb and always 0
             Console.WriteLine($"Plan step index: {processPlan.NextStepIndex}");
             Console.WriteLine($"Process step index: {processStepIndex}");
 
@@ -253,7 +253,7 @@ public class ProcessSkill
                     context.Variables.Set("updatePlan", null);
                 }
                 // NextStepIndex has already been incremented
-                else if (!processPlan.Steps[processPlan.NextStepIndex].Steps[processStepIndex].State.Get("LESSON_STATE", out var lessonState))
+                else if (!processPlan.Steps[processPlan.NextStepIndex - 1].Steps[processStepIndex].State.Get("LESSON_STATE", out var lessonState))
                 {
                     Console.WriteLine("LESSON_STATE not found, continue plan");
                     context.Variables.Set("continuePlan", "true");
