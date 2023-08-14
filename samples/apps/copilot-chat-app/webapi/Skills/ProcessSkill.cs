@@ -289,7 +289,7 @@ public class ProcessSkill
             // TODO: Make this better
             context.Variables.Set("context", processContext); // {DocumentMemorySkill.QueryDocuments $INPUT}
 
-            var plan = await processPlan.InvokeNextStepAsync(context);
+            var plan = await processPlan.InvokeNextStepAsync(context); // 11:13am 8/14
             if (plan is not null)
             {
                 var result = plan.State.ToString();
