@@ -163,7 +163,7 @@ public class ProcessSkill
             // context = await createLessonTopics.InvokeAsync(context);
 
             var studyPlan = new Plan(processDescription);
-            studyPlan.State.Set("requirements", requirements);
+            // studyPlan.State.Set("requirements", requirements); causes duplication issue
             studyPlan.State.Set("process", processName);
             if (context.Skills is not null &&
                 context.Skills.TryGetFunction("BankAgentPlugin", "GatherProcessRequirements", out var gatherSession))
@@ -301,7 +301,7 @@ public class ProcessSkill
                     context.Variables.Set("updatePlan", null);
                 }
                 // NextStepIndex has already been incremented
-                else if (!processPlan.Steps[processPlan.NextStepIndex - 1].Steps[processStepIndex].State.Get("LESSON_STATE", out var lessonState))
+                else if (!processPlan.Steps[processPlan.NextStepIndex].Steps[processStepIndex].State.Get("LESSON_STATE", out var lessonState))
                 {
                     Console.WriteLine("LESSON_STATE not found, continue plan");
                     context.Variables.Set("continuePlan", "true");
