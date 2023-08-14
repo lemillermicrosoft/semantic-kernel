@@ -22,7 +22,7 @@ The gatherScore should reset for each new set of [REQUIREMENTS] in the given [PR
 [END PROCESS]
 
 [REQUIREMENTS]
-{{$input}}
+{{$requirements}}
 [END REQUIREMENTS]
 
 [CONVERSATION MESSAGE HISTORY]

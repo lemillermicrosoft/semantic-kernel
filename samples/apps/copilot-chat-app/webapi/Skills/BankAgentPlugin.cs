@@ -32,7 +32,7 @@ public class BankAgentPlugin
 
     [SKFunction(description: "Agent chat conversation on gathering requirements for a process.")]
     [SKFunctionName("GatherProcessRequirements")]
-    [SKFunctionContextParameter(Name = "input", Description = "Requirements to focus on gathering e.g. 'contact details'")]
+    [SKFunctionContextParameter(Name = "requirements", Description = "Requirements to focus on gathering e.g. 'contact details'")]
     [SKFunctionContextParameter(Name = "process", Description = "The process e.g. 'new savings account'")]
     [SKFunctionContextParameter(Name = "chat_history", Description = "Chat message history")]
     [SKFunctionContextParameter(Name = "LESSON_STATE", Description = "State of the gathering session")]
@@ -44,15 +44,15 @@ public class BankAgentPlugin
         //
         var requirementsGatheringContext = context.Variables.Clone();
         var lessonFunction = this._semanticSkills["GatherRequirements"];
-        if (context.Variables.Get("input", out var input))
+        if (context.Variables.Get("requirements", out var requirements))
         {
-            requirementsGatheringContext.Update(input);
+            requirementsGatheringContext.Update(requirements);
         }
         else
         {
-            input = context.Variables.Input;
-            context.Variables.Set("topic", input);
-            requirementsGatheringContext.Update(input);
+            requirements = context.Variables.Input;
+            context.Variables.Set("requirements", requirements);
+            requirementsGatheringContext.Update(requirements);
         }
 
         context.Variables.Get("process", out var process);
@@ -66,7 +66,7 @@ public class BankAgentPlugin
         }
         else
         {
-            Console.WriteLine($"Starting requirements gathering session on {input} for {process}.");
+            Console.WriteLine($"Starting requirements gathering session on {requirements} for {process}.");
             var createLessonContext = this._gatherRequirementsPluginKernel.CreateNewContext();
             foreach (KeyValuePair<string, string> x in requirementsGatheringContext)
             {
