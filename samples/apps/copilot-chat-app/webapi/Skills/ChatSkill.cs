@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -628,6 +629,7 @@ public class ChatSkill
             }
 
             var ctx = Utilities.CopyContextWithVariablesClone(context);
+            // var contextString = string.Join("\n", context.Variables.Where(v => v.Key != "userIntent").Select(v => $"{v.Key}: {v.Value}"));
             ctx.Variables.Set("chat_history", historyText);
 
             // TODO - Save chat_history on the plan itself?
@@ -731,8 +733,8 @@ public class ChatSkill
                     }
                 }
                 // Not the plan we want to say is the next action until they start it.
-                else if (!completion.Result.Contains("StudySession", StringComparison.OrdinalIgnoreCase) ||
-                    !completion.Result.Contains("GatherProcessRequirements", StringComparison.OrdinalIgnoreCase))
+                else if (!completion.Result.Contains("GatherProcessRequirements", StringComparison.OrdinalIgnoreCase) ||
+                        !completion.Result.Contains("StudySession", StringComparison.OrdinalIgnoreCase))
                 {
                     try
                     {

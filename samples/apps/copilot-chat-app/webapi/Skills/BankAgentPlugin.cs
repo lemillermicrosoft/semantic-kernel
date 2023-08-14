@@ -100,44 +100,44 @@ public class BankAgentPlugin
 
             Console.WriteLine($"Completion: {completion.Result}");
 
-            // completion is now a JSON object e.g. {"message": "What is the answer to 2+2?", "evaluationScore": 0.2}
+            // completion is now a JSON object e.g. {"message": "What is the answer to 2+2?", "gatherScore": 0.2}
             // parse completion
             string? message = "";
-            string? evaluationScore = "";
+            string? gatherScore = "";
             try
             {
                 var completionObject = JObject.Parse(completion.Result);
                 message = completionObject?["message"]?.ToString();
-                evaluationScore = completionObject?["evaluationScore"]?.ToString();
+                gatherScore = completionObject?["gatherScore"]?.ToString();
             }
 #pragma warning disable CA1031 // Do not catch general exception types
             catch (Exception e)
             {
-                // sometimes it's ending the json prematurely... append ", "evaluationScore": 1}" to the end and try again, otherwise just use the whole thing
+                // sometimes it's ending the json prematurely... append ", "gatherScore": 1}" to the end and try again, otherwise just use the whole thing
                 Console.WriteLine($"Error parsing completion: {e.Message}");
                 try
                 {
-                    var completionObject = JObject.Parse(completion.Result + ", \"evaluationScore\": 1}");
+                    var completionObject = JObject.Parse(completion.Result + ", \"gatherScore\": 1}");
                     message = completionObject?["message"]?.ToString();
-                    evaluationScore = completionObject?["evaluationScore"]?.ToString();
+                    gatherScore = completionObject?["gatherScore"]?.ToString();
                 }
                 catch (Exception e2)
                 {
                     Console.WriteLine($"Error parsing completion: {e2.Message}");
                     message = completion.Result;
-                    evaluationScore = "1"; // assumption
+                    gatherScore = "1"; // assumption
                 }
             }
 #pragma warning restore CA1031 // Do not catch general exception types
 
             context.Variables.Update(message!);
-            context.Variables.Set("evaluationScore", evaluationScore);
+            context.Variables.Set("gatherScore", gatherScore);
 
-            // get float from evaluationScore and see if greater than 0.9
-            Console.WriteLine($"Evaluation score: {evaluationScore}");
-            if (float.TryParse(evaluationScore, out var evaluationScoreFloat))
+            // get float from gatherScore and see if greater than 0.9
+            Console.WriteLine($"Gather score: {gatherScore}");
+            if (float.TryParse(gatherScore, out var gatherScoreFloat))
             {
-                if (evaluationScoreFloat > 0.99)
+                if (gatherScoreFloat > 0.99)
                 {
                     Console.WriteLine("Lesson is done!");
                     context.Variables.Set("LESSON_STATE", "DONE");
