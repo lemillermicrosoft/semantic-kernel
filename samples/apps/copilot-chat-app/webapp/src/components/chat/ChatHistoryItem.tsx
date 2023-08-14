@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft. All rights reserved.
 
-import { Text, makeStyles, mergeClasses, Persona, shorthands, tokens } from '@fluentui/react-components';
+import { Persona, Text, makeStyles, mergeClasses, shorthands, tokens } from '@fluentui/react-components';
 import React from 'react';
 import { AuthorRoles, IChatMessage } from '../../libs/models/ChatMessage';
 import { SKBotAudienceMember } from '../../libs/semantic-kernel/bot-agent/models/SKBotAudienceMember';
@@ -99,7 +99,10 @@ export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = ({ message, getRe
         // Extract plan from bot response
         // const proposedPlan = JSON.parse(message.content).proposedPlan;
         // await getResponse('Yes, proceed', JSON.stringify(proposedPlan), plan?.description);
-        if (isPlan && message.content.indexOf('StudySession') > 0) {
+        if (
+            isPlan &&
+            (message.content.indexOf('StudySession') > 0 || message.content.indexOf('GatherProcessRequirements') > 0)
+        ) {
             await getResponse(
                 'Start Instruction',
                 JSON.stringify(plan),
@@ -188,7 +191,11 @@ export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = ({ message, getRe
                         <PlanViewer
                             plan={plan}
                             actionRequired={message.planApprovalRequired}
-                            learningPlan={isPlan && message.content.indexOf('StudySession') > 0}
+                            learningPlan={
+                                isPlan &&
+                                (message.content.indexOf('StudySession') > 0 ||
+                                    message.content.indexOf('GatherProcessRequirements') > 0)
+                            }
                             onSubmit={onPlanApproval}
                             onCancel={onPlanCancel}
                         />
