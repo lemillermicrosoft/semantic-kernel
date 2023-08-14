@@ -32,15 +32,11 @@ public class ProcessSkill
             "ForEachSkill");
         this._processSkill = this._processSkillKernel.ImportSkill(this, "ProcessSkill");
 
-        this._forEachSkill = this._processSkillKernel.ImportSkill(new ForEachSkill(this._processSkill["ToList"]), "ForEachSkill");
+        this._forEachSkill = this._processSkillKernel.ImportSkill(new ForEachSkill(this._semanticSkills["ToList"]), "ForEachSkill");
 
     }
 
-    [SKFunctionName("ToList")]
-    [SKFunction("Get a list of items")]
-    public Task<SKContext> ToList(SKContext context)
-    {
-        var loanCriteria = new string[]{
+    private static readonly string[] s_loanCriteria = new string[]{
             "Check the borrower's credit score to ensure it meets the minimum requirement set by the lender.",
             "Confirm the borrower's employment status, including job stability and income level.",
             "Calculate the borrower's debt-to-income ratio to ensure it falls within the acceptable range set by the lender.",
@@ -52,10 +48,6 @@ public class ProcessSkill
             "Verify that the borrower has provided all necessary documentation, such as proof of income, bank statements, and identification.",
             "Confirm that the borrower understands and agrees to the loan terms, including interest rate, repayment schedule, and any fees or penalties."
         };
-
-        context.Variables.Update(JsonSerializer.Serialize(loanCriteria));
-        return Task.FromResult(context);
-    }
 
     // CreateLesson
     [SKFunctionName("GetProcess")]
@@ -86,115 +78,75 @@ public class ProcessSkill
             Name = $"{processName} Buddy"
         };
 
-        // TODO Future
-        if (context.Skills?.TryGetFunction("BankAgentPlugin", "GetProcessCriteria", out var GetLessonTopics) == true)
+        context.Variables.Update(processName);
+
+
+        var processContext = processDescription;
+        if (context.Skills is not null && context.Skills.TryGetFunction("DocumentMemorySkill", "QueryDocuments", out var queryDocuments))
         {
-            /*
-            context.Variables.Update(processName);
+            var documentContext = new ContextVariables(string.Join(" ", processName, processDescription));
+            documentContext.Set("userId", userId);
+            documentContext.Set("tokenLimit", tokenLimit);
+            documentContext.Set("contextTokenLimit", contextTokenLimit);
+            var queryDocumentsContext = new SKContext(documentContext, context.Memory, context.Skills, context.Log, context.CancellationToken);
 
-            var processContext = processDescription;
-            if (context.Skills is not null && context.Skills.TryGetFunction("DocumentMemorySkill", "QueryDocuments", out var queryDocuments))
+            var queryDocumentsResult = await queryDocuments.InvokeAsync(queryDocumentsContext);
+            processContext = queryDocumentsResult.Result.ToString();
+            if (string.IsNullOrEmpty(processContext))
             {
-                var documentContext = new ContextVariables(string.Join(" ", processName, processDescription));
-                documentContext.Set("userId", userId);
-                documentContext.Set("tokenLimit", tokenLimit);
-                documentContext.Set("contextTokenLimit", contextTokenLimit);
-                var queryDocumentsContext = new SKContext(documentContext, context.Memory, context.Skills, context.Log, context.CancellationToken);
-
-                var queryDocumentsResult = await queryDocuments.InvokeAsync(queryDocumentsContext);
-                processContext = queryDocumentsResult.Result.ToString();
-                if (string.IsNullOrEmpty(processContext))
-                {
-                    Console.WriteLine($"*understands* I didn't find any documents about {processName}");
-                }
-                else
-                {
-                    Console.WriteLine($"*understands* I found {processContext}");
-                }
+                Console.WriteLine($"*understands* I didn't find any documents about {processName}");
             }
             else
             {
-                Console.WriteLine("DocumentMemorySkill not found");
+                Console.WriteLine($"*understands* I found {processContext}");
             }
-
-            // TODO: Make this better
-            context.Variables.Set("context", processContext); // {DocumentMemorySkill.QueryDocuments $INPUT}
-            var course = context.Variables.Input;
-            context = await GetLessonTopics.InvokeAsync(context);
-
-            // TODO: maybe use the output of GetLessonTopics too
-            var studyPlan = new Plan(processDescription);
-            studyPlan.State.Set("course", course);
-            if (context.Skills is not null &&
-                context.Skills.TryGetFunction("StudySkill", "StudySession", out var gatherSession))
-            {
-                // TODO either make gatherSession plan and then set its outputs or just make that the studyPlan
-                var p = new Plan(gatherSession);
-                p.Outputs.Add("LESSON_STATE");
-                studyPlan.AddSteps(p);
-            }
-
-            var forEachContext = new ContextVariables(context.Result.ToString());
-
-            forEachContext.Set("goalLabel", "Complete Lessons");
-            forEachContext.Set("stepLabel", "Complete Lesson");
-            forEachContext.Set("action", studyPlan.ToJson());
-            forEachContext.Set("content", context.Result.ToString()); // todo advanced condition like amount of time, etc.
-
-            // set the name of the Parameters key to give each `item` in the foreach a name
-            forEachContext.Set("Parameters", "topic"); // This is skill specific
-            var result = await this._processSkillKernel.RunAsync(forEachContext, this._forEachSkill["ForEach"]);
-            if (result.Variables.Get("FOREACH_RESULT", out var forEachResultPlan))
-            {
-                plan = Plan.FromJson(forEachResultPlan.ToString(), context);
-                plan.Name = $"{processName} Buddy";
-                plan.Description = processDescription;
-            }
-            */
         }
-        else // hardcoded
+        else
         {
-            context.Variables.Update(processName);
-            var processContext = processDescription;
-
-            // TODO: Make this better
-            context.Variables.Set("context", processContext); // {DocumentMemorySkill.QueryDocuments $INPUT}
-            var requirements = context.Variables.Input;
-            // context = await createLessonTopics.InvokeAsync(context);
-
-            var studyPlan = new Plan(processDescription);
-            // studyPlan.State.Set("requirements", requirements); causes duplication issue
-            studyPlan.State.Set("process", processName);
-            if (context.Skills is not null &&
-                context.Skills.TryGetFunction("BankAgentPlugin", "GatherProcessRequirements", out var gatherSession))
-            {
-                // TODO either make gatherSession plan and then set its outputs or just make that the studyPlan
-                var p = new Plan(gatherSession);
-                p.Outputs.Add("LESSON_STATE");
-                studyPlan.AddSteps(p);
-            }
-
-            // TODO -- Right now, context doesn't matter, because ToList gives a static list.
-            var forEachContext = new ContextVariables(context.Result.ToString());
-
-
-            // forEachContext.Set("goalLabel", "Complete Lessons");
-            // forEachContext.Set("stepLabel", "Complete Lesson");
-            forEachContext.Set("goalLabel", string.Empty);
-            forEachContext.Set("stepLabel", string.Empty);
-            forEachContext.Set("action", studyPlan.ToJson());
-            // forEachContext.Set("content", context.Result.ToString()); // todo advanced condition like amount of time, etc.
-
-            // set the name of the Parameters key to give each `item` in the foreach a name
-            forEachContext.Set("Parameters", "requirements"); // This is skill specific
-            var result = await this._processSkillKernel.RunAsync(forEachContext, this._forEachSkill["ForEach"]);
-            if (result.Variables.Get("FOREACH_RESULT", out var forEachResultPlan))
-            {
-                plan = Plan.FromJson(forEachResultPlan.ToString(), context);
-                plan.Name = $"{processName} Buddy";
-                plan.Description = processDescription;
-            }
+            Console.WriteLine("DocumentMemorySkill not found");
         }
+
+        // TODO: Make this better
+        context.Variables.Set("context", processContext); // {DocumentMemorySkill.QueryDocuments $INPUT}
+        var requirements = context.Variables.Input;
+
+        if (context.Skills?.TryGetFunction("BankAgentPlugin", "GetProcessCriteria", out var GetProcessCriteria) == true)
+        {
+            context = await GetProcessCriteria.InvokeAsync(context);
+        }
+        else
+        {
+            context.Variables.Update(JsonSerializer.Serialize(s_loanCriteria));
+        }
+
+        var studyPlan = new Plan(processDescription);
+        // studyPlan.State.Set("requirements", requirements); causes duplication issue
+        studyPlan.State.Set("process", processName);
+        if (context.Skills is not null &&
+            context.Skills.TryGetFunction("BankAgentPlugin", "GatherProcessRequirements", out var gatherSession))
+        {
+            // TODO either make gatherSession plan and then set its outputs or just make that the studyPlan
+            var p = new Plan(gatherSession);
+            p.Outputs.Add("LESSON_STATE");
+            studyPlan.AddSteps(p);
+        }
+
+        var forEachContext = new ContextVariables(context.Result.ToString());
+        forEachContext.Set("goalLabel", string.Empty);
+        forEachContext.Set("stepLabel", string.Empty);
+        forEachContext.Set("action", studyPlan.ToJson());
+        forEachContext.Set("content", context.Result.ToString()); // todo advanced condition like amount of time, etc.
+
+        // set the name of the Parameters key to give each `item` in the foreach a name
+        forEachContext.Set("Parameters", "requirements"); // This is skill specific
+        var result = await this._processSkillKernel.RunAsync(forEachContext, this._forEachSkill["ForEach"]);
+        if (result.Variables.Get("FOREACH_RESULT", out var forEachResultPlan))
+        {
+            plan = Plan.FromJson(forEachResultPlan.ToString(), context);
+            plan.Name = $"{processName} Buddy";
+            plan.Description = processDescription;
+        }
+
 
         var processPlanJson = plan.ToJson();
         var ProcessPlanstring = processPlanJson; //ProcessSkill.ToPlanString(plan);
