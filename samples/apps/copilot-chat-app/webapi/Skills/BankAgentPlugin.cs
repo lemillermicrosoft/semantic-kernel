@@ -86,7 +86,7 @@ public class BankAgentPlugin
     [SKFunctionName("PrepareMessage")]
     [SKFunctionContextParameter(Name = "message", Description = "Message to send")]
     [SKFunctionContextParameter(Name = "chat_history", Description = "Message to send")]
-    [SKFunctionContextParameter(Name = "input", Description = "Message to send")]
+    [SKFunctionContextParameter(Name = "requirements", Description = "Message to send")]
     [SKFunctionContextParameter(Name = "context", Description = "Message to send")]
     [SKFunctionContextParameter(Name = "process", Description = "Message to send")]
     [SKFunctionContextParameter(Name = "LESSON_STATE", Description = "State of the study session")]

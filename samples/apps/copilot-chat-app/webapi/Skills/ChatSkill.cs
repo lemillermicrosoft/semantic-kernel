@@ -583,7 +583,7 @@ public class ChatSkill
                 SKContext planContext =
                     action.Contains("StudySession", StringComparison.Ordinal) ||
                     action.Contains("LearningSkill", StringComparison.Ordinal) ||
-                    action.Contains("BankAgentPlugin", StringComparison.Ordinal) ||
+                    // action.Contains("BankAgentPlugin", StringComparison.Ordinal) ||
                     action.Contains("ProcessSkill", StringComparison.Ordinal) ||
                     action.Contains("GatherProcessRequirements", StringComparison.Ordinal)
                     ? new SKContext(
@@ -630,7 +630,10 @@ public class ChatSkill
 
             var ctx = Utilities.CopyContextWithVariablesClone(context);
             // var contextString = string.Join("\n", context.Variables.Where(v => v.Key != "userIntent").Select(v => $"{v.Key}: {v.Value}"));
-            ctx.Variables.Set("chat_history", historyText);
+            if (historyText.Split("\n", StringSplitOptions.RemoveEmptyEntries).Length > 2)
+            {
+                ctx.Variables.Set("chat_history", historyText);
+            }
 
             // TODO - Save chat_history on the plan itself?
             var completion = await functionOrPlan.InvokeAsync(ctx);

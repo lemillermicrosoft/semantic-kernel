@@ -148,15 +148,17 @@ public class SemanticKernelController : ControllerBase, IDisposable
             contentModerationOptions: contentModerationOptions.Value,
             contentModerator: contentModerator,
             logger: this._logger);
+
+        // TODO I don't think these are needed?
         // kernel.ImportSkill(learningSkill, "LearningSkill");
         kernel.ImportSkill(learningSkill, "ProcessSkill");
         // kernel.ImportSkill(studySkill, "StudySkill");
         kernel.ImportSkill(bankAgentPlugin, "BankAgentPlugin");
 
-        // Register native skills with the chat's kernel
+        // Register native skills with the chat's kernel -- _actionKernel
         // chatBot.Kernel.ImportSkill(learningSkill, "LearningSkill");
         chatBot.Kernel.ImportSkill(processSkill, "ProcessSkill");
-        chatBot.Kernel.ImportSkill(assistantSkill, "AssistantSkill");
+        // chatBot.Kernel.ImportSkill(assistantSkill, "AssistantSkill");
 
         // Get the function to invoke
         ISKFunction? function = null;

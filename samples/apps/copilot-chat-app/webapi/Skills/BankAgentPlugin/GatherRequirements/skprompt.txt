@@ -14,7 +14,7 @@ End message with [END MESSAGE]
 [END PROCESS]
 
 [REQUIREMENTS]
-{{$input}}
+{{$requirements}}
 [END REQUIREMENTS]
 
 [MESSAGE]

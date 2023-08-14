@@ -8,7 +8,9 @@
         "top_p": 0,
         "presence_penalty": 0,
         "frequency_penalty": 0,
-        "stop_sequences": ["[END MESSAGE]"]
+        "stop_sequences": [
+            "[END MESSAGE]"
+        ]
     },
     "input": {
         "parameters": [
@@ -25,6 +27,11 @@
             {
                 "name": "process",
                 "description": "The process e.g. 'new savings account'",
+                "defaultValue": ""
+            },
+            {
+                "name": "requirements",
+                "description": "",
                 "defaultValue": ""
             }
         ]

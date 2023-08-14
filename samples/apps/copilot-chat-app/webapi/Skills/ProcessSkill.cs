@@ -154,8 +154,16 @@ public class ProcessSkill
         }
         else // hardcoded
         {
+            context.Variables.Update(processName);
+            var processContext = processDescription;
+
+            // TODO: Make this better
+            context.Variables.Set("context", processContext); // {DocumentMemorySkill.QueryDocuments $INPUT}
+            var requirements = context.Variables.Input;
+            // context = await createLessonTopics.InvokeAsync(context);
+
             var studyPlan = new Plan(processDescription);
-            // var course = context.Variables.Input;
+            studyPlan.State.Set("requirements", requirements);
             studyPlan.State.Set("process", processName);
             if (context.Skills is not null &&
                 context.Skills.TryGetFunction("BankAgentPlugin", "GatherProcessRequirements", out var gatherSession))
@@ -166,17 +174,19 @@ public class ProcessSkill
                 studyPlan.AddSteps(p);
             }
 
+            // TODO -- Right now, context doesn't matter, because ToList gives a static list.
             var forEachContext = new ContextVariables(context.Result.ToString());
+
 
             // forEachContext.Set("goalLabel", "Complete Lessons");
             // forEachContext.Set("stepLabel", "Complete Lesson");
             forEachContext.Set("goalLabel", string.Empty);
             forEachContext.Set("stepLabel", string.Empty);
             forEachContext.Set("action", studyPlan.ToJson());
-            forEachContext.Set("content", context.Result.ToString()); // todo advanced condition like amount of time, etc.
+            // forEachContext.Set("content", context.Result.ToString()); // todo advanced condition like amount of time, etc.
 
             // set the name of the Parameters key to give each `item` in the foreach a name
-            forEachContext.Set("Parameters", "input"); // This is skill specific
+            forEachContext.Set("Parameters", "requirements"); // This is skill specific
             var result = await this._processSkillKernel.RunAsync(forEachContext, this._forEachSkill["ForEach"]);
             if (result.Variables.Get("FOREACH_RESULT", out var forEachResultPlan))
             {
@@ -341,7 +351,7 @@ public class ProcessSkill
     }
 
     // ListProcessPlans
-    [SKFunctionName("ListProcessnPlans")]
+    [SKFunctionName("ListProcessPlans")]
     [SKFunctionContextParameter(Name = "processName", Description = "Name of the process")]
     [SKFunctionContextParameter(Name = "processDescription", Description = "Description of the process")]
     [SKFunction("List known process plans")]
