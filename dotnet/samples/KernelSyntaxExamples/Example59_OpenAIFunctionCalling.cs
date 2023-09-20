@@ -26,20 +26,21 @@ public static class Example59_OpenAIFunctionCalling
         var chatCompletion = kernel.GetService<IChatCompletion>();
         var chatHistory = chatCompletion.CreateNewChat();
 
+        await CompleteChatWithFunctionsAsync("What day is today?", chatHistory, chatCompletion, kernel);
+
+        // Set FunctionCall to the name of a specific function to force the model to use that function.
         OpenAIRequestSettings requestSettings = new()
         {
             // Include all functions registered with the kernel.
             // Alternatively, you can provide your own list of OpenAIFunctions to include.
             Functions = kernel.Functions.GetFunctionViews().Select(f => f.ToOpenAIFunction()).ToList(),
         };
-
-        // Set FunctionCall to the name of a specific function to force the model to use that function.
         requestSettings.FunctionCall = "TimePlugin-Date";
-        await CompleteChatWithFunctionsAsync("What day is today?", chatHistory, chatCompletion, kernel, requestSettings);
+        await CompleteChatWithFunctionsManuallyAsync("What day is today?", chatHistory, chatCompletion, kernel, requestSettings);
 
         // Set FunctionCall to auto to let the model choose the best function to use.
         requestSettings.FunctionCall = OpenAIRequestSettings.FunctionCallAuto;
-        await CompleteChatWithFunctionsAsync("What computer tablets are available for under $200?", chatHistory, chatCompletion, kernel, requestSettings);
+        await CompleteChatWithFunctionsManuallyAsync("What computer tablets are available for under $200?", chatHistory, chatCompletion, kernel, requestSettings);
     }
 
     private static async Task<IKernel> InitializeKernelAsync()
@@ -62,6 +63,22 @@ public static class Example59_OpenAIFunctionCalling
     {
         Console.WriteLine($"User message: {ask}");
         chatHistory.AddUserMessage(ask);
+
+        Console.WriteLine("Result: ");
+        var result = await chatCompletion.GenerateMessageWithFunctionsAsync(chatHistory, kernel);
+        Console.WriteLine(result);
+    }
+
+    private static async Task CompleteChatWithFunctionsManuallyAsync(string ask, ChatHistory chatHistory, IChatCompletion chatCompletion, IKernel kernel)
+    {
+        Console.WriteLine($"User message: {ask}");
+        chatHistory.AddUserMessage(ask);
+
+        // Retrieve available functions from the kernel and add to request settings
+        OpenAIRequestSettings requestSettings = new()
+        {
+            Functions = kernel.Skills.GetFunctionViews().Select(f => f.ToOpenAIFunction()).ToList()
+        };
 
         // Send request
         var chatResult = (await chatCompletion.GetChatCompletionsAsync(chatHistory, requestSettings))[0];
@@ -96,6 +113,7 @@ public static class Example59_OpenAIFunctionCalling
                 var result = (await kernel.RunAsync(func, context)).GetValue<string>();
                 if (!string.IsNullOrEmpty(result))
                 {
+                    Console.WriteLine("Result: ");
                     Console.WriteLine(result);
 
                     // Add the function result to chat history
