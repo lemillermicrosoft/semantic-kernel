@@ -12,7 +12,6 @@ namespace Microsoft.SemanticKernel.Planners;
 /// </summary>
 public sealed class SequentialPlannerConfig : PlannerConfigBase
 {
-
     /// <summary>
     /// The maximum number of tokens to allow in a plan.
     /// </summary>
