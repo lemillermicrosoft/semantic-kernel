@@ -590,7 +590,10 @@ public class StepwisePlanner : IStepwisePlanner
             .ToList();
 
         List<FunctionView>? result = null;
-        if (string.IsNullOrEmpty(semanticQuery) || this.Config.Memory is NullMemory || this.Config.RelevancyThreshold is null)
+        var semanticMemoryConfig = this.Config.SemanticMemory;
+        if (string.IsNullOrEmpty(semanticQuery) ||
+            semanticMemoryConfig is null ||
+            semanticMemoryConfig.Memory is NullMemory)
         {
             // If no semantic query is provided, return all available functions.
             // If a Memory provider has not been registered, return all available functions.
@@ -601,21 +604,21 @@ public class StepwisePlanner : IStepwisePlanner
             result = new List<FunctionView>();
 
             // Remember functions in memory so that they can be searched.
-            await RememberFunctionsAsync(this.Config.Memory, availableFunctions, cancellationToken).ConfigureAwait(false);
+            await RememberFunctionsAsync(semanticMemoryConfig.Memory, availableFunctions, cancellationToken).ConfigureAwait(false);
 
             // Search for functions that match the semantic query.
-            var memories = this.Config.Memory.SearchAsync(
+            var memories = semanticMemoryConfig.Memory.SearchAsync(
                 PlannerMemoryCollectionName,
                 semanticQuery!,
-                this.Config.MaxRelevantFunctions,
-                this.Config.RelevancyThreshold.Value,
+                semanticMemoryConfig.MaxRelevantFunctions,
+                semanticMemoryConfig.RelevancyThreshold.HasValue ? semanticMemoryConfig.RelevancyThreshold.Value : 0.0,
                 cancellationToken: cancellationToken);
 
             // Add functions that were found in the search results.
             result.AddRange(await this.GetRelevantFunctionsAsync(availableFunctions, memories, cancellationToken).ConfigureAwait(false));
 
             // Add any missing functions that were included but not found in the search results.
-            var missingFunctions = this.Config.IncludedFunctions
+            var missingFunctions = semanticMemoryConfig.IncludedFunctions
                 .Except(result.Select(x => (x.PluginName, x.Name)))
                 .Join(availableFunctions, f => f, af => (af.PluginName, af.Name), (_, af) => af);
 
