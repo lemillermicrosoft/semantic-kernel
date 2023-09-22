@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
@@ -16,7 +15,6 @@ using Microsoft.SemanticKernel.AI;
 using Microsoft.SemanticKernel.AI.ChatCompletion;
 using Microsoft.SemanticKernel.AI.TextCompletion;
 using Microsoft.SemanticKernel.Diagnostics;
-using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.Planners.Stepwise;
 using Microsoft.SemanticKernel.Planning;
@@ -360,7 +358,7 @@ public class StepwisePlanner : IStepwisePlanner
 
     private async Task<string> GetUserManualAsync(string question, SKContext context, CancellationToken cancellationToken)
     {
-        var descriptions = await this.GetFunctionDescriptionsAsync(question, cancellationToken).ConfigureAwait(false);
+        var descriptions = await this._kernel.Functions.GetFunctionsManualAsync(this.Config, question, this._logger, cancellationToken).ConfigureAwait(false);
         context.Variables.Set("functionDescriptions", descriptions);
         return await this._promptRenderer.RenderAsync(this._manualTemplate, context, cancellationToken).ConfigureAwait(false);
     }
@@ -522,8 +520,16 @@ public class StepwisePlanner : IStepwisePlanner
 
     private async Task<string?> InvokeActionAsync(string actionName, Dictionary<string, string> actionVariables, CancellationToken cancellationToken)
     {
-        var availableFunctions = await this.GetFilteredFunctionsAsync(null, cancellationToken).ConfigureAwait(false);
-        var targetFunction = availableFunctions.FirstOrDefault(f => ToFullyQualifiedName(f) == actionName);
+        FunctionUtils.GetFunctionCallbackNames(actionName, out var pluginName, out var functionName);
+        if (string.IsNullOrEmpty(functionName))
+        {
+            this._logger?.LogDebug("Attempt to invoke action {Action} failed", actionName);
+            return $"Could not parse functionName from actionName: {actionName}. Please try again using one of the [AVAILABLE FUNCTIONS].";
+        }
+
+        var getFunctionCallback = this.Config.GetFunctionCallback ?? this._kernel.Functions.GetFunctionCallback();
+        var targetFunction = getFunctionCallback(pluginName, functionName);
+
         if (targetFunction == null)
         {
             this._logger?.LogDebug("Attempt to invoke action {Action} failed", actionName);
@@ -532,10 +538,8 @@ public class StepwisePlanner : IStepwisePlanner
 
         try
         {
-            ISKFunction function = this.GetFunction(targetFunction);
-
             var vars = this.CreateActionContextVariables(actionVariables);
-            var kernelResult = await this._kernel.RunAsync(function, vars, cancellationToken).ConfigureAwait(false);
+            var kernelResult = await this._kernel.RunAsync(targetFunction, vars, cancellationToken).ConfigureAwait(false);
             var result = kernelResult.GetValue<string>();
 
             this._logger?.LogTrace("Invoked {FunctionName}. Result: {Result}", targetFunction.Name, result);
@@ -546,142 +550,6 @@ public class StepwisePlanner : IStepwisePlanner
         {
             this._logger?.LogError(e, "Something went wrong in system step: {Plugin}.{Function}. Error: {Error}", targetFunction.PluginName, targetFunction.Name, e.Message);
             throw;
-        }
-    }
-
-    private ISKFunction GetFunction(FunctionView targetFunction)
-    {
-        var getFunction = (string pluginName, string functionName) =>
-        {
-            return this._kernel.Functions.GetFunction(pluginName, functionName);
-        };
-        var getFunctionCallback = this.Config.GetFunctionCallback ?? getFunction;
-        var function = getFunctionCallback(targetFunction.PluginName, targetFunction.Name);
-        return function;
-    }
-
-    private async Task<string> GetFunctionDescriptionsAsync(string question, CancellationToken cancellationToken)
-    {
-        // Use configured function provider if available, otherwise use the default SKContext function provider.
-        var availableFunctions = await this.GetFilteredFunctionsAsync(question, cancellationToken).ConfigureAwait(false);
-        var functionDescriptions = string.Join("\n\n", availableFunctions.Select(x => ToManualString(x)));
-        return functionDescriptions;
-    }
-
-    private async Task<IOrderedEnumerable<FunctionView>> GetFilteredFunctionsAsync(string? question, CancellationToken cancellationToken)
-    {
-        IEnumerable<FunctionView> unfilteredFunctions = this.Config.GetAvailableFunctionsAsync is null ?
-            await this.GetAvailableFunctionsAsync(question, cancellationToken).ConfigureAwait(false) :
-            await this.Config.GetAvailableFunctionsAsync(this.Config, null, cancellationToken).ConfigureAwait(false);
-
-        return unfilteredFunctions
-            .Where(s => !this.Config.ExcludedPlugins.Contains(s.PluginName, StringComparer.OrdinalIgnoreCase) && !this.Config.ExcludedFunctions.Contains(s.Name, StringComparer.OrdinalIgnoreCase))
-            .OrderBy(x => x.PluginName)
-            .ThenBy(x => x.Name);
-    }
-
-    private async Task<IOrderedEnumerable<FunctionView>> GetAvailableFunctionsAsync(string? semanticQuery, CancellationToken cancellationToken)
-    {
-        var functionsView = this._kernel.Functions.GetFunctionViews();
-
-        var availableFunctions = functionsView
-            .Where(s => !this.Config.ExcludedPlugins.Contains(s.PluginName, StringComparer.OrdinalIgnoreCase)
-                && !this.Config.ExcludedFunctions.Contains(s.Name, StringComparer.OrdinalIgnoreCase))
-            .ToList();
-
-        List<FunctionView>? result = null;
-        var semanticMemoryConfig = this.Config.SemanticMemory;
-        if (string.IsNullOrEmpty(semanticQuery) ||
-            semanticMemoryConfig is null ||
-            semanticMemoryConfig.Memory is NullMemory)
-        {
-            // If no semantic query is provided, return all available functions.
-            // If a Memory provider has not been registered, return all available functions.
-            result = availableFunctions;
-        }
-        else
-        {
-            result = new List<FunctionView>();
-
-            // Remember functions in memory so that they can be searched.
-            await RememberFunctionsAsync(semanticMemoryConfig.Memory, availableFunctions, cancellationToken).ConfigureAwait(false);
-
-            // Search for functions that match the semantic query.
-            var memories = semanticMemoryConfig.Memory.SearchAsync(
-                PlannerMemoryCollectionName,
-                semanticQuery!,
-                semanticMemoryConfig.MaxRelevantFunctions,
-                semanticMemoryConfig.RelevancyThreshold.HasValue ? semanticMemoryConfig.RelevancyThreshold.Value : 0.0,
-                cancellationToken: cancellationToken);
-
-            // Add functions that were found in the search results.
-            result.AddRange(await this.GetRelevantFunctionsAsync(availableFunctions, memories, cancellationToken).ConfigureAwait(false));
-
-            // Add any missing functions that were included but not found in the search results.
-            var missingFunctions = semanticMemoryConfig.IncludedFunctions
-                .Except(result.Select(x => (x.PluginName, x.Name)))
-                .Join(availableFunctions, f => f, af => (af.PluginName, af.Name), (_, af) => af);
-
-            result.AddRange(missingFunctions);
-        }
-
-        return result
-            .OrderBy(x => x.PluginName)
-            .ThenBy(x => x.Name);
-    }
-
-    private async Task<IEnumerable<FunctionView>> GetRelevantFunctionsAsync(
-        IEnumerable<FunctionView> availableFunctions,
-        IAsyncEnumerable<MemoryQueryResult> memories,
-        CancellationToken cancellationToken = default)
-    {
-        var relevantFunctions = new ConcurrentBag<FunctionView>();
-        await foreach (var memoryEntry in memories.WithCancellation(cancellationToken))
-        {
-            var function = availableFunctions.FirstOrDefault(x => ToFullyQualifiedName(x) == memoryEntry.Metadata.Id);
-            if (function != null)
-            {
-                if (this._logger?.IsEnabled(LogLevel.Debug) == true)
-                {
-                    this._logger?.LogDebug("Found relevant function. Relevance Score: {0}, Function: {1}", memoryEntry.Relevance, ToFullyQualifiedName(function));
-                }
-
-                relevantFunctions.Add(function);
-            }
-        }
-
-        return relevantFunctions;
-    }
-
-    /// <summary>
-    /// Saves all available functions to memory.
-    /// </summary>
-    /// <param name="memory">The memory provided to store the functions to.</param>
-    /// <param name="availableFunctions">The available functions to save.</param>
-    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests. The default is <see cref="CancellationToken.None"/>.</param>
-    internal static async Task RememberFunctionsAsync(
-        ISemanticTextMemory memory,
-        List<FunctionView> availableFunctions,
-        CancellationToken cancellationToken = default)
-    {
-        foreach (var function in availableFunctions)
-        {
-            var functionName = ToFullyQualifiedName(function);
-            var key = functionName;
-            var description = string.IsNullOrEmpty(function.Description) ? functionName : function.Description;
-            var textToEmbed = ToEmbeddingString(function);
-
-            // It'd be nice if there were a saveIfNotExists method on the memory interface
-            var memoryEntry = await memory.GetAsync(collection: PlannerMemoryCollectionName, key: key, withEmbedding: false,
-                cancellationToken: cancellationToken).ConfigureAwait(false);
-            if (memoryEntry == null)
-            {
-                // TODO It'd be nice if the minRelevanceScore could be a parameter for each item that was saved to memory
-                // As folks may want to tune their functions to be more or less relevant.
-                // Memory now supports these such strategies.
-                await memory.SaveInformationAsync(collection: PlannerMemoryCollectionName, text: textToEmbed, id: key, description: description,
-                    additionalMetadata: string.Empty, cancellationToken: cancellationToken).ConfigureAwait(false);
-            }
         }
     }
 

@@ -2,16 +2,21 @@
 
 using System.Linq;
 
-namespace Microsoft.SemanticKernel.Planners.Sequential;
+#pragma warning disable IDE0130
+namespace Microsoft.SemanticKernel.Planners;
+#pragma warning restore IDE0130
 
-internal static class FunctionViewExtensions
+/// <summary>
+/// Provides extension methods for the <see cref="FunctionView"/> class.
+/// </summary>
+public static class FunctionViewExtensions
 {
     /// <summary>
     /// Create a manual-friendly string for a function.
     /// </summary>
     /// <param name="function">The function to create a manual-friendly string for.</param>
     /// <returns>A manual-friendly string for a function.</returns>
-    internal static string ToManualString(this FunctionView function)
+    public static string ToManualString(this FunctionView function)
     {
         var inputs = string.Join("\n", function.Parameters.Select(parameter =>
         {
