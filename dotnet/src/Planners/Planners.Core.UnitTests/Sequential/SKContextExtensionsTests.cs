@@ -40,7 +40,7 @@ public class SKContextExtensionsTests
 
         // Arrange GetAvailableFunctionsAsync parameters
         var context = new SKContext(kernel.Object, variables, functions);
-        var config = new SequentialPlannerConfig() { Memory = memory.Object };
+        var config = new SequentialPlannerConfig() { SemanticMemory = new() { Memory = memory.Object } };
         var semanticQuery = "test";
 
         // Act
@@ -92,7 +92,7 @@ public class SKContextExtensionsTests
 
         // Arrange GetAvailableFunctionsAsync parameters
         var context = new SKContext(kernel.Object, variables, functions.Object);
-        var config = new SequentialPlannerConfig() { Memory = memory.Object };
+        var config = new SequentialPlannerConfig() { SemanticMemory = new() { Memory = memory.Object } };
         var semanticQuery = "test";
 
         // Act
@@ -104,7 +104,7 @@ public class SKContextExtensionsTests
         Assert.Equal(functionView, result[0]);
 
         // Arrange update IncludedFunctions
-        config.IncludedFunctions.UnionWith(new List<(string, string)> { ("pluginName", "nativeFunctionName") });
+        config.SemanticMemory.IncludedFunctions.UnionWith(new List<(string, string)> { ("pluginName", "nativeFunctionName") });
 
         // Act
         result = (await context.GetAvailableFunctionsAsync(config, semanticQuery)).ToList();
@@ -157,7 +157,7 @@ public class SKContextExtensionsTests
 
         // Arrange GetAvailableFunctionsAsync parameters
         var context = new SKContext(kernel.Object, variables, functions.Object);
-        var config = new SequentialPlannerConfig { RelevancyThreshold = 0.78, Memory = memory.Object };
+        var config = new SequentialPlannerConfig() { SemanticMemory = new() { RelevancyThreshold = 0.78, Memory = memory.Object } };
         var semanticQuery = "test";
 
         // Act
@@ -169,7 +169,7 @@ public class SKContextExtensionsTests
         Assert.Equal(functionView, result[0]);
 
         // Arrange update IncludedFunctions
-        config.IncludedFunctions.UnionWith(new List<(string, string)> { ("pluginName", "nativeFunctionName") });
+        config.SemanticMemory.IncludedFunctions.UnionWith(new List<(string, string)> { ("pluginName", "nativeFunctionName") });
 
         // Act
         result = (await context.GetAvailableFunctionsAsync(config, semanticQuery)).ToList();
@@ -210,7 +210,7 @@ public class SKContextExtensionsTests
 
         // Arrange GetAvailableFunctionsAsync parameters
         var context = new SKContext(kernel.Object, variables, functions);
-        var config = new SequentialPlannerConfig { RelevancyThreshold = 0.78, Memory = memory.Object };
+        var config = new SequentialPlannerConfig { SemanticMemory = new() { RelevancyThreshold = 0.78, Memory = memory.Object } };
         var semanticQuery = "test";
 
         // Act
