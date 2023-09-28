@@ -152,7 +152,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Reliability.Polly", "src\Ex
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Reliability.Basic", "src\Extensions\Reliability.Basic\Reliability.Basic.csproj", "{3DC4DBD8-20A5-4937-B4F5-BB5E24E7A567}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Planning.FlowPlanner", "src\Extensions\Planning.FlowPlanner\Planning.FlowPlanner.csproj", "{B2E86D65-D94B-43B5-A38B-59DF2B90CC5E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Planning.FlowOrchestrator", "src\Extensions\Planning.FlowOrchestrator\Planning.FlowOrchestrator.csproj", "{B2E86D65-D94B-43B5-A38B-59DF2B90CC5E}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "plugins", "plugins", "{D6D598DF-C17C-46F4-B2B9-CDE82E2DE132}"
 EndProject

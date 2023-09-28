@@ -1,6 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-namespace SemanticKernel.IntegrationTests.Planning.FlowPlanner;
+namespace SemanticKernel.IntegrationTests.Planning.FlowOrchestrator;
 
 using System.ComponentModel;
 using System.Text.Json;

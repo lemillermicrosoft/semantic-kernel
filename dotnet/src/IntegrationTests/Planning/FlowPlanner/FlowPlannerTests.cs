@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Memory;
-using Microsoft.SemanticKernel.Planning.Flow;
+using Microsoft.SemanticKernel.Experimental.Orchestration;
 using Microsoft.SemanticKernel.Plugins.Core;
 using Microsoft.SemanticKernel.Plugins.Web;
 using Microsoft.SemanticKernel.Plugins.Web.Bing;
@@ -15,13 +15,13 @@ using SemanticKernel.IntegrationTests.TestSettings;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace SemanticKernel.IntegrationTests.Planning.FlowPlanner;
+namespace SemanticKernel.IntegrationTests.Planning.FlowOrchestrator;
 
-public sealed class FlowPlannerTests : IDisposable
+public sealed class FlowOrchestratorTests : IDisposable
 {
     private readonly string _bingApiKey;
 
-    public FlowPlannerTests(ITestOutputHelper output)
+    public FlowOrchestratorTests(ITestOutputHelper output)
     {
         this._logger = NullLoggerFactory.Instance;
         this._testOutputHelper = new RedirectOutput(output);
@@ -31,7 +31,7 @@ public sealed class FlowPlannerTests : IDisposable
             .AddJsonFile(path: "testsettings.json", optional: false, reloadOnChange: true)
             .AddJsonFile(path: "testsettings.development.json", optional: true, reloadOnChange: true)
             .AddEnvironmentVariables()
-            .AddUserSecrets<FlowPlannerTests>()
+            .AddUserSecrets<FlowOrchestratorTests>()
             .Build();
 
         string? bingApiKeyCandidate = this._configuration["Bing:ApiKey"];
@@ -79,7 +79,7 @@ steps:
       - email
 ");
 
-        var planner = new Microsoft.SemanticKernel.Planning.FlowPlanner(builder, new FlowStatusProvider(new VolatileMemoryStore()), skills);
+        var planner = new Microsoft.SemanticKernel.Planning.FlowOrchestrator(builder, new FlowStatusProvider(new VolatileMemoryStore()), skills);
 
         // Act
         var result = await planner.ExecuteFlowAsync(flow, sessionId, "Who is the current president of the United States? What is his current age divided by 2");
@@ -123,7 +123,7 @@ steps:
         GC.SuppressFinalize(this);
     }
 
-    ~FlowPlannerTests()
+    ~FlowOrchestratorTests()
     {
         this.Dispose(false);
     }
