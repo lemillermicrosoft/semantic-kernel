@@ -18,6 +18,20 @@ public class ChatHistory : List<ChatMessageBase>
         }
     }
 
+    // two *new* types of messages, assistant function and function result|response
+    // assistant function has null 'content' and non-null 'function_call'
+    // function result has new name and non-null 'content'
+
+    private sealed class ChatFunctionRequestMessage : ChatMessageBase
+    {
+        public ChatFunctionRequestMessage(string function_call) : base(AuthorRole.Assistant, null)
+        {
+            this.FunctionCall = function_call;
+        }
+
+        public string FunctionCall { get; }
+    }
+
     /// <summary>
     /// List of messages in the chat
     /// </summary>
@@ -42,6 +56,11 @@ public class ChatHistory : List<ChatMessageBase>
     public void InsertMessage(int index, AuthorRole authorRole, string content)
     {
         this.Insert(index, new ChatMessage(authorRole, content));
+    }
+
+    public void AddFunctionMessage(string content, string function)
+    {
+        this.Add(new ChatFunctionMessage(content, function));
     }
 
     /// <summary>

@@ -51,7 +51,7 @@ public static class Example59_OpenAIFunctionCalling
         // Create kernel with chat completions service
         IKernel kernel = new KernelBuilder()
             .WithLoggerFactory(ConsoleLogger.LoggerFactory)
-            .WithOpenAIChatCompletionService(TestConfiguration.OpenAI.ChatModelId, TestConfiguration.OpenAI.ApiKey, serviceId: "chat")
+            .WithOpenAIChatCompletionService("gpt-3.5-turbo-0613", TestConfiguration.OpenAI.ApiKey, serviceId: "chat")
             //.WithAzureChatCompletionService(TestConfiguration.AzureOpenAI.ChatDeploymentName, TestConfiguration.AzureOpenAI.Endpoint, TestConfiguration.AzureOpenAI.ApiKey, serviceId: "chat")
             .Build();
 

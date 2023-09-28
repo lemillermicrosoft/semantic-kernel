@@ -37,6 +37,7 @@ public static class ChatCompletionExtensions
         ChatHistory returnMessages = chat;
         IReadOnlyFunctionCollection functionCollection = kernel.Functions;
         OpenAIRequestSettings chatRequestSettings = requestSettings as OpenAIRequestSettings ?? new();
+        chatRequestSettings.FunctionCall = OpenAIRequestSettings.FunctionCallAuto;
         chatRequestSettings.Functions = functionCollection.GetFunctionViews().Select(functionView => functionView.ToOpenAIFunction()).ToList();
 
         var chatMessages = await chatCompletion.GenerateChatHistoryWithFunctionsAsync(chat, kernel, functionCollection, chatRequestSettings, cancellationToken).ConfigureAwait(false);
@@ -54,7 +55,8 @@ public static class ChatCompletionExtensions
     {
         ChatHistory returnMessages = chat;
         var chatResults = await chatCompletion.GetChatCompletionsAsync(chat, chatRequestSettings, cancellationToken).ConfigureAwait(false);
-        var firstChatMessage = await chatResults[0].GetChatMessageAsync(cancellationToken).ConfigureAwait(false);
+        var firstChatMessage = await chatResults[0].GetChatMessageAsync(cancellationToken).ConfigureAwait(false);// as SKChatMessage;
+        // firstChatMessage?.
         returnMessages.Messages.Add(firstChatMessage);
 
         OpenAIFunctionResponse? functionResponse = chatResults[0].GetFunctionResponse();

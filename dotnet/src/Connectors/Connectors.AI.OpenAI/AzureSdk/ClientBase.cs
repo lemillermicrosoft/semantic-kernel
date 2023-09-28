@@ -403,7 +403,8 @@ public abstract class ClientBase
 
         if (validRole != ChatRole.User &&
             validRole != ChatRole.System &&
-            validRole != ChatRole.Assistant)
+            validRole != ChatRole.Assistant &&
+            validRole != ChatRole.Function)
         {
             throw new ArgumentException($"Invalid chat message author role: {role}");
         }
