@@ -7,31 +7,25 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-#pragma warning disable IDE0005
 using Microsoft.ML.Tokenizers;
-#pragma warning restore IDE0005
-
 using Microsoft.SemanticKernel.AI.Embeddings;
 
-#pragma warning disable IDE0130
-// ReSharper disable once CheckNamespace - Using NS of KernelConfig
-namespace Microsoft.SemanticKernel;
-#pragma warning restore IDE0130
+namespace Microsoft.SemanticKernel.Connectors.AI.MicrosoftML.TextEmbedding;
+
 /// <summary>
-/// Provides text embedding generation using a BPE tokenizer.
+/// Provides text embedding generation using a BPE or custom tokenizer.
 /// </summary>
 public sealed class MicrosoftMLTextEmbeddingGeneration : ITextEmbeddingGeneration
 {
-    private string vocabFilePath;
-    private string mergeFilePath;
     private Tokenizer tokenizer;
+
     /// <summary>
     /// Gets the logger instance.
     /// </summary>
     private ILogger Logger { get; set; }
 
     /// <summary>
-    /// Initializes a new instance of the MicrosoftMLTextEmbeddingGeneration class.
+    /// Initializes a new instance of the MicrosoftMLTextEmbeddingGeneration class using the default Bpe tokenizer.
     /// </summary>
     /// <param name="vocabFilePath">The JSON file path containing the dictionary of string keys and their ids.</param>
     /// <param name="mergeFilePath">The file path containing the tokens's pairs list.</param>
@@ -42,9 +36,21 @@ public sealed class MicrosoftMLTextEmbeddingGeneration : ITextEmbeddingGeneratio
         ILoggerFactory? loggerFactory = null
     )
     {
-        this.vocabFilePath = vocabFilePath;
-        this.mergeFilePath = mergeFilePath;
         this.tokenizer = new Tokenizer(new Bpe(vocabFilePath, mergeFilePath));
+        this.Logger = loggerFactory is not null ? loggerFactory.CreateLogger(this.GetType()) : NullLogger.Instance;
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the MicrosoftMLTextEmbeddingGeneration class using a custom tokenizer.
+    /// </summary>
+    /// <param name="tokenizer">The tokenizer to use for tokenization and embeddings generation.</param>
+    /// <param name="loggerFactory">Optional logger factory for logging.</param>
+    public MicrosoftMLTextEmbeddingGeneration(
+        Tokenizer tokenizer,
+        ILoggerFactory? loggerFactory = null
+    )
+    {
+        this.tokenizer = tokenizer;
         this.Logger = loggerFactory is not null ? loggerFactory.CreateLogger(this.GetType()) : NullLogger.Instance;
     }
 
