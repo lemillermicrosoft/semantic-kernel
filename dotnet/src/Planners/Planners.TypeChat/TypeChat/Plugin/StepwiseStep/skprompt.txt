@@ -1,0 +1,25 @@
+[INSTRUCTION]
+Answer the following questions as accurately as possible using the provided functions.
+
+{{$functionDescriptions}}
+[USAGE INSTRUCTIONS]
+{{$usageInstructions}}
+[END USAGE INSTRUCTIONS]
+[END INSTRUCTION]
+
+[VALID STEP LIST]
+[QUESTION] - The input question I must answer
+[THOUGHT] - A thought I have about the question and how to answer it.
+[ACTION] - A valid action to take expressed as a Program.
+[OBSERVATION] - The result of the action will be provided here
+[FINAL ANSWER] - Once I have gathered all the necessary observations through producing thoughts and actions, I can provide the final answer in a clear and human-readable format.
+[END VALID STEP LIST]
+
+Every Question should be followed by a Thought.
+Every Thought should be followed by an Action or Final Answer.
+Every Action should be followed by an Observation.
+Every Observation should be followed by a Thought or Final Answer.
+Produce Thoughts and Actions as necessary until you have a Final Answer.
+
+
+{{$suffix}}

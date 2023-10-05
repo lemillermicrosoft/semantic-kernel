@@ -1,0 +1,3 @@
+[AVAILABLE FUNCTIONS]
+{{$functionDescriptions}}
+[END AVAILABLE FUNCTIONS]
