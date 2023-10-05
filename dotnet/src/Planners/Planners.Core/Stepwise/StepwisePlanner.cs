@@ -346,17 +346,17 @@ public class StepwisePlanner : IStepwisePlanner
         return chatHistory;
     }
 
-    private async Task<string> GetUserManualAsync(string question, SKContext context, CancellationToken cancellationToken)
+    protected internal virtual async Task<string> GetUserManualAsync(string question, SKContext context, CancellationToken cancellationToken)
     {
         var descriptions = await this._kernel.Functions.GetFunctionsManualAsync(this.Config, question, this._logger, cancellationToken).ConfigureAwait(false);
         context.Variables.Set("functionDescriptions", descriptions);
         return await this._promptRenderer.RenderAsync(this._manualTemplate, context, cancellationToken).ConfigureAwait(false);
     }
 
-    private Task<string> GetUserQuestionAsync(SKContext context, CancellationToken cancellationToken)
+    protected internal virtual Task<string> GetUserQuestionAsync(SKContext context, CancellationToken cancellationToken)
         => this._promptRenderer.RenderAsync(this._questionTemplate, context, cancellationToken);
 
-    private Task<string> GetSystemMessageAsync(SKContext context, CancellationToken cancellationToken)
+    protected internal virtual Task<string> GetSystemMessageAsync(SKContext context, CancellationToken cancellationToken)
         => this._promptRenderer.RenderAsync(this._promptTemplate, context, cancellationToken);
 
     #endregion setup helpers
@@ -610,11 +610,11 @@ public class StepwisePlanner : IStepwisePlanner
     /// <summary>
     /// The configuration for the StepwisePlanner
     /// </summary>
-    private StepwisePlannerConfig Config { get; }
+    protected StepwisePlannerConfig Config { get; }
 
     // Context used to access the list of functions in the kernel
-    private readonly IKernel _kernel;
-    private readonly ILogger? _logger;
+    protected readonly IKernel _kernel;
+    protected readonly ILogger? _logger;
 
     /// <summary>
     /// Planner native functions
@@ -624,7 +624,7 @@ public class StepwisePlanner : IStepwisePlanner
     /// <summary>
     /// The prompt template to use for the system step
     /// </summary>
-    private readonly string _promptTemplate;
+    protected readonly string _promptTemplate;
 
     /// <summary>
     /// The question template to use for the system step
@@ -634,12 +634,12 @@ public class StepwisePlanner : IStepwisePlanner
     /// <summary>
     /// The function manual template to use for the system step
     /// </summary>
-    private readonly string _manualTemplate;
+    protected readonly string _manualTemplate;
 
     /// <summary>
     /// The prompt renderer to use for the system step
     /// </summary>
-    private readonly PromptTemplateEngine _promptRenderer;
+    protected readonly PromptTemplateEngine _promptRenderer;
 
     /// <summary>
     /// The prompt config to use for the system step
